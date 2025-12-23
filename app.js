@@ -17,7 +17,7 @@ const auth = firebase.auth();
 
 let currentUser = null;
 let currentEventId = null;
-let currentEventArchived = false; // Tila-muuttuja
+let currentEventArchived = false;
 
 // UI Elementit
 const loginView = document.getElementById('login-view');
@@ -25,7 +25,7 @@ const adminView = document.getElementById('admin-view');
 const guestbookView = document.getElementById('guestbook-view');
 const editModal = document.getElementById('edit-modal');
 const massModal = document.getElementById('mass-modal');
-const logEditModal = document.getElementById('log-edit-modal'); // UUSI
+const logEditModal = document.getElementById('log-edit-modal');
 const userDisplay = document.getElementById('user-display');
 const eventStatsEl = document.getElementById('event-stats');
 
@@ -90,7 +90,7 @@ document.getElementById('btn-add-event').addEventListener('click', () => {
         coords: document.getElementById('new-coords').value.trim(),
         location: document.getElementById('new-loc').value.trim(),
         createdAt: firebase.database.ServerValue.TIMESTAMP,
-        isArchived: false // Uusi kenttä
+        isArchived: false
     };
     if(!data.gc || !data.name || !data.date) { alert("Täytä GC, Nimi ja Pvm!"); return; }
     db.ref('miitit/' + currentUser.uid + '/events').push(data).then(() => {
@@ -117,7 +117,6 @@ function loadEvents() {
 
         events.forEach(evt => {
             const div = document.createElement('div');
-            // Jos arkistoitu, lisätään CSS-luokka
             const isArchived = evt.isArchived === true;
             div.className = "card" + (isArchived ? " archived" : "");
             
@@ -129,7 +128,6 @@ function loadEvents() {
             if(evt.type === 'cce') icon = "🎉";
             if(isArchived) icon = "🔒 " + icon;
 
-            // Arkistointinapin tila
             const archiveBtnText = isArchived ? "♻️ Palauta" : "📁 Arkistoi";
             const archiveBtnClass = isArchived ? "btn-blue" : "btn-gray";
 
@@ -154,7 +152,6 @@ function loadEvents() {
     });
 }
 
-// Arkistointitoiminto
 window.toggleArchiveEvent = (key, newState) => {
     const msg = newState ? "Haluatko arkistoida miitin? (Piilottaa muokkauksen)" : "Palautetaanko miitti aktiiviseksi?";
     if(confirm(msg)) {
@@ -191,7 +188,7 @@ window.openGuestbook = (eventKey) => {
         if(evt.coords) coordsEl.innerHTML = `📍 <a href="http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(evt.coords)}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
         else coordsEl.innerText = "📍 -";
 
-        // PIILOTUSLOGIIKKA ARKISTOIDUILLE
+        // PIILOTUSLOGIIKKA
         const actionsArea = document.getElementById('gb-actions-area');
         const massBtn = document.getElementById('btn-mass-open');
         const lockedMsg = document.getElementById('archived-notice');
@@ -227,7 +224,7 @@ document.getElementById('btn-sign-log').addEventListener('click', () => {
     });
 });
 
-// MASSALISÄYS LOGIIKKA (Pidetty ennallaan)
+// MASSALISÄYS LOGIIKKA
 window.openMassImport = () => {
     document.getElementById('mass-input').value = ""; 
     document.getElementById('mass-output').value = ""; 
@@ -268,28 +265,29 @@ document.getElementById('btn-save-mass').addEventListener('click', () => {
     massModal.style.display = "none";
 });
 
-// OSALLISTUJALISTAN LATAUS (KORJATTU)
+// --- LISTAUKSEN KORJAUS ---
 function loadAttendees(eventKey) {
     db.ref('miitit/' + currentUser.uid + '/logs/' + eventKey).on('value', (snapshot) => {
         const listEl = document.getElementById('attendee-list');
-        listEl.innerHTML = "";
-        const logs = [];
+        listEl.innerHTML = ""; // Tyhjennys tärkeä!
         
-        // Kerätään kaikki logit
+        const logs = [];
         snapshot.forEach(child => logs.push({key: child.key, ...child.val()}));
         
-        // Järjestetään käänteisesti
-        logs.reverse();
+        // Järjestetään aikajärjestykseen (viimeisin ylös)
+        logs.sort((a,b) => {
+            const timeA = a.timestamp || 0;
+            const timeB = b.timestamp || 0;
+            return timeB - timeA;
+        });
 
-        // Renderöidään rivit
         logs.forEach(log => {
             const row = document.createElement('div');
             row.className = "log-item";
             
-            // Jos arkistoitu, piilota napit
             let actionBtns = "";
             if (!currentEventArchived) {
-                // Käytetään nyt openLogEditModal, ei enää promptia
+                // Käytetään nyt openLogEditModal
                 actionBtns = `
                 <div class="log-actions">
                     <button class="btn-blue btn-small" onclick="openLogEditModal('${log.key}')">✏️</button>
