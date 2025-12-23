@@ -56,10 +56,10 @@
 
         /* Arkistoidun miitin tyyli listassa */
         .card.archived {
-            opacity: 0.6;
+            opacity: 0.7;
             background: #e0e0e0;
+            border-color: #aaa;
             border-style: dotted;
-            border-color: #999;
             box-shadow: none;
         }
 
@@ -145,7 +145,7 @@
         .event-meta span:last-child { border-bottom: none; }
         
         .log-list { 
-            max-height: 50vh; 
+            max-height: 55vh; 
             overflow-y: auto; 
             text-align: left; 
             margin-top: 20px; 
@@ -262,8 +262,8 @@
         
         <h2 id="gb-event-name" style="font-size:1.6em; color:#8B4513;">Miitin Nimi</h2>
         
-        <div id="archived-notice" style="display:none; background:#ccc; color:#333; padding:10px; border-radius:5px; margin-bottom:15px; font-weight:bold;">
-            🔒 TÄMÄ MIITTI ON ARKISTOITU
+        <div id="archived-notice" style="display:none; background:#ccc; color:#333; padding:10px; border-radius:5px; margin-bottom:15px; font-weight:bold; border:2px solid #999;">
+            🔒 TÄMÄ MIITTI ON ARKISTOITU (Vain luku)
         </div>
 
         <div class="event-meta">
@@ -323,7 +323,7 @@
 
     <div id="log-edit-modal" class="modal">
         <div class="modal-content">
-            <h3 style="text-align:center;">✏️ Muokkaa kirjausta</h3>
+            <h3 style="text-align:center;">✏️ Muokkaa kävijää</h3>
             <input type="hidden" id="log-edit-key">
             
             <label style="font-weight:bold;">Nimimerkki</label>
