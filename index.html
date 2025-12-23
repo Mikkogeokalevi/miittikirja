@@ -75,7 +75,7 @@
             letter-spacing: 1px;
         }
         
-        input, select { 
+        input, select, textarea { 
             width: 100%; 
             padding: 12px; 
             margin-bottom: 10px; 
@@ -107,6 +107,7 @@
         .btn-blue { background-color: #8B4513; color: white; } 
         .btn-green { background-color: #4caf50; color: white; border: 1px solid #2e7d32; } 
         .btn-red { background-color: #B22222; color: white; } 
+        .btn-gray { background-color: #A0522D; color: white; }
         .btn-small { width: auto; padding: 8px 12px; font-size: 14px; margin-right: 5px; }
         
         .back-btn { 
@@ -162,7 +163,6 @@
             margin-bottom: 10px;
         }
 
-        /* Tietopalkki ylhäällä */
         .user-info-bar {
             font-size: 0.8em;
             color: #8B4513;
@@ -171,7 +171,7 @@
             background: rgba(255,255,255,0.5);
             padding: 5px;
             border-radius: 10px;
-            display: none; /* Piilossa kunnes kirjautunut */
+            display: none; 
         }
 
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(78, 52, 46, 0.9); overflow-y: auto; }
@@ -216,6 +216,8 @@
             <button id="btn-logout" class="btn btn-red btn-small">Ulos</button>
         </div>
         
+        <p id="event-stats" style="font-size:0.8em; color:#666; text-align:center;">Ladataan tietoja...</p>
+
         <div class="card-form">
             <h3 style="margin-top:0; color:#B22222; text-align:center;">➕ Lisää uusi</h3>
             <label style="font-size:0.8em; font-weight:bold;">Tyyppi</label>
@@ -261,7 +263,7 @@
         </div>
         
         <div class="card-form">
-            <h3 style="text-align:center; margin-top:0; color:#B22222;">✍️ Kirjaa käyntisi</h3>
+            <h3 style="text-align:center; margin-top:0; color:#B22222;">✍️ Kirjaa käynti</h3>
             <input type="text" id="log-nickname" placeholder="Nimimerkkisi" style="font-size: 1.2em; border: 2px solid #8B4513;">
             <input type="text" id="log-from" placeholder="Mistä tulet? (Paikkakunta)">
             <input type="text" id="log-message" placeholder="Terveiset (vapaaehtoinen)">
@@ -273,6 +275,8 @@
             <span style="background:#8B4513; color:#fff; padding:2px 10px; border-radius:15px; font-weight:bold;" id="attendee-count">0</span>
         </div>
         
+        <button onclick="openMassImport()" class="btn btn-gray" style="margin-bottom:10px; font-size:0.9em;">📥 Tuo listana (Massalisäys)</button>
+
         <div id="attendee-list" class="log-list"></div>
     </div>
 
@@ -297,6 +301,19 @@
             
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button id="btn-save-edit" class="btn btn-green">Tallenna</button>
+                <button onclick="closeModal()" class="btn btn-red">Peruuta</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="mass-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="text-align:center;">📥 Tuo osallistujat</h3>
+            <p style="font-size:0.9em;">Liitä tähän lista nimimerkeistä (esim. Excelistä, vihkosta tai nettisivulta). Yksi nimi per rivi tai pilkulla erotettuna.</p>
+            <textarea id="mass-text" rows="10" placeholder="Mikkokalevi&#10;TeroA&#10;Bukka..." style="width:100%; border:2px solid #8B4513;"></textarea>
+            
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button id="btn-save-mass" class="btn btn-green">Tuo Nimet</button>
                 <button onclick="closeModal()" class="btn btn-red">Peruuta</button>
             </div>
         </div>
