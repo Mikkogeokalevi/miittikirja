@@ -2,24 +2,39 @@
 <html lang="fi">
 <head>
     <meta charset="UTF-8">
-    <title>Miittien Tuontityökalu</title>
+    <title>Miittien Tuonti (Tuplatarkistus)</title>
     <style>
         body { background: #222; color: #fff; font-family: sans-serif; padding: 20px; text-align: center; }
-        .container { max-width: 600px; margin: 0 auto; background: #333; padding: 20px; border-radius: 8px; }
+        .container { max-width: 800px; margin: 0 auto; background: #333; padding: 20px; border-radius: 8px; }
         input { margin: 10px 0; padding: 10px; width: 80%; border-radius: 4px; border: 1px solid #555; background: #222; color: white; }
         .btn { padding: 10px 20px; background: #4caf50; color: white; border: none; cursor: pointer; font-size: 16px; border-radius: 4px; }
         .btn:disabled { background: #555; cursor: not-allowed; }
-        #status { margin-top: 20px; white-space: pre-wrap; text-align: left; background: #111; padding: 10px; border: 1px solid #444; min-height: 300px; max-height: 500px; overflow-y: auto; font-family: monospace; }
-        .log-ok { color: #4caf50; }
+        
+        #status { 
+            margin-top: 20px; 
+            text-align: left; 
+            background: #111; 
+            padding: 15px; 
+            border: 1px solid #444; 
+            height: 400px; 
+            overflow-y: auto; 
+            font-family: monospace; 
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+        .log-row { border-bottom: 1px solid #222; padding: 2px 0; }
+        .log-ok { color: #4caf50; font-weight: bold; }
         .log-warn { color: #ffeb3b; }
-        .log-skip { color: #777; }
+        .log-err { color: #f44336; }
+        .log-info { color: #888; }
+        .log-skip { color: #aaa; font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📥 Tuo kaikki omat tapahtumat</h2>
-    <p>Lataa GPX (mieluiten "My Hides" tai "My Finds") ja syötä nimimerkkisi.</p>
+    <h2>📥 Tuo omat tapahtumat</h2>
+    <p>Tämä versio tarkistaa onko miitti jo kannassa (GC-koodin perusteella) eikä luo tuplia.</p>
     
     <label>Oma nimimerkki (Owner):</label><br>
     <input type="text" id="owner-filter" placeholder="Esim. Mikkokalevi">
@@ -33,7 +48,7 @@
 
     <div id="import-section" style="display:none;">
         <p>Kirjautunut: <span id="user-email"></span></p>
-        <button id="btn-process" class="btn" disabled>Suodata ja Tuo</button>
+        <button id="btn-process" class="btn" disabled>Analysoi ja Tuo</button>
     </div>
 
     <div id="status">Loki:</div>
@@ -85,78 +100,112 @@
     btnProcess.addEventListener('click', () => {
         const file = fileInput.files[0];
         const myName = ownerInput.value.trim().toLowerCase();
-        const reader = new FileReader();
-        reader.onload = (e) => parseGPX(e.target.result, myName);
-        reader.readAsText(file);
+        
+        statusEl.innerHTML = ""; 
+        log(`Haetaan ensin olemassa olevat miitit kannasta...`, "log-info");
+
+        // HAE OLEMASSA OLEVAT ENSIN
+        db.ref('miitit/' + currentUser.uid + '/events').once('value').then((snapshot) => {
+            const existingGCs = new Set();
+            if (snapshot.exists()) {
+                snapshot.forEach(child => {
+                    const val = child.val();
+                    if (val.gc) existingGCs.add(val.gc);
+                });
+            }
+            log(`Kannasta löytyi ${existingGCs.size} aiempaa miittiä.`, "log-info");
+            
+            const reader = new FileReader();
+            reader.onload = (e) => parseGPX(e.target.result, myName, existingGCs);
+            reader.readAsText(file);
+        });
     });
 
-    function parseGPX(xmlText, myName) {
+    function parseGPX(xmlText, myName, existingGCs) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, "text/xml");
         const wpts = xmlDoc.getElementsByTagName("wpt");
         
-        statusEl.innerHTML = `Tutkitaan ${wpts.length} pistettä...\n`;
-        let count = 0;
+        log(`Tiedostossa on ${wpts.length} pistettä. Aloitetaan läpikäynti...`, "log-info");
+        log("---------------------------------------------------", "log-info");
+
+        let importedCount = 0;
+        let skippedCount = 0;
+        let duplicateCount = 0;
 
         for (let i = 0; i < wpts.length; i++) {
             const wpt = wpts[i];
             
-            // 1. Tunnistetaan omistaja
+            // 1. Omistaja
             let owner = getTagVal(wpt, "groundspeak:placed_by") || getTagVal(wpt, "placed_by");
-            if (!owner || owner.toLowerCase() !== myName) continue;
-
-            // 2. Tunnistetaan tyyppi
-            let typeStr = getTagVal(wpt, "type").toLowerCase();
-            let myType = "miitti"; 
-            let isEvent = false;
-
-            if (typeStr.includes("event cache")) { isEvent = true; }
-            else if (typeStr.includes("cache in trash out")) { isEvent = true; myType = "cito"; }
-            else if (typeStr.includes("community celebration") || typeStr.includes("lost and found") || typeStr.includes("celebration") || typeStr.includes("yhteisö")) { 
-                isEvent = true; 
-                myType = "cce"; 
-            }
-            else if (typeStr.includes("mega")) { isEvent = true; } 
-
-            if (isEvent) {
-                const gc = getTagVal(wpt, "name");
-                let name = getTagVal(wpt, "urlname") || getTagVal(wpt, "desc");
-                const gsCache = wpt.getElementsByTagName("groundspeak:cache")[0];
-                if(gsCache) name = getTagVal(gsCache, "groundspeak:name");
-
-                const time = getTagVal(wpt, "time");
-                const dateStr = time ? time.split("T")[0] : "";
+            if (owner && owner.toLowerCase() === myName) {
                 
-                const lat = wpt.getAttribute("lat");
-                const lon = wpt.getAttribute("lon");
-
-                // --- ATTRIBUUTTIEN HAKU ---
-                const attributes = [];
-                const attrList = wpt.getElementsByTagName("groundspeak:attribute");
-                for(let k=0; k < attrList.length; k++) {
-                    // Otetaan attribuutit, jotka ovat voimassa (inc="1")
-                    if(attrList[k].getAttribute("inc") == "1") {
-                        attributes.push(attrList[k].textContent);
-                    }
+                const gc = getTagVal(wpt, "name");
+                
+                // 2. TARKISTETAAN ONKO JO KANNASSA
+                if (existingGCs.has(gc)) {
+                    log(`⏭️ OHITETTU (Jo kannassa): ${gc}`, "log-skip");
+                    duplicateCount++;
+                    continue; // Hypätään seuraavaan
                 }
 
-                const eventData = {
-                    type: myType,
-                    gc: gc,
-                    name: name,
-                    date: dateStr,
-                    coords: `${lat}, ${lon}`,
-                    location: "", 
-                    attributes: attributes, // Tallennetaan lista kantaan
-                    createdAt: firebase.database.ServerValue.TIMESTAMP
-                };
+                const gsCache = wpt.getElementsByTagName("groundspeak:cache")[0];
+                let name = getTagVal(wpt, "urlname") || getTagVal(wpt, "desc");
+                if(gsCache) name = getTagVal(gsCache, "groundspeak:name");
 
-                log(`✅ [${myType.toUpperCase()}] ${name} (${attributes.length} attr)`, "log-ok");
-                db.ref('miitit/' + currentUser.uid + '/events').push(eventData);
-                count++;
+                // 3. Tyyppi
+                let typeStr = getTagVal(wpt, "type").toLowerCase();
+                let myType = "miitti"; 
+                let isEvent = false;
+
+                if (typeStr.includes("event cache")) { isEvent = true; }
+                else if (typeStr.includes("cache in trash out")) { isEvent = true; myType = "cito"; }
+                else if (typeStr.includes("community celebration") || typeStr.includes("lost and found") || typeStr.includes("celebration") || typeStr.includes("yhteisö")) { 
+                    isEvent = true; myType = "cce"; 
+                }
+                else if (typeStr.includes("mega")) { isEvent = true; } 
+
+                if (isEvent) {
+                    const time = getTagVal(wpt, "time");
+                    const dateStr = time ? time.split("T")[0] : "";
+                    const lat = wpt.getAttribute("lat");
+                    const lon = wpt.getAttribute("lon");
+
+                    // Attribuutit
+                    const attributes = [];
+                    const attrList = wpt.getElementsByTagName("groundspeak:attribute");
+                    for(let k=0; k < attrList.length; k++) {
+                        if(attrList[k].getAttribute("inc") == "1") attributes.push(attrList[k].textContent);
+                    }
+
+                    const eventData = {
+                        type: myType,
+                        gc: gc,
+                        name: name,
+                        date: dateStr,
+                        coords: `${lat}, ${lon}`,
+                        location: "", 
+                        attributes: attributes,
+                        createdAt: firebase.database.ServerValue.TIMESTAMP
+                    };
+
+                    log(`✅ TUOTU: ${name} (${gc})`, "log-ok");
+                    db.ref('miitit/' + currentUser.uid + '/events').push(eventData);
+                    importedCount++;
+                } else {
+                    skippedCount++;
+                }
             }
         }
-        log(`\nVALMIS! ${count} omaa tapahtumaa tuotu.`, "log-ok");
+
+        log("---------------------------------------------------", "log-info");
+        log(`VALMIS!`, "log-info");
+        log(`- Uusia tuotu: ${importedCount}`, "log-ok");
+        log(`- Vanhoja (ohitettu): ${duplicateCount}`, "log-skip");
+        
+        if (importedCount === 0 && duplicateCount === 0) {
+            log(`\n⚠️ Yhtään miittiä ei löytynyt. Tarkista nimimerkki!`, "log-err");
+        }
     }
 
     function getTagVal(parent, tagName) {
@@ -166,7 +215,10 @@
     }
 
     function log(msg, cls) {
-        const div = document.createElement('div'); div.innerText = msg; div.className = cls; statusEl.appendChild(div);
+        const div = document.createElement('div'); 
+        div.innerText = msg; 
+        div.className = "log-row " + cls; 
+        statusEl.appendChild(div);
         statusEl.scrollTop = statusEl.scrollHeight;
     }
 </script>
