@@ -23,6 +23,7 @@ const loginView = document.getElementById('login-view');
 const adminView = document.getElementById('admin-view');
 const guestbookView = document.getElementById('guestbook-view');
 const editModal = document.getElementById('edit-modal');
+const userDisplay = document.getElementById('user-display');
 
 // ==========================================
 // 2. KIRJAUTUMINEN (Google + Email)
@@ -30,10 +31,17 @@ const editModal = document.getElementById('edit-modal');
 auth.onAuthStateChanged((user) => {
     if (user) {
         currentUser = user;
+        // PÄIVITYS: Näytetään käyttäjätieto
+        if(userDisplay) {
+            userDisplay.style.display = 'block';
+            userDisplay.innerText = "👤 Kirjautuneena: " + user.email;
+        }
+        
         if (guestbookView.style.display !== 'block') showAdminView();
         loadEvents();
     } else {
         currentUser = null;
+        if(userDisplay) userDisplay.style.display = 'none';
         showLoginView();
     }
 });
