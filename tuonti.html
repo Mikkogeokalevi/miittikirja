@@ -2,7 +2,7 @@
 <html lang="fi">
 <head>
     <meta charset="UTF-8">
-    <title>Miittien Tuonti</title>
+    <title>Miittien Tuontityökalu</title>
     <style>
         body { background: #222; color: #fff; font-family: sans-serif; padding: 20px; text-align: center; }
         .container { max-width: 600px; margin: 0 auto; background: #333; padding: 20px; border-radius: 8px; }
@@ -10,7 +10,9 @@
         .btn { padding: 10px 20px; background: #4caf50; color: white; border: none; cursor: pointer; font-size: 16px; border-radius: 4px; }
         .btn:disabled { background: #555; cursor: not-allowed; }
         #status { margin-top: 20px; white-space: pre-wrap; text-align: left; background: #111; padding: 10px; border: 1px solid #444; min-height: 300px; max-height: 500px; overflow-y: auto; font-family: monospace; }
-        .log-ok { color: #4caf50; } .log-skip { color: #777; }
+        .log-ok { color: #4caf50; }
+        .log-warn { color: #ffeb3b; }
+        .log-skip { color: #777; }
     </style>
 </head>
 <body>
@@ -25,6 +27,7 @@
     <input type="file" id="file-input" accept=".gpx">
     
     <div id="auth-section">
+        <p>Kirjaudu ensin:</p>
         <button id="btn-login" class="btn" style="background:#2196f3;">Kirjaudu Googlella</button>
     </div>
 
@@ -41,6 +44,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
+    // =============================================
+    // ASETUKSET
+    // =============================================
     const firebaseConfig = {
         apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
         authDomain: "perhekalenteri-projekti.firebaseapp.com",
@@ -95,8 +101,7 @@
         for (let i = 0; i < wpts.length; i++) {
             const wpt = wpts[i];
             
-            // 1. Tunnistetaan omistaja (Placed By)
-            // Tämä nappaa myös perutut, jos ne ovat GPX:ssä, koska omistaja on sama.
+            // 1. Tunnistetaan omistaja
             let owner = getTagVal(wpt, "groundspeak:placed_by") || getTagVal(wpt, "placed_by");
             if (!owner || owner.toLowerCase() !== myName) continue;
 
@@ -105,7 +110,6 @@
             let myType = "miitti"; 
             let isEvent = false;
 
-            // Tässä lisätty tuki "Celebration" ja "Yhteisöjuhla" sanoille
             if (typeStr.includes("event cache")) { isEvent = true; }
             else if (typeStr.includes("cache in trash out")) { isEvent = true; myType = "cito"; }
             else if (typeStr.includes("community celebration") || typeStr.includes("lost and found") || typeStr.includes("celebration") || typeStr.includes("yhteisö")) { 
@@ -123,9 +127,18 @@
                 const time = getTagVal(wpt, "time");
                 const dateStr = time ? time.split("T")[0] : "";
                 
-                // Koordinaatit talteen!
                 const lat = wpt.getAttribute("lat");
                 const lon = wpt.getAttribute("lon");
+
+                // --- ATTRIBUUTTIEN HAKU ---
+                const attributes = [];
+                const attrList = wpt.getElementsByTagName("groundspeak:attribute");
+                for(let k=0; k < attrList.length; k++) {
+                    // Otetaan attribuutit, jotka ovat voimassa (inc="1")
+                    if(attrList[k].getAttribute("inc") == "1") {
+                        attributes.push(attrList[k].textContent);
+                    }
+                }
 
                 const eventData = {
                     type: myType,
@@ -134,10 +147,11 @@
                     date: dateStr,
                     coords: `${lat}, ${lon}`,
                     location: "", 
+                    attributes: attributes, // Tallennetaan lista kantaan
                     createdAt: firebase.database.ServerValue.TIMESTAMP
                 };
 
-                log(`✅ [${myType.toUpperCase()}] ${name} (${dateStr})`, "log-ok");
+                log(`✅ [${myType.toUpperCase()}] ${name} (${attributes.length} attr)`, "log-ok");
                 db.ref('miitit/' + currentUser.uid + '/events').push(eventData);
                 count++;
             }
