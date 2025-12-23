@@ -56,10 +56,11 @@
 
         /* Arkistoidun miitin tyyli listassa */
         .card.archived {
-            opacity: 0.7;
-            border-color: #aaa;
+            opacity: 0.6;
+            background: #e0e0e0;
+            border-style: dotted;
+            border-color: #999;
             box-shadow: none;
-            background: #f4f4f4;
         }
 
         .card-form {
@@ -193,17 +194,6 @@
             border-radius: 15px; 
             text-align: left; 
         }
-        
-        /* Status badge */
-        .status-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            margin-left: 5px;
-            font-weight: normal;
-        }
-        .badge-archived { background: #555; color: white; }
     </style>
 </head>
 <body>
@@ -272,8 +262,8 @@
         
         <h2 id="gb-event-name" style="font-size:1.6em; color:#8B4513;">Miitin Nimi</h2>
         
-        <div id="locked-status" style="display:none; background:#555; color:white; padding:10px; border-radius:5px; margin-bottom:10px; font-weight:bold;">
-            🔒 TÄMÄ MIITTI ON ARKISTOITU (Vain luku)
+        <div id="archived-notice" style="display:none; background:#ccc; color:#333; padding:10px; border-radius:5px; margin-bottom:15px; font-weight:bold;">
+            🔒 TÄMÄ MIITTI ON ARKISTOITU
         </div>
 
         <div class="event-meta">
