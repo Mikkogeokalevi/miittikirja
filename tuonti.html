@@ -2,65 +2,92 @@
 <html lang="fi">
 <head>
     <meta charset="UTF-8">
-    <title>Miittien Tuonti (Varmistus)</title>
+    <title>Miittien Valikoiva Tuonti</title>
     <style>
         body { background: #222; color: #fff; font-family: sans-serif; padding: 20px; text-align: center; }
-        .container { max-width: 800px; margin: 0 auto; background: #333; padding: 20px; border-radius: 8px; }
-        input { margin: 10px 0; padding: 10px; width: 80%; border-radius: 4px; border: 1px solid #555; background: #222; color: white; }
-        .btn { padding: 10px 20px; background: #4caf50; color: white; border: none; cursor: pointer; font-size: 16px; border-radius: 4px; }
-        .btn:disabled { background: #555; cursor: not-allowed; }
+        .container { max-width: 900px; margin: 0 auto; background: #333; padding: 20px; border-radius: 8px; }
         
-        #status { 
-            margin-top: 20px; 
-            text-align: left; 
-            background: #111; 
-            padding: 15px; 
-            border: 1px solid #444; 
-            height: 400px; 
-            overflow-y: auto; 
-            font-family: monospace; 
-            font-size: 14px;
-            white-space: pre-wrap;
+        input[type="text"], input[type="file"] { 
+            margin: 10px 0; padding: 10px; width: 80%; 
+            border-radius: 4px; border: 1px solid #555; 
+            background: #222; color: white; 
         }
-        .user-badge {
-            background: #2196f3;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-weight: bold;
+        
+        .btn { padding: 12px 25px; border: none; cursor: pointer; font-size: 16px; border-radius: 4px; font-weight: bold; margin: 5px; }
+        .btn:disabled { background: #555; cursor: not-allowed; opacity: 0.5; }
+        .btn-blue { background: #2196f3; color: white; }
+        .btn-green { background: #4caf50; color: white; }
+        .btn-gray { background: #666; color: white; font-size: 14px; padding: 8px 15px; }
+
+        /* LISTA TYYLIT */
+        #preview-area { display: none; text-align: left; margin-top: 20px; border-top: 1px solid #555; padding-top: 20px; }
+        
+        .event-list { 
+            max-height: 500px; overflow-y: auto; 
+            background: #222; border: 1px solid #444; 
+            border-radius: 4px; padding: 10px; margin-bottom: 20px; 
         }
-        .log-row { border-bottom: 1px solid #222; padding: 2px 0; }
-        .log-ok { color: #4caf50; font-weight: bold; }
-        .log-warn { color: #ffeb3b; }
-        .log-err { color: #f44336; }
-        .log-info { color: #888; }
-        .log-skip { color: #aaa; font-style: italic; }
+        
+        .event-row { 
+            display: flex; align-items: center; 
+            padding: 8px; border-bottom: 1px solid #333; 
+        }
+        .event-row:hover { background: #2a2a2a; }
+        
+        .chk-col { width: 40px; text-align: center; }
+        .info-col { flex: 1; padding-left: 10px; }
+        .status-col { width: 120px; text-align: right; font-size: 0.8em; color: #888; }
+        
+        .duplicate { opacity: 0.5; }
+        .highlight { color: #4caf50; }
+        input[type="checkbox"] { transform: scale(1.5); cursor: pointer; }
+
+        .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .user-badge { background: #2196f3; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.9em; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📥 Tuo omat tapahtumat</h2>
+    <h2>📥 Tuo miitit (Valitse listasta)</h2>
     
-    <label>Oma nimimerkki (Owner):</label><br>
-    <input type="text" id="owner-filter" placeholder="Esim. Mikkokalevi">
-    <br>
-    <input type="file" id="file-input" accept=".gpx">
-    
-    <div id="auth-section">
-        <p>Kirjaudu ensin:</p>
-        <button id="btn-login" class="btn" style="background:#2196f3;">Kirjaudu Googlella</button>
+    <div id="step-1">
+        <p>1. Kirjoita nimimerkki (esim. <em>NastoGeo</em> tai <em>MiLahTi</em>) ja valitse GPX-tiedosto.</p>
+        <label>Etsittävä omistaja (Owner):</label><br>
+        <input type="text" id="owner-filter" placeholder="Esim. NastoGeo">
+        <br>
+        <input type="file" id="file-input" accept=".gpx">
+        
+        <div id="auth-section" style="margin-top:20px;">
+            <p>Kirjaudu ensin:</p>
+            <button id="btn-login" class="btn btn-blue">Kirjaudu Googlella</button>
+        </div>
+
+        <div id="analyze-section" style="display:none; margin-top:20px;">
+            <p>Kirjautunut: <span id="user-email" class="user-badge"></span></p>
+            <button id="btn-analyze" class="btn btn-blue" disabled>🔍 1. Etsi tiedostosta</button>
+        </div>
     </div>
 
-    <div id="import-section" style="display:none;">
-        <p>Olet kirjautunut sisään tunnuksella:<br><br>
-           <span id="user-email" class="user-badge"></span>
-        </p>
-        <p style="font-size:0.9em; color:#aaa;">(Varmista, että tämä on sama kuin Miittikirjassa!)</p>
-        <button id="btn-process" class="btn" disabled>Analysoi ja Tuo</button>
-    </div>
+    <div id="preview-area">
+        <div class="controls">
+            <h3>Löydetyt tapahtumat (<span id="found-count">0</span>)</h3>
+            <div>
+                <button class="btn btn-gray" onclick="toggleAll(true)">Valitse kaikki</button>
+                <button class="btn btn-gray" onclick="toggleAll(false)">Poista valinnat</button>
+            </div>
+        </div>
 
-    <div id="status">Loki:</div>
+        <div id="event-list-container" class="event-list">
+            </div>
+
+        <div style="text-align: right;">
+            <span id="selection-count" style="margin-right: 10px; color:#aaa;">0 valittu</span>
+            <button id="btn-import" class="btn btn-green">💾 2. Tuo valitut kantaan</button>
+        </div>
+    </div>
+    
+    <div id="log-output" style="margin-top:20px; color:#888; font-family:monospace; text-align:left;"></div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -85,17 +112,23 @@
     const db = firebase.database();
     const auth = firebase.auth();
     let currentUser = null;
+    let foundEventsCache = []; // Tähän tallennetaan löydetyt väliaikaisesti
 
-    const statusEl = document.getElementById('status');
+    // UI Elementit
     const fileInput = document.getElementById('file-input');
     const ownerInput = document.getElementById('owner-filter');
-    const btnProcess = document.getElementById('btn-process');
+    const btnAnalyze = document.getElementById('btn-analyze');
+    const btnImport = document.getElementById('btn-import');
+    const listContainer = document.getElementById('event-list-container');
+    const previewArea = document.getElementById('preview-area');
+    const logOut = document.getElementById('log-output');
 
+    // 1. KIRJAUTUMINEN
     auth.onAuthStateChanged((user) => {
         if (user) {
             currentUser = user;
             document.getElementById('auth-section').style.display = 'none';
-            document.getElementById('import-section').style.display = 'block';
+            document.getElementById('analyze-section').style.display = 'block';
             document.getElementById('user-email').innerText = user.email;
         }
     });
@@ -104,15 +137,18 @@
 
     fileInput.addEventListener('change', checkBtn);
     ownerInput.addEventListener('input', checkBtn);
-    function checkBtn() { btnProcess.disabled = !(fileInput.files.length > 0 && ownerInput.value.trim().length > 0); }
+    function checkBtn() { btnAnalyze.disabled = !(fileInput.files.length > 0 && ownerInput.value.trim().length > 0); }
 
-    btnProcess.addEventListener('click', () => {
+    // 2. ANALYSOINTI (EI VIELÄ TALLENNUSTA)
+    btnAnalyze.addEventListener('click', () => {
         const file = fileInput.files[0];
         const myName = ownerInput.value.trim().toLowerCase();
         
-        statusEl.innerHTML = ""; 
-        log(`Haetaan ensin olemassa olevat miitit kannasta...`, "log-info");
+        logOut.innerText = "Analysoidaan tiedostoa...";
+        previewArea.style.display = 'none';
+        foundEventsCache = []; // Tyhjennä vanhat
 
+        // Haetaan ensin tietokannasta jo olemassa olevat GC-koodit
         db.ref('miitit/' + currentUser.uid + '/events').once('value').then((snapshot) => {
             const existingGCs = new Set();
             if (snapshot.exists()) {
@@ -121,7 +157,6 @@
                     if (val.gc) existingGCs.add(val.gc);
                 });
             }
-            log(`Kannasta löytyi ${existingGCs.size} aiempaa miittiä.`, "log-info");
             
             const reader = new FileReader();
             reader.onload = (e) => parseGPX(e.target.result, myName, existingGCs);
@@ -134,56 +169,52 @@
         const xmlDoc = parser.parseFromString(xmlText, "text/xml");
         const wpts = xmlDoc.getElementsByTagName("wpt");
         
-        log(`Tiedostossa on ${wpts.length} pistettä. Aloitetaan läpikäynti...`, "log-info");
-        log("---------------------------------------------------", "log-info");
-
-        let importedCount = 0;
-        let skippedCount = 0;
-        let duplicateCount = 0;
+        let count = 0;
 
         for (let i = 0; i < wpts.length; i++) {
             const wpt = wpts[i];
             
+            // Tarkista omistaja (tai nimimerkin osa)
             let owner = getTagVal(wpt, "groundspeak:placed_by") || getTagVal(wpt, "placed_by");
-            if (owner && owner.toLowerCase() === myName) {
-                
-                const gc = getTagVal(wpt, "name");
-                
-                if (existingGCs.has(gc)) {
-                    log(`⏭️ OHITETTU (Jo kannassa): ${gc}`, "log-skip");
-                    duplicateCount++;
-                    continue; 
-                }
+            if (!owner || !owner.toLowerCase().includes(myName)) continue;
 
+            const gc = getTagVal(wpt, "name");
+            const typeStr = getTagVal(wpt, "type").toLowerCase();
+            
+            // Onko miitti?
+            let myType = "miitti"; 
+            let isEvent = false;
+            if (typeStr.includes("event cache")) { isEvent = true; }
+            else if (typeStr.includes("cache in trash out")) { isEvent = true; myType = "cito"; }
+            else if (typeStr.includes("community celebration") || typeStr.includes("lost and found") || typeStr.includes("celebration") || typeStr.includes("yhteisö")) { 
+                isEvent = true; myType = "cce"; 
+            }
+            else if (typeStr.includes("mega")) { isEvent = true; } 
+
+            if (isEvent) {
+                // Haetaan tiedot talteen muistiin (EI VIELÄ KANTAAN)
                 const gsCache = wpt.getElementsByTagName("groundspeak:cache")[0];
                 let name = getTagVal(wpt, "urlname") || getTagVal(wpt, "desc");
                 if(gsCache) name = getTagVal(gsCache, "groundspeak:name");
 
-                let typeStr = getTagVal(wpt, "type").toLowerCase();
-                let myType = "miitti"; 
-                let isEvent = false;
+                const time = getTagVal(wpt, "time");
+                const dateStr = time ? time.split("T")[0] : "";
+                const lat = wpt.getAttribute("lat");
+                const lon = wpt.getAttribute("lon");
 
-                if (typeStr.includes("event cache")) { isEvent = true; }
-                else if (typeStr.includes("cache in trash out")) { isEvent = true; myType = "cito"; }
-                else if (typeStr.includes("community celebration") || typeStr.includes("lost and found") || typeStr.includes("celebration") || typeStr.includes("yhteisö")) { 
-                    isEvent = true; myType = "cce"; 
+                // Attribuutit
+                const attributes = [];
+                const attrList = wpt.getElementsByTagName("groundspeak:attribute");
+                for(let k=0; k < attrList.length; k++) {
+                    if(attrList[k].getAttribute("inc") == "1") attributes.push(attrList[k].textContent);
                 }
-                else if (typeStr.includes("mega")) { isEvent = true; } 
 
-                if (isEvent) {
-                    const time = getTagVal(wpt, "time");
-                    const dateStr = time ? time.split("T")[0] : "";
-                    const lat = wpt.getAttribute("lat");
-                    const lon = wpt.getAttribute("lon");
+                // Onko jo kannassa?
+                const isDuplicate = existingGCs.has(gc);
 
-                    // Attribuutit
-                    const attributes = [];
-                    const attrList = wpt.getElementsByTagName("groundspeak:attribute");
-                    for(let k=0; k < attrList.length; k++) {
-                        if(attrList[k].getAttribute("inc") == "1") attributes.push(attrList[k].textContent);
-                    }
-
-                    const eventData = {
+                foundEventsCache.push({
+                    id: i, // Uniikki ID listalle
+                    data: {
                         type: myType,
                         gc: gc,
                         name: name,
@@ -192,39 +223,99 @@
                         location: "", 
                         attributes: attributes,
                         createdAt: firebase.database.ServerValue.TIMESTAMP
-                    };
-
-                    log(`✅ TUOTU: ${name} (${gc})`, "log-ok");
-                    db.ref('miitit/' + currentUser.uid + '/events').push(eventData);
-                    importedCount++;
-                } else {
-                    skippedCount++;
-                }
+                    },
+                    isDuplicate: isDuplicate
+                });
+                count++;
             }
         }
 
-        log("---------------------------------------------------", "log-info");
-        log(`VALMIS!`, "log-info");
-        log(`- Uusia tuotu: ${importedCount}`, "log-ok");
-        log(`- Vanhoja (ohitettu): ${duplicateCount}`, "log-skip");
-        
-        if (importedCount === 0 && duplicateCount === 0) {
-            log(`\n⚠️ Yhtään miittiä ei löytynyt. Tarkista nimimerkki!`, "log-err");
+        renderList();
+    }
+
+    // 3. RENDERÖI LISTA
+    function renderList() {
+        listContainer.innerHTML = "";
+        const countEl = document.getElementById('found-count');
+        countEl.innerText = foundEventsCache.length;
+
+        if (foundEventsCache.length === 0) {
+            logOut.innerText = "Yhtään tapahtumaa ei löytynyt hakusanalla.";
+            return;
         }
+
+        foundEventsCache.forEach((item, idx) => {
+            const row = document.createElement('div');
+            row.className = "event-row " + (item.isDuplicate ? "duplicate" : "");
+            
+            // Checkbox (Disabloitu jos duplikaatti, muuten valittu)
+            const isChecked = !item.isDuplicate;
+            const isDisabled = item.isDuplicate ? "disabled" : "";
+            const statusText = item.isDuplicate ? "Jo kannassa" : "Uusi";
+            
+            row.innerHTML = `
+                <div class="chk-col">
+                    <input type="checkbox" class="event-chk" data-idx="${idx}" ${isChecked ? "checked" : ""} ${isDisabled}>
+                </div>
+                <div class="info-col">
+                    <div style="font-weight:bold; color: ${item.isDuplicate ? '#777' : '#fff'}">${item.data.name}</div>
+                    <div style="font-size:0.9em; color:#aaa;">${item.data.gc} • ${item.data.date} • ${item.data.type.toUpperCase()}</div>
+                </div>
+                <div class="status-col">
+                    ${statusText}
+                </div>
+            `;
+            listContainer.appendChild(row);
+        });
+
+        previewArea.style.display = 'block';
+        logOut.innerText = `Löydettiin ${foundEventsCache.length} tapahtumaa. Valitse tuotavat.`;
+        updateSelectionCount();
+        
+        // Kuuntele muutoksia
+        document.querySelectorAll('.event-chk').forEach(chk => {
+            chk.addEventListener('change', updateSelectionCount);
+        });
+    }
+
+    // 4. TUO VALITUT KANTAAN
+    btnImport.addEventListener('click', () => {
+        const checkboxes = document.querySelectorAll('.event-chk:checked');
+        if (checkboxes.length === 0) { alert("Valitse vähintään yksi!"); return; }
+
+        if (!confirm(`Haluatko varmasti tuoda ${checkboxes.length} tapahtumaa kantaan?`)) return;
+
+        let successCount = 0;
+        checkboxes.forEach(chk => {
+            const idx = chk.getAttribute('data-idx');
+            const eventData = foundEventsCache[idx].data;
+            
+            // TALLENNUS FIREBASEEN
+            db.ref('miitit/' + currentUser.uid + '/events').push(eventData);
+            successCount++;
+        });
+
+        alert(`✅ Valmis! ${successCount} tapahtumaa lisätty onnistuneesti.`);
+        previewArea.style.display = 'none';
+        ownerInput.value = ""; // Tyhjennys
+        logOut.innerText = "Tuonti valmis.";
+    });
+
+    // APUFUNKTIOT
+    window.toggleAll = (state) => {
+        document.querySelectorAll('.event-chk:not(:disabled)').forEach(chk => chk.checked = state);
+        updateSelectionCount();
+    };
+
+    function updateSelectionCount() {
+        const count = document.querySelectorAll('.event-chk:checked').length;
+        document.getElementById('selection-count').innerText = `${count} valittu`;
     }
 
     function getTagVal(parent, tagName) {
         let el = parent.getElementsByTagName(tagName)[0];
         if (!el && tagName.includes(":")) el = parent.getElementsByTagName(tagName.split(":")[1])[0];
         return el ? el.textContent : "";
-    }
-
-    function log(msg, cls) {
-        const div = document.createElement('div'); 
-        div.innerText = msg; 
-        div.className = "log-row " + cls; 
-        statusEl.appendChild(div);
-        statusEl.scrollTop = statusEl.scrollHeight;
     }
 </script>
 </body>
