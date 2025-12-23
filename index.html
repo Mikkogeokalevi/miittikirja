@@ -72,6 +72,16 @@
             margin-bottom: 15px;
         }
 
+        /* UUSI: Klikattava otsikko */
+        #new-event-toggle {
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.2s;
+        }
+        #new-event-toggle:hover {
+            color: #D2691E;
+        }
+
         .category-header { 
             text-align: center; 
             color: #D2691E; 
@@ -270,22 +280,25 @@
         <p id="event-stats" style="font-size:0.8em; color:#666; text-align:center;">Ladataan tietoja...</p>
 
         <div class="card-form">
-            <h3 style="margin-top:0; color:#B22222; text-align:center;">➕ Lisää uusi</h3>
-            <label style="font-size:0.8em; font-weight:bold;">Tyyppi</label>
-            <select id="new-type">
-                <option value="miitti">☕ Tavallinen Miitti</option>
-                <option value="cito">🗑️ CITO (Siivous)</option>
-                <option value="cce">🎉 Yhteisöjuhla (CCE)</option>
-            </select>
-            <input type="text" id="new-gc" placeholder="GC-koodi (esim. GC12345)">
-            <input type="text" id="new-name" placeholder="Nimi (esim. MK:n tammikuu)">
-            <div style="display:flex; gap:10px;">
-                <input type="date" id="new-date">
-                <input type="text" id="new-time" placeholder="Klo (esim. 18:00-19:00)">
+            <h3 id="new-event-toggle" style="margin-top:0; color:#B22222; text-align:center;">➕ Lisää uusi (Klikkaa tästä)</h3>
+            
+            <div id="new-event-form" style="display: none;">
+                <label style="font-size:0.8em; font-weight:bold;">Tyyppi</label>
+                <select id="new-type">
+                    <option value="miitti">☕ Tavallinen Miitti</option>
+                    <option value="cito">🗑️ CITO (Siivous)</option>
+                    <option value="cce">🎉 Yhteisöjuhla (CCE)</option>
+                </select>
+                <input type="text" id="new-gc" placeholder="GC-koodi (esim. GC12345)">
+                <input type="text" id="new-name" placeholder="Nimi (esim. MK:n tammikuu)">
+                <div style="display:flex; gap:10px;">
+                    <input type="date" id="new-date">
+                    <input type="text" id="new-time" placeholder="Klo (esim. 18:00-19:00)">
+                </div>
+                <input type="text" id="new-coords" placeholder="Koordinaatit">
+                <input type="text" id="new-loc" placeholder="Paikka / Osoite">
+                <button id="btn-add-event" class="btn btn-blue">Tallenna Tapahtuma</button>
             </div>
-            <input type="text" id="new-coords" placeholder="Koordinaatit">
-            <input type="text" id="new-loc" placeholder="Paikka / Osoite">
-            <button id="btn-add-event" class="btn btn-blue">Tallenna Tapahtuma</button>
         </div>
 
         <div class="category-header">☕ Miitit</div>
