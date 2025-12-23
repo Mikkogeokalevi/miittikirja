@@ -25,7 +25,7 @@ const guestbookView = document.getElementById('guestbook-view');
 const editModal = document.getElementById('edit-modal');
 
 // ==========================================
-// 2. KIRJAUTUMINEN
+// 2. KIRJAUTUMINEN (Google + Email)
 // ==========================================
 auth.onAuthStateChanged((user) => {
     if (user) {
@@ -38,8 +38,36 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-document.getElementById('btn-login').addEventListener('click', () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()));
-document.getElementById('btn-logout').addEventListener('click', () => { if(confirm("Ulos?")) auth.signOut().then(() => location.reload()); });
+// Google Kirjautuminen
+document.getElementById('btn-login-google').addEventListener('click', () => {
+    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+        .catch(e => alert("Virhe Google-kirjautumisessa: " + e.message));
+});
+
+// Sähköposti Kirjautuminen
+document.getElementById('btn-email-login').addEventListener('click', () => {
+    const email = document.getElementById('email-input').value;
+    const pass = document.getElementById('password-input').value;
+    if(!email || !pass) { alert("Syötä tunnus ja salasana!"); return; }
+    
+    auth.signInWithEmailAndPassword(email, pass)
+        .catch(e => alert("Virhe kirjautumisessa: " + e.message));
+});
+
+// Sähköposti Rekisteröinti
+document.getElementById('btn-email-register').addEventListener('click', () => {
+    const email = document.getElementById('email-input').value;
+    const pass = document.getElementById('password-input').value;
+    if(!email || !pass) { alert("Syötä tunnus ja salasana!"); return; }
+    
+    auth.createUserWithEmailAndPassword(email, pass)
+        .then(() => alert("Tunnus luotu! Olet nyt kirjautunut."))
+        .catch(e => alert("Virhe luonnissa: " + e.message));
+});
+
+document.getElementById('btn-logout').addEventListener('click', () => { 
+    if(confirm("Ulos?")) auth.signOut().then(() => location.reload()); 
+});
 
 function showLoginView() { loginView.style.display = 'flex'; adminView.style.display = 'none'; guestbookView.style.display = 'none'; }
 function showAdminView() {
@@ -53,7 +81,6 @@ window.showAdminView = showAdminView;
 // 3. MIITTIEN HALLINTA & LISTAUS
 // ==========================================
 
-// Uuden miitin lisäys
 document.getElementById('btn-add-event').addEventListener('click', () => {
     const data = {
         type: document.getElementById('new-type').value,
@@ -70,7 +97,6 @@ document.getElementById('btn-add-event').addEventListener('click', () => {
 
     db.ref('miitit/' + currentUser.uid + '/events').push(data).then(() => {
         alert("Tallennettu!");
-        // Tyhjennys
         ['new-gc','new-name','new-time','new-coords','new-loc'].forEach(id => document.getElementById(id).value = "");
     });
 });
@@ -83,7 +109,7 @@ function loadEvents() {
     listCce.innerHTML = ""; listCito.innerHTML = ""; listMiitti.innerHTML = "";
 
     db.ref('miitit/' + currentUser.uid + '/events').orderByChild('date').on('value', (snapshot) => {
-        listCce.innerHTML = ""; listCito.innerHTML = ""; listMiitti.innerHTML = ""; // Tyhjennys varmuudeksi
+        listCce.innerHTML = ""; listCito.innerHTML = ""; listMiitti.innerHTML = "";
         const events = [];
         snapshot.forEach(child => events.push({key: child.key, ...child.val()}));
         events.sort((a,b) => new Date(b.date) - new Date(a.date));
@@ -103,10 +129,10 @@ function loadEvents() {
                     <strong>${icon} ${evt.name}</strong>
                     <span>${dateStr}</span>
                 </div>
-                <div style="font-size:0.9em; color:#ccc;">${evt.gc} ${evt.location ? '• ' + evt.location : ''}</div>
+                <div style="font-size:0.9em; color:#A0522D;">${evt.gc} ${evt.location ? '• ' + evt.location : ''}</div>
                 <div style="margin-top:10px; display:flex; gap:5px;">
                     <button class="btn btn-green btn-small" onclick="openGuestbook('${evt.key}')">📖 Avaa</button>
-                    <button class="btn btn-blue btn-small" onclick="openEditModal('${evt.key}')">✏️ Muokkaa</button>
+                    <button class="btn btn-blue btn-small" onclick="openEditModal('${evt.key}')">✏️</button>
                     <button class="btn btn-red btn-small" onclick="deleteEvent('${evt.key}')">🗑</button>
                 </div>
             `;
@@ -169,15 +195,23 @@ window.openGuestbook = (eventKey) => {
     currentEventId = eventKey;
     db.ref('miitit/' + currentUser.uid + '/events/' + eventKey).on('value', snap => {
         const evt = snap.val();
-        if(!evt) return; // Jos poistettiin
+        if(!evt) return; 
         document.getElementById('gb-event-name').innerText = evt.name;
         document.getElementById('gb-time').innerText = `🕓 ${evt.time || '-'}`;
         document.getElementById('gb-date').innerText = `📅 ${evt.date}`;
         document.getElementById('gb-gc').innerText = `🆔 ${evt.gc}`;
         document.getElementById('gb-loc').innerText = `🏠 ${evt.location || '-'}`;
         
+        // Attribuutit (Uusi!)
+        const attrEl = document.getElementById('gb-attrs');
+        if (evt.attributes && Array.isArray(evt.attributes)) {
+            attrEl.innerText = "⭐ " + evt.attributes.join(", ");
+        } else {
+            attrEl.innerText = "";
+        }
+        
         const coordsEl = document.getElementById('gb-coords');
-        if(evt.coords) coordsEl.innerHTML = `📍 <a href="https://maps.google.com/?q=${encodeURIComponent(evt.coords)}" target="_blank" style="color:#4caf50;">${evt.coords}</a>`;
+        if(evt.coords) coordsEl.innerHTML = `📍 <a href="https://www.google.com/maps/search/?api=1&query=$?q=${encodeURIComponent(evt.coords)}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
         else coordsEl.innerText = "📍 -";
     });
     
@@ -216,7 +250,7 @@ function loadAttendees(eventKey) {
             row.innerHTML = `
                 <div>
                     <strong style="color:#4caf50; font-size:1.1em;">${log.nickname}</strong>
-                    <span style="color:#ddd;"> / ${log.from || ''}</span>
+                    <span style="color:#A0522D;"> / ${log.from || ''}</span>
                     <div style="font-style:italic; color:#888; font-size:0.9em;">${log.message || ''}</div>
                 </div>
                 <div class="log-actions">
@@ -230,7 +264,6 @@ function loadAttendees(eventKey) {
     });
 }
 
-// Osallistujan muokkaus (Quick Prompt)
 window.editLog = (logKey, oldNick, oldFrom) => {
     const newNick = prompt("Muokkaa nimeä:", oldNick);
     if(newNick !== null) {
