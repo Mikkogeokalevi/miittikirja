@@ -17,6 +17,7 @@ const auth = firebase.auth();
 
 let currentUser = null;
 let currentEventId = null;
+let currentEventArchived = false; // Seurataan onko nykyinen miitti arkistoitu
 
 // UI Elementit
 const loginView = document.getElementById('login-view');
@@ -24,6 +25,7 @@ const adminView = document.getElementById('admin-view');
 const guestbookView = document.getElementById('guestbook-view');
 const editModal = document.getElementById('edit-modal');
 const massModal = document.getElementById('mass-modal');
+const logEditModal = document.getElementById('log-edit-modal'); // Uusi
 const userDisplay = document.getElementById('user-display');
 const eventStatsEl = document.getElementById('event-stats');
 
@@ -50,50 +52,32 @@ auth.onAuthStateChanged((user) => {
 });
 
 document.getElementById('btn-login-google').addEventListener('click', () => {
-    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
-        .catch(e => alert("Virhe: " + e.message));
+    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert(e.message));
 });
-
 document.getElementById('btn-email-login').addEventListener('click', () => {
     const email = document.getElementById('email-input').value;
     const pass = document.getElementById('password-input').value;
-    if(!email || !pass) { alert("Syötä tunnus ja salasana!"); return; }
     auth.signInWithEmailAndPassword(email, pass).catch(e => alert(e.message));
 });
-
 document.getElementById('btn-email-register').addEventListener('click', () => {
     const email = document.getElementById('email-input').value;
     const pass = document.getElementById('password-input').value;
-    if(!email || !pass) { alert("Syötä tunnus ja salasana!"); return; }
-    auth.createUserWithEmailAndPassword(email, pass)
-        .then(() => alert("Tunnus luotu!"))
-        .catch(e => alert(e.message));
+    auth.createUserWithEmailAndPassword(email, pass).catch(e => alert(e.message));
 });
-
 document.getElementById('btn-logout').addEventListener('click', () => { 
     if(confirm("Ulos?")) auth.signOut().then(() => location.reload()); 
 });
 
-function showLoginView() { 
-    loginView.style.display = 'flex'; 
-    adminView.style.display = 'none'; 
-    guestbookView.style.display = 'none'; 
-}
-
+function showLoginView() { loginView.style.display = 'flex'; adminView.style.display = 'none'; guestbookView.style.display = 'none'; }
 function showAdminView() {
     if (!currentUser) { showLoginView(); return; }
-    loginView.style.display = 'none'; 
-    adminView.style.display = 'block'; 
-    guestbookView.style.display = 'none';
-    if(currentEventId) { 
-        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off(); 
-        currentEventId = null; 
-    }
+    loginView.style.display = 'none'; adminView.style.display = 'block'; guestbookView.style.display = 'none';
+    if(currentEventId) { db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off(); currentEventId = null; }
 }
 window.showAdminView = showAdminView;
 
 // ==========================================
-// 3. MIITTIEN LISTAUS
+// 3. MIITTIEN LISTAUS & ARKISTOINTI
 // ==========================================
 
 document.getElementById('btn-add-event').addEventListener('click', () => {
@@ -105,11 +89,10 @@ document.getElementById('btn-add-event').addEventListener('click', () => {
         time: document.getElementById('new-time').value.trim(),
         coords: document.getElementById('new-coords').value.trim(),
         location: document.getElementById('new-loc').value.trim(),
-        createdAt: firebase.database.ServerValue.TIMESTAMP
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+        isArchived: false
     };
-
     if(!data.gc || !data.name || !data.date) { alert("Täytä GC, Nimi ja Pvm!"); return; }
-
     db.ref('miitit/' + currentUser.uid + '/events').push(data).then(() => {
         alert("Tallennettu!");
         ['new-gc','new-name','new-time','new-coords','new-loc'].forEach(id => document.getElementById(id).value = "");
@@ -118,34 +101,26 @@ document.getElementById('btn-add-event').addEventListener('click', () => {
 
 function loadEvents() {
     if (!currentUser) return;
-    
     const listCce = document.getElementById('list-cce');
     const listCito = document.getElementById('list-cito');
     const listMiitti = document.getElementById('list-miitti');
-    listCce.innerHTML = ""; listCito.innerHTML = ""; listMiitti.innerHTML = "";
-
+    
     db.ref('miitit/' + currentUser.uid + '/events').on('value', (snapshot) => {
         listCce.innerHTML = ""; listCito.innerHTML = ""; listMiitti.innerHTML = "";
-        
         const events = [];
         let count = 0;
         
-        snapshot.forEach(child => {
-            events.push({key: child.key, ...child.val()});
-            count++;
-        });
-
+        snapshot.forEach(child => { events.push({key: child.key, ...child.val()}); count++; });
         if(eventStatsEl) eventStatsEl.innerText = `Löytyi ${count} tapahtumaa.`;
 
-        events.sort((a,b) => {
-            const dateA = new Date(a.date || 0);
-            const dateB = new Date(b.date || 0);
-            return dateB - dateA;
-        });
+        // Järjestetään uusin ensin
+        events.sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0));
 
         events.forEach(evt => {
             const div = document.createElement('div');
-            div.className = "card";
+            // Jos arkistoitu, lisätään luokka
+            const isArchived = evt.isArchived === true;
+            div.className = "card" + (isArchived ? " archived" : "");
             
             let dateStr = evt.date;
             try { dateStr = new Date(evt.date).toLocaleDateString('fi-FI'); } catch(e){}
@@ -153,6 +128,11 @@ function loadEvents() {
             let icon = "📍";
             if(evt.type === 'cito') icon = "🗑️";
             if(evt.type === 'cce') icon = "🎉";
+            if(isArchived) icon = "🔒 " + icon; // Lukon kuva jos arkistoitu
+
+            // Arkistointinappi (vaihtuu tilan mukaan)
+            const archiveBtnText = isArchived ? "♻️ Palauta" : "📁 Arkistoi";
+            const archiveBtnClass = isArchived ? "btn-blue" : "btn-gray";
 
             div.innerHTML = `
                 <div style="display:flex; justify-content:space-between;">
@@ -163,6 +143,7 @@ function loadEvents() {
                 <div style="margin-top:10px; display:flex; gap:5px;">
                     <button class="btn btn-green btn-small" onclick="openGuestbook('${evt.key}')">📖 Avaa</button>
                     <button class="btn btn-blue btn-small" onclick="openEditModal('${evt.key}')">✏️</button>
+                    <button class="btn ${archiveBtnClass} btn-small" onclick="toggleArchiveEvent('${evt.key}', ${!isArchived})">${archiveBtnText}</button>
                     <button class="btn btn-red btn-small" onclick="deleteEvent('${evt.key}')">🗑</button>
                 </div>
             `;
@@ -174,6 +155,14 @@ function loadEvents() {
     });
 }
 
+// UUSI: Arkistoi / Palauta
+window.toggleArchiveEvent = (key, newState) => {
+    const msg = newState ? "Haluatko arkistoida miitin? (Piilottaa muokkauksen)" : "Palautetaanko miitti aktiiviseksi?";
+    if(confirm(msg)) {
+        db.ref('miitit/' + currentUser.uid + '/events/' + key).update({ isArchived: newState });
+    }
+};
+
 // ==========================================
 // 4. MIITTIKIRJA (GUESTBOOK)
 // ==========================================
@@ -184,12 +173,15 @@ window.openGuestbook = (eventKey) => {
         const evt = snap.val();
         if(!evt) return; 
         
+        currentEventArchived = evt.isArchived === true;
+
         document.getElementById('gb-event-name').innerText = evt.name;
         document.getElementById('gb-time').innerText = `🕓 ${evt.time || '-'}`;
         document.getElementById('gb-date').innerText = `📅 ${evt.date}`;
         document.getElementById('gb-gc').innerText = `🆔 ${evt.gc}`;
         document.getElementById('gb-loc').innerText = `🏠 ${evt.location || '-'}`;
         
+        // Attribuutit
         const attrEl = document.getElementById('gb-attrs');
         if (evt.attributes && Array.isArray(evt.attributes)) {
             attrEl.innerText = "⭐ " + evt.attributes.join(", ");
@@ -197,11 +189,24 @@ window.openGuestbook = (eventKey) => {
             attrEl.innerText = "";
         }
         
+        // Karttalinkki
         const coordsEl = document.getElementById('gb-coords');
-        if(evt.coords) {
-            coordsEl.innerHTML = `📍 <a href="http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(evt.coords)}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
+        if(evt.coords) coordsEl.innerHTML = `📍 <a href="http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(evt.coords)}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
+        else coordsEl.innerText = "📍 -";
+
+        // PIILOTUSLOGIIKKA ARKISTOIDUILLE
+        const actionsArea = document.getElementById('gb-actions-area');
+        const massBtn = document.getElementById('btn-mass-open');
+        const lockedMsg = document.getElementById('archived-notice');
+
+        if(currentEventArchived) {
+            if(actionsArea) actionsArea.style.display = 'none';
+            if(massBtn) massBtn.style.display = 'none';
+            if(lockedMsg) lockedMsg.style.display = 'block';
         } else {
-            coordsEl.innerText = "📍 -";
+            if(actionsArea) actionsArea.style.display = 'block';
+            if(massBtn) massBtn.style.display = 'block';
+            if(lockedMsg) lockedMsg.style.display = 'none';
         }
     });
     
@@ -225,7 +230,7 @@ document.getElementById('btn-sign-log').addEventListener('click', () => {
     });
 });
 
-// --- MASSALISÄYS (ÄLYKÄS) ---
+// MASSALISÄYS LOGIIKKA (Sama kuin aiemmin)
 window.openMassImport = () => {
     document.getElementById('mass-input').value = ""; 
     document.getElementById('mass-output').value = ""; 
@@ -233,75 +238,36 @@ window.openMassImport = () => {
     document.getElementById('mass-step-2').style.display = 'none';
     massModal.style.display = "block";
 };
-
 window.resetMassModal = () => {
     document.getElementById('mass-step-1').style.display = 'block';
     document.getElementById('mass-step-2').style.display = 'none';
 };
-
-// VAIHE 1: ANALYSOI
 document.getElementById('btn-parse-mass').addEventListener('click', () => {
     const text = document.getElementById('mass-input').value;
     if(!text) return;
-    
     let names = [];
-    
-    // Älykäs regex: Etsii rivin jossa nimi + (Premium) Member, ja varmistaa että logityyppi on oikea
-    // Kaava: Nimi (group 1) -> Välit -> Member -> Roskaa -> LogType (group 2)
-    const regex = /([^\n\r]+?)\s+(?:Premium\s+)?Member[\s\S]*?(Osallistui|Attended|Aion osallistua|Will Attend)/gi;
-    
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-        const name = match[1].trim();
-        const type = match[2].toLowerCase();
-        
-        // HYVÄKSYTÄÄN VAIN OSALLISTUI-MERKINNÄT
-        if (type.includes('osallistui') || type.includes('attended')) {
-            if(name.length > 0) names.push(name);
-        }
-    }
-    
-    // Varajärjestelmä: Jos regex ei löydä mitään, oletetaan että kyseessä on puhdas lista
-    if (names.length === 0) {
-        // Pilkotaan riveittäin, jos teksti ei sisältänyt "Member"-sanoja
-        if (!text.includes("Member")) {
-            names = text.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
-        }
-    }
-    
-    // Poista tuplat
+    const lines = text.split('\n');
+    lines.forEach(line => {
+        const match = line.match(/^\s*(.*?)\s{2,}(?:Premium\s+)?Member[\s\S]*?(Osallistui|Attended)/i);
+        if (match && match[1].trim().length > 0) names.push(match[1].trim());
+    });
+    if (names.length === 0) names = text.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
     names = [...new Set(names)];
-    
-    if (names.length === 0) {
-        alert("Ei löytynyt hyväksyttäviä loggauksia (Osallistui/Attended).");
-        return;
-    }
-    
-    // Näytä tulokset vaiheessa 2
+    if (names.length === 0) { alert("Ei nimiä."); return; }
     document.getElementById('mass-output').value = names.join('\n');
     document.getElementById('mass-step-1').style.display = 'none';
     document.getElementById('mass-step-2').style.display = 'block';
 });
-
-// VAIHE 2: TALLENNA
 document.getElementById('btn-save-mass').addEventListener('click', () => {
     const cleanText = document.getElementById('mass-output').value;
     const finalNames = cleanText.split('\n').map(s => s.trim()).filter(s => s.length > 0);
-    
     if (finalNames.length === 0) return;
-    
-    let count = 0;
     finalNames.forEach(name => {
         db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({
-            nickname: name,
-            from: "", 
-            message: "(Massatuonti)",
-            timestamp: firebase.database.ServerValue.TIMESTAMP
+            nickname: name, from: "", message: "(Massatuonti)", timestamp: firebase.database.ServerValue.TIMESTAMP
         });
-        count++;
     });
-    
-    alert(`Tallennettu ${count} osallistujaa!`);
+    alert(`Tallennettu!`);
     massModal.style.display = "none";
 });
 
@@ -311,21 +277,30 @@ function loadAttendees(eventKey) {
         listEl.innerHTML = "";
         const logs = [];
         snapshot.forEach(child => logs.push({key: child.key, ...child.val()}));
-        logs.reverse(); // Uusin ylös
+        logs.reverse();
 
         logs.forEach(log => {
             const row = document.createElement('div');
             row.className = "log-item";
+            
+            // Jos arkistoitu, piilota napit
+            let actionBtns = "";
+            if (!currentEventArchived) {
+                // Käytetään nyt openLogEditModal, ei enää promptia
+                actionBtns = `
+                <div class="log-actions">
+                    <button class="btn-blue btn-small" onclick="openLogEditModal('${log.key}')">✏️</button>
+                    <button class="btn-red btn-small" onclick="deleteLog('${log.key}')">🗑</button>
+                </div>`;
+            }
+
             row.innerHTML = `
                 <div>
                     <strong style="color:#4caf50; font-size:1.1em;">${log.nickname}</strong>
-                    <span style="color:#A0522D;"> / ${log.from || ''}</span>
+                    <span style="color:#A0522D;">${log.from ? ' / ' + log.from : ''}</span>
                     <div style="font-style:italic; color:#888; font-size:0.9em;">${log.message || ''}</div>
                 </div>
-                <div class="log-actions">
-                    <button class="btn-blue btn-small" onclick="editLog('${log.key}', '${log.nickname}', '${log.from}')">✏️</button>
-                    <button class="btn-red btn-small" onclick="deleteLog('${log.key}')">🗑</button>
-                </div>
+                ${actionBtns}
             `;
             listEl.appendChild(row);
         });
@@ -334,7 +309,7 @@ function loadAttendees(eventKey) {
 }
 
 // ==========================================
-// 5. APUFUNKTIOT
+// 5. APUFUNKTIOT & MODALIT
 // ==========================================
 
 window.openEditModal = (key) => {
@@ -368,28 +343,42 @@ document.getElementById('btn-save-edit').addEventListener('click', () => {
     });
 });
 
+// UUSI: Kävijän muokkaus (Modal)
+window.openLogEditModal = (logKey) => {
+    // Haetaan nykyiset tiedot suoraan DOM:sta tai tietokannasta
+    // Helpoin hakea kannasta, jotta saadaan 'from' ja 'message'
+    db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + logKey).once('value').then(snap => {
+        const log = snap.val();
+        document.getElementById('log-edit-key').value = logKey;
+        document.getElementById('log-edit-nick').value = log.nickname || "";
+        document.getElementById('log-edit-from').value = log.from || "";
+        document.getElementById('log-edit-msg').value = log.message || "";
+        logEditModal.style.display = "block";
+    });
+};
+
+document.getElementById('btn-save-log-edit').addEventListener('click', () => {
+    const key = document.getElementById('log-edit-key').value;
+    const updates = {
+        nickname: document.getElementById('log-edit-nick').value,
+        from: document.getElementById('log-edit-from').value,
+        message: document.getElementById('log-edit-msg').value
+    };
+    db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + key).update(updates).then(() => {
+        logEditModal.style.display = "none";
+    });
+});
+
 window.closeModal = () => { 
     editModal.style.display = "none"; 
     massModal.style.display = "none"; 
+    logEditModal.style.display = "none"; // Sulje myös tämä
 };
 
 window.deleteEvent = (key) => {
     if(confirm("Poistetaanko miitti ja kaikki sen tiedot?")) {
         db.ref('miitit/' + currentUser.uid + '/events/' + key).remove();
         db.ref('miitit/' + currentUser.uid + '/logs/' + key).remove();
-    }
-};
-
-window.editLog = (logKey, oldNick, oldFrom) => {
-    const newNick = prompt("Muokkaa nimeä:", oldNick);
-    if(newNick !== null) {
-        const newFrom = prompt("Muokkaa paikkakuntaa:", oldFrom);
-        if(newFrom !== null) {
-            db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + logKey).update({
-                nickname: newNick,
-                from: newFrom
-            });
-        }
     }
 };
 
