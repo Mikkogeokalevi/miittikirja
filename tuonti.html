@@ -2,7 +2,7 @@
 <html lang="fi">
 <head>
     <meta charset="UTF-8">
-    <title>Miittien Tuonti (Tuplatarkistus)</title>
+    <title>Miittien Tuonti (Varmistus)</title>
     <style>
         body { background: #222; color: #fff; font-family: sans-serif; padding: 20px; text-align: center; }
         .container { max-width: 800px; margin: 0 auto; background: #333; padding: 20px; border-radius: 8px; }
@@ -22,6 +22,13 @@
             font-size: 14px;
             white-space: pre-wrap;
         }
+        .user-badge {
+            background: #2196f3;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-weight: bold;
+        }
         .log-row { border-bottom: 1px solid #222; padding: 2px 0; }
         .log-ok { color: #4caf50; font-weight: bold; }
         .log-warn { color: #ffeb3b; }
@@ -34,7 +41,6 @@
 
 <div class="container">
     <h2>📥 Tuo omat tapahtumat</h2>
-    <p>Tämä versio tarkistaa onko miitti jo kannassa (GC-koodin perusteella) eikä luo tuplia.</p>
     
     <label>Oma nimimerkki (Owner):</label><br>
     <input type="text" id="owner-filter" placeholder="Esim. Mikkokalevi">
@@ -47,7 +53,10 @@
     </div>
 
     <div id="import-section" style="display:none;">
-        <p>Kirjautunut: <span id="user-email"></span></p>
+        <p>Olet kirjautunut sisään tunnuksella:<br><br>
+           <span id="user-email" class="user-badge"></span>
+        </p>
+        <p style="font-size:0.9em; color:#aaa;">(Varmista, että tämä on sama kuin Miittikirjassa!)</p>
         <button id="btn-process" class="btn" disabled>Analysoi ja Tuo</button>
     </div>
 
@@ -104,7 +113,6 @@
         statusEl.innerHTML = ""; 
         log(`Haetaan ensin olemassa olevat miitit kannasta...`, "log-info");
 
-        // HAE OLEMASSA OLEVAT ENSIN
         db.ref('miitit/' + currentUser.uid + '/events').once('value').then((snapshot) => {
             const existingGCs = new Set();
             if (snapshot.exists()) {
@@ -136,24 +144,21 @@
         for (let i = 0; i < wpts.length; i++) {
             const wpt = wpts[i];
             
-            // 1. Omistaja
             let owner = getTagVal(wpt, "groundspeak:placed_by") || getTagVal(wpt, "placed_by");
             if (owner && owner.toLowerCase() === myName) {
                 
                 const gc = getTagVal(wpt, "name");
                 
-                // 2. TARKISTETAAN ONKO JO KANNASSA
                 if (existingGCs.has(gc)) {
                     log(`⏭️ OHITETTU (Jo kannassa): ${gc}`, "log-skip");
                     duplicateCount++;
-                    continue; // Hypätään seuraavaan
+                    continue; 
                 }
 
                 const gsCache = wpt.getElementsByTagName("groundspeak:cache")[0];
                 let name = getTagVal(wpt, "urlname") || getTagVal(wpt, "desc");
                 if(gsCache) name = getTagVal(gsCache, "groundspeak:name");
 
-                // 3. Tyyppi
                 let typeStr = getTagVal(wpt, "type").toLowerCase();
                 let myType = "miitti"; 
                 let isEvent = false;
