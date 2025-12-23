@@ -225,7 +225,7 @@ document.getElementById('btn-sign-log').addEventListener('click', () => {
     });
 });
 
-// --- MASSALISÄYS (2-VAIHEINEN) ---
+// --- MASSALISÄYS (ÄLYKÄS) ---
 window.openMassImport = () => {
     document.getElementById('mass-input').value = ""; 
     document.getElementById('mass-output').value = ""; 
@@ -239,34 +239,41 @@ window.resetMassModal = () => {
     document.getElementById('mass-step-2').style.display = 'none';
 };
 
-// VAIHE 1: ETSI NIMET
+// VAIHE 1: ANALYSOI
 document.getElementById('btn-parse-mass').addEventListener('click', () => {
     const text = document.getElementById('mass-input').value;
     if(!text) return;
     
     let names = [];
     
-    // Yritetään "Smart Parse" geocaching copy-pasteen
-    // Etsii: [jotain tekstiä] + [vähintään 2 välilyöntiä] + (Premium) Member
-    const lines = text.split('\n');
-    lines.forEach(line => {
-        // Regex nappaa tekstin ennen isoa väliä ja Member-sanaa
-        const match = line.match(/^\s*(.*?)\s{2,}(?:Premium\s+)?Member/);
-        if (match) {
-            let cleanName = match[1].trim();
-            if(cleanName.length > 0) names.push(cleanName);
-        }
-    });
+    // Älykäs regex: Etsii rivin jossa nimi + (Premium) Member, ja varmistaa että logityyppi on oikea
+    // Kaava: Nimi (group 1) -> Välit -> Member -> Roskaa -> LogType (group 2)
+    const regex = /([^\n\r]+?)\s+(?:Premium\s+)?Member[\s\S]*?(Osallistui|Attended|Aion osallistua|Will Attend)/gi;
     
-    // Jos Smart Parse ei löytänyt mitään, oletetaan että käyttäjä syötti pelkän listan
-    if (names.length === 0) {
-        names = text.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+        const name = match[1].trim();
+        const type = match[2].toLowerCase();
+        
+        // HYVÄKSYTÄÄN VAIN OSALLISTUI-MERKINNÄT
+        if (type.includes('osallistui') || type.includes('attended')) {
+            if(name.length > 0) names.push(name);
+        }
     }
     
-    names = [...new Set(names)]; // Poista tuplat
+    // Varajärjestelmä: Jos regex ei löydä mitään, oletetaan että kyseessä on puhdas lista
+    if (names.length === 0) {
+        // Pilkotaan riveittäin, jos teksti ei sisältänyt "Member"-sanoja
+        if (!text.includes("Member")) {
+            names = text.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
+        }
+    }
+    
+    // Poista tuplat
+    names = [...new Set(names)];
     
     if (names.length === 0) {
-        alert("Ei löytynyt nimiä. Tarkista teksti.");
+        alert("Ei löytynyt hyväksyttäviä loggauksia (Osallistui/Attended).");
         return;
     }
     
@@ -304,7 +311,7 @@ function loadAttendees(eventKey) {
         listEl.innerHTML = "";
         const logs = [];
         snapshot.forEach(child => logs.push({key: child.key, ...child.val()}));
-        logs.reverse();
+        logs.reverse(); // Uusin ylös
 
         logs.forEach(log => {
             const row = document.createElement('div');
