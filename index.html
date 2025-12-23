@@ -2,225 +2,295 @@
 <html lang="fi">
 <head>
     <meta charset="UTF-8">
-    <title>Miittien Tuonti (Tuplatarkistus)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MK:n Sähköinen Miittikirja</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#8B4513">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon.png"> 
+
     <style>
-        body { background: #222; color: #fff; font-family: sans-serif; padding: 20px; text-align: center; }
-        .container { max-width: 800px; margin: 0 auto; background: #333; padding: 20px; border-radius: 8px; }
-        input { margin: 10px 0; padding: 10px; width: 80%; border-radius: 4px; border: 1px solid #555; background: #222; color: white; }
-        .btn { padding: 10px 20px; background: #4caf50; color: white; border: none; cursor: pointer; font-size: 16px; border-radius: 4px; }
-        .btn:disabled { background: #555; cursor: not-allowed; }
-        
-        #status { 
-            margin-top: 20px; 
-            text-align: left; 
-            background: #111; 
-            padding: 15px; 
-            border: 1px solid #444; 
-            height: 400px; 
-            overflow-y: auto; 
-            font-family: monospace; 
-            font-size: 14px;
-            white-space: pre-wrap;
+        /* --- MIKKOKALEVI THEME --- */
+        body { 
+            background-color: #FDF5E6; 
+            color: #4E342E; 
+            font-family: 'Verdana', sans-serif; 
+            margin: 0; 
+            padding: 10px; 
+            text-align: center; 
+            line-height: 1.6;
+            -webkit-user-select: none;
+            user-select: none;
         }
-        .log-row { border-bottom: 1px solid #222; padding: 2px 0; }
-        .log-ok { color: #4caf50; font-weight: bold; }
-        .log-warn { color: #ffeb3b; }
-        .log-err { color: #f44336; }
-        .log-info { color: #888; }
-        .log-skip { color: #aaa; font-style: italic; }
+
+        h1, h2, h3 { 
+            color: #8B4513; 
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.1);
+            margin-bottom: 15px; 
+        }
+
+        .view-section { 
+            display: none; 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background-color: #FDF5E6;
+            border: 4px double #8B4513;
+            border-radius: 15px;
+            box-shadow: 0px 0px 20px rgba(139,69,19,0.25);
+            padding: 20px;
+            padding-bottom: 80px; 
+        }
+        
+        .card { 
+            background: #FFFFFF; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            border-radius: 10px; 
+            text-align: left; 
+            border: 2px dashed #8B4513; 
+            box-shadow: 4px 4px 0px #FAEBD7;
+            position: relative; 
+        }
+
+        .card-form {
+            background-color: #FFF8E7;
+            border: 2px solid #CD5C5C;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: left;
+            margin-bottom: 15px;
+        }
+
+        .category-header { 
+            text-align: center; 
+            color: #D2691E; 
+            font-weight: bold;
+            font-size: 1.1em; 
+            margin-top: 30px; 
+            margin-bottom: 10px;
+            border-bottom: 2px dotted #8B4513; 
+            padding-bottom: 5px; 
+            letter-spacing: 1px;
+        }
+        
+        input, select { 
+            width: 100%; 
+            padding: 12px; 
+            margin-bottom: 10px; 
+            background: #FFFFFF; 
+            border: 1px solid #8B4513; 
+            color: #4E342E; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+            font-family: 'Verdana', sans-serif;
+            font-size: 16px; 
+        }
+        
+        input::placeholder { color: #A0522D; opacity: 0.6; }
+
+        .btn { 
+            padding: 12px 20px; 
+            cursor: pointer; 
+            border: none; 
+            border-radius: 6px; 
+            font-size: 16px; 
+            font-weight: bold; 
+            margin: 5px 0; 
+            width: 100%; 
+            transition: transform 0.1s;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+        .btn:active { transform: scale(0.98); }
+
+        .btn-blue { background-color: #8B4513; color: white; } 
+        .btn-green { background-color: #4caf50; color: white; border: 1px solid #2e7d32; } 
+        .btn-red { background-color: #B22222; color: white; } 
+        .btn-small { width: auto; padding: 8px 12px; font-size: 14px; margin-right: 5px; }
+        
+        .back-btn { 
+            background: none; 
+            border: none; 
+            color: #8B4513; 
+            cursor: pointer; 
+            float: left; 
+            font-size: 14px; 
+            margin-bottom: 10px; 
+            font-weight: bold;
+            padding: 10px; 
+        }
+
+        .event-meta { 
+            font-size: 1.0em; 
+            color: #4E342E; 
+            margin-bottom: 20px; 
+            line-height: 1.6; 
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 5px solid #8B4513;
+        }
+        .event-meta span { display: block; border-bottom: 1px solid #eee; padding: 3px 0; }
+        .event-meta span:last-child { border-bottom: none; }
+        
+        .log-list { 
+            max-height: 50vh; 
+            overflow-y: auto; 
+            text-align: left; 
+            margin-top: 20px; 
+            background: #FFFFFF; 
+            padding: 10px; 
+            border-radius: 8px; 
+            border: 1px solid #D2B48C;
+        }
+        .log-item { 
+            border-bottom: 1px dashed #D2B48C; 
+            padding: 10px 0; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-start; 
+        }
+        .log-actions { min-width: 80px; text-align: right; }
+        
+        .logo-img {
+            width: 100px; height: 100px; 
+            object-fit: cover; 
+            border: 3px solid #D2B48C; 
+            border-radius: 50%; 
+            background-color: #000;
+            margin-bottom: 10px;
+        }
+
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(78, 52, 46, 0.9); overflow-y: auto; }
+        .modal-content { 
+            background-color: #FDF5E6; 
+            margin: 5% auto; 
+            padding: 20px; 
+            border: 4px double #8B4513; 
+            width: 90%; 
+            max-width: 500px; 
+            border-radius: 15px; 
+            text-align: left; 
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>📥 Tuo omat tapahtumat</h2>
-    <p>Tämä versio tarkistaa onko miitti jo kannassa (GC-koodin perusteella) eikä luo tuplia.</p>
-    
-    <label>Oma nimimerkki (Owner):</label><br>
-    <input type="text" id="owner-filter" placeholder="Esim. Mikkokalevi">
-    <br>
-    <input type="file" id="file-input" accept=".gpx">
-    
-    <div id="auth-section">
-        <p>Kirjaudu ensin:</p>
-        <button id="btn-login" class="btn" style="background:#2196f3;">Kirjaudu Googlella</button>
+    <img src="https://img.geocaching.com:443/d75362fa-0668-414e-adb7-20a2b35c3eed.png" class="logo-img" alt="Mikkokalevin logo">
+
+    <div id="login-view" class="view-section" style="display:flex; flex-direction:column; align-items:center;">
+        <h2>Sähköinen Miittikirja</h2>
+        <p style="font-style:italic;">Kirjaudu sisään hallinnoidaksesi.</p>
+        
+        <input type="email" id="email-input" placeholder="Sähköposti">
+        <input type="password" id="password-input" placeholder="Salasana">
+        
+        <div style="display:flex; gap:10px; width:100%;">
+            <button id="btn-email-login" class="btn btn-blue">Kirjaudu</button>
+            <button id="btn-email-register" class="btn btn-gray">Luo tunnus</button>
+        </div>
+        
+        <p style="margin: 10px 0; font-size:0.8em; color:#888;">— TAI —</p>
+        
+        <button id="btn-login-google" class="btn btn-green">Kirjaudu Googlella</button>
     </div>
 
-    <div id="import-section" style="display:none;">
-        <p>Kirjautunut: <span id="user-email"></span></p>
-        <button id="btn-process" class="btn" disabled>Analysoi ja Tuo</button>
+    <div id="admin-view" class="view-section">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h3 style="margin:0;">Omat Tapahtumat</h3>
+            <button id="btn-logout" class="btn btn-red btn-small">Ulos</button>
+        </div>
+        
+        <div class="card-form">
+            <h3 style="margin-top:0; color:#B22222; text-align:center;">➕ Lisää uusi</h3>
+            <label style="font-size:0.8em; font-weight:bold;">Tyyppi</label>
+            <select id="new-type">
+                <option value="miitti">☕ Tavallinen Miitti</option>
+                <option value="cito">🗑️ CITO (Siivous)</option>
+                <option value="cce">🎉 Yhteisöjuhla (CCE)</option>
+            </select>
+            <input type="text" id="new-gc" placeholder="GC-koodi (esim. GC12345)">
+            <input type="text" id="new-name" placeholder="Nimi (esim. MK:n tammikuu)">
+            <div style="display:flex; gap:10px;">
+                <input type="date" id="new-date">
+                <input type="text" id="new-time" placeholder="Klo (esim. 18:00-19:00)">
+            </div>
+            <input type="text" id="new-coords" placeholder="Koordinaatit">
+            <input type="text" id="new-loc" placeholder="Paikka / Osoite">
+            <button id="btn-add-event" class="btn btn-blue">Tallenna Tapahtuma</button>
+        </div>
+
+        <div class="category-header">🎉 Yhteisöjuhlat</div>
+        <div id="list-cce"><p style="font-size:0.8em; color:#888;">Ei tulevia juhlia.</p></div>
+
+        <div class="category-header">🗑️ CITO Tapahtumat</div>
+        <div id="list-cito"><p style="font-size:0.8em; color:#888;">Ei siivouksia.</p></div>
+
+        <div class="category-header">☕ Miitit</div>
+        <div id="list-miitti"><p style="font-size:0.8em; color:#888;">Ei miittejä.</p></div>
     </div>
 
-    <div id="status">Loki:</div>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
-<script>
-    // =============================================
-    // ASETUKSET
-    // =============================================
-    const firebaseConfig = {
-        apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
-        authDomain: "perhekalenteri-projekti.firebaseapp.com",
-        databaseURL: "https://perhekalenteri-projekti-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "perhekalenteri-projekti",
-        storageBucket: "perhekalenteri-projekti.appspot.com",
-        messagingSenderId: "588536838615",
-        appId: "1:588536838615:web:148de0581bbd46c42c7392"
-    };
-
-    try { firebase.initializeApp(firebaseConfig); } catch(e) { console.error(e); }
-    const db = firebase.database();
-    const auth = firebase.auth();
-    let currentUser = null;
-
-    const statusEl = document.getElementById('status');
-    const fileInput = document.getElementById('file-input');
-    const ownerInput = document.getElementById('owner-filter');
-    const btnProcess = document.getElementById('btn-process');
-
-    auth.onAuthStateChanged((user) => {
-        if (user) {
-            currentUser = user;
-            document.getElementById('auth-section').style.display = 'none';
-            document.getElementById('import-section').style.display = 'block';
-            document.getElementById('user-email').innerText = user.email;
-        }
-    });
-
-    document.getElementById('btn-login').addEventListener('click', () => { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); });
-
-    fileInput.addEventListener('change', checkBtn);
-    ownerInput.addEventListener('input', checkBtn);
-    function checkBtn() { btnProcess.disabled = !(fileInput.files.length > 0 && ownerInput.value.trim().length > 0); }
-
-    btnProcess.addEventListener('click', () => {
-        const file = fileInput.files[0];
-        const myName = ownerInput.value.trim().toLowerCase();
+    <div id="guestbook-view" class="view-section">
+        <button onclick="showAdminView()" class="back-btn">< Takaisin listaan</button>
+        <div style="clear:both;"></div>
         
-        statusEl.innerHTML = ""; 
-        log(`Haetaan ensin olemassa olevat miitit kannasta...`, "log-info");
+        <h2 id="gb-event-name" style="font-size:1.6em; color:#8B4513;">Miitin Nimi</h2>
+        
+        <div class="event-meta">
+            <span id="gb-time">🕓 Aika</span>
+            <span id="gb-date">📅 Pvm</span>
+            <span id="gb-gc">🆔 GC-koodi</span>
+            <span id="gb-coords">📍 Koordinaatit</span>
+            <span id="gb-loc">🏠 Paikka</span>
+            <span id="gb-attrs" style="font-size:0.8em; color:#666; font-style:italic;"></span>
+        </div>
+        
+        <div class="card-form">
+            <h3 style="text-align:center; margin-top:0; color:#B22222;">✍️ Kirjaa käyntisi</h3>
+            <input type="text" id="log-nickname" placeholder="Nimimerkkisi" style="font-size: 1.2em; border: 2px solid #8B4513;">
+            <input type="text" id="log-from" placeholder="Mistä tulet? (Paikkakunta)">
+            <input type="text" id="log-message" placeholder="Terveiset (vapaaehtoinen)">
+            <button id="btn-sign-log" class="btn btn-green" style="font-size: 1.2em; box-shadow: 4px 4px 0px #2e7d32;">KIRJAA KÄYNTI ✅</button>
+        </div>
 
-        // HAE OLEMASSA OLEVAT ENSIN
-        db.ref('miitit/' + currentUser.uid + '/events').once('value').then((snapshot) => {
-            const existingGCs = new Set();
-            if (snapshot.exists()) {
-                snapshot.forEach(child => {
-                    const val = child.val();
-                    if (val.gc) existingGCs.add(val.gc);
-                });
-            }
-            log(`Kannasta löytyi ${existingGCs.size} aiempaa miittiä.`, "log-info");
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+            <h3 style="color:#D2691E;">Osallistujat</h3>
+            <span style="background:#8B4513; color:#fff; padding:2px 10px; border-radius:15px; font-weight:bold;" id="attendee-count">0</span>
+        </div>
+        
+        <div id="attendee-list" class="log-list"></div>
+    </div>
+
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="text-align:center;">✏️ Muokkaa</h3>
+            <input type="hidden" id="edit-key">
             
-            const reader = new FileReader();
-            reader.onload = (e) => parseGPX(e.target.result, myName, existingGCs);
-            reader.readAsText(file);
-        });
-    });
-
-    function parseGPX(xmlText, myName, existingGCs) {
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-        const wpts = xmlDoc.getElementsByTagName("wpt");
-        
-        log(`Tiedostossa on ${wpts.length} pistettä. Aloitetaan läpikäynti...`, "log-info");
-        log("---------------------------------------------------", "log-info");
-
-        let importedCount = 0;
-        let skippedCount = 0;
-        let duplicateCount = 0;
-
-        for (let i = 0; i < wpts.length; i++) {
-            const wpt = wpts[i];
+            <label style="font-weight:bold;">Tyyppi</label>
+            <select id="edit-type">
+                <option value="miitti">Miitti</option>
+                <option value="cito">CITO</option>
+                <option value="cce">Yhteisöjuhla</option>
+            </select>
             
-            // 1. Omistaja
-            let owner = getTagVal(wpt, "groundspeak:placed_by") || getTagVal(wpt, "placed_by");
-            if (owner && owner.toLowerCase() === myName) {
-                
-                const gc = getTagVal(wpt, "name");
-                
-                // 2. TARKISTETAAN ONKO JO KANNASSA
-                if (existingGCs.has(gc)) {
-                    log(`⏭️ OHITETTU (Jo kannassa): ${gc}`, "log-skip");
-                    duplicateCount++;
-                    continue; // Hypätään seuraavaan
-                }
+            <label style="font-weight:bold;">GC-Koodi</label><input type="text" id="edit-gc">
+            <label style="font-weight:bold;">Nimi</label><input type="text" id="edit-name">
+            <label style="font-weight:bold;">Pvm</label><input type="date" id="edit-date">
+            <label style="font-weight:bold;">Aika</label><input type="text" id="edit-time">
+            <label style="font-weight:bold;">Koordinaatit</label><input type="text" id="edit-coords">
+            <label style="font-weight:bold;">Paikka</label><input type="text" id="edit-loc">
+            
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button id="btn-save-edit" class="btn btn-green">Tallenna</button>
+                <button onclick="closeModal()" class="btn btn-red">Peruuta</button>
+            </div>
+        </div>
+    </div>
 
-                const gsCache = wpt.getElementsByTagName("groundspeak:cache")[0];
-                let name = getTagVal(wpt, "urlname") || getTagVal(wpt, "desc");
-                if(gsCache) name = getTagVal(gsCache, "groundspeak:name");
-
-                // 3. Tyyppi
-                let typeStr = getTagVal(wpt, "type").toLowerCase();
-                let myType = "miitti"; 
-                let isEvent = false;
-
-                if (typeStr.includes("event cache")) { isEvent = true; }
-                else if (typeStr.includes("cache in trash out")) { isEvent = true; myType = "cito"; }
-                else if (typeStr.includes("community celebration") || typeStr.includes("lost and found") || typeStr.includes("celebration") || typeStr.includes("yhteisö")) { 
-                    isEvent = true; myType = "cce"; 
-                }
-                else if (typeStr.includes("mega")) { isEvent = true; } 
-
-                if (isEvent) {
-                    const time = getTagVal(wpt, "time");
-                    const dateStr = time ? time.split("T")[0] : "";
-                    const lat = wpt.getAttribute("lat");
-                    const lon = wpt.getAttribute("lon");
-
-                    // Attribuutit
-                    const attributes = [];
-                    const attrList = wpt.getElementsByTagName("groundspeak:attribute");
-                    for(let k=0; k < attrList.length; k++) {
-                        if(attrList[k].getAttribute("inc") == "1") attributes.push(attrList[k].textContent);
-                    }
-
-                    const eventData = {
-                        type: myType,
-                        gc: gc,
-                        name: name,
-                        date: dateStr,
-                        coords: `${lat}, ${lon}`,
-                        location: "", 
-                        attributes: attributes,
-                        createdAt: firebase.database.ServerValue.TIMESTAMP
-                    };
-
-                    log(`✅ TUOTU: ${name} (${gc})`, "log-ok");
-                    db.ref('miitit/' + currentUser.uid + '/events').push(eventData);
-                    importedCount++;
-                } else {
-                    skippedCount++;
-                }
-            }
-        }
-
-        log("---------------------------------------------------", "log-info");
-        log(`VALMIS!`, "log-info");
-        log(`- Uusia tuotu: ${importedCount}`, "log-ok");
-        log(`- Vanhoja (ohitettu): ${duplicateCount}`, "log-skip");
-        
-        if (importedCount === 0 && duplicateCount === 0) {
-            log(`\n⚠️ Yhtään miittiä ei löytynyt. Tarkista nimimerkki!`, "log-err");
-        }
-    }
-
-    function getTagVal(parent, tagName) {
-        let el = parent.getElementsByTagName(tagName)[0];
-        if (!el && tagName.includes(":")) el = parent.getElementsByTagName(tagName.split(":")[1])[0];
-        return el ? el.textContent : "";
-    }
-
-    function log(msg, cls) {
-        const div = document.createElement('div'); 
-        div.innerText = msg; 
-        div.className = "log-row " + cls; 
-        statusEl.appendChild(div);
-        statusEl.scrollTop = statusEl.scrollHeight;
-    }
-</script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
