@@ -272,7 +272,11 @@ function loadAttendees(eventKey) {
         listEl.innerHTML = ""; // Tyhjennys tärkeä!
         
         const logs = [];
-        snapshot.forEach(child => logs.push({key: child.key, ...child.val()}));
+        
+        // KORJATTU KOHTA: Lisätty aaltosulkeet {}, jotta push ei palauta arvoa ja katkaise looppia
+        snapshot.forEach(child => { 
+            logs.push({key: child.key, ...child.val()}); 
+        });
         
         // Järjestetään aikajärjestykseen (viimeisin ylös)
         logs.sort((a,b) => {
