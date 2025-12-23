@@ -131,18 +131,60 @@
             padding: 10px; 
         }
 
+        /* --- UUDISTETTU INFO-LAATIKKO (Grid Layout) --- */
         .event-meta { 
-            font-size: 1.0em; 
-            color: #4E342E; 
-            margin-bottom: 20px; 
-            line-height: 1.6; 
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-areas: 
+                "time date"
+                "loc loc"
+                "gc coords"
+                "attrs attrs";
+            
             background: #fff;
-            padding: 10px;
+            border: 2px solid #8B4513;
             border-radius: 8px;
-            border-left: 5px solid #8B4513;
+            margin-bottom: 20px;
+            box-shadow: 4px 4px 0px rgba(139,69,19,0.15);
+            font-size: 0.95em;
+            text-align: left;
+            overflow: hidden;
         }
-        .event-meta span { display: block; border-bottom: 1px solid #eee; padding: 3px 0; }
-        .event-meta span:last-child { border-bottom: none; }
+
+        .event-meta span { 
+            padding: 8px 12px; 
+            border-bottom: 1px dashed #D2B48C; 
+            display: flex; 
+            align-items: center; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Kohdistetaan grid-alueet ID:n perusteella */
+        #gb-time { grid-area: time; border-right: 1px dashed #D2B48C; }
+        #gb-date { grid-area: date; }
+        #gb-loc  { grid-area: loc; }
+        #gb-gc   { grid-area: gc; border-right: 1px dashed #D2B48C; }
+        #gb-coords { grid-area: coords; }
+        
+        #gb-attrs { 
+            grid-area: attrs; 
+            border-bottom: none; 
+            background-color: #FFF8E7; 
+            font-size: 0.85em; 
+            color: #666;
+            font-style: italic;
+        }
+
+        /* Tiivistetty otsikko mobiilissa */
+        #gb-event-name {
+            font-size: 1.3em; 
+            margin: 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            line-height: 1.3;
+        }
         
         .log-list { 
             max-height: 55vh; 
@@ -260,7 +302,7 @@
         <button onclick="showAdminView()" class="back-btn">< Takaisin listaan</button>
         <div style="clear:both;"></div>
         
-        <h2 id="gb-event-name" style="font-size:1.6em; color:#8B4513;">Miitin Nimi</h2>
+        <h2 id="gb-event-name">Miitin Nimi</h2>
         
         <div id="archived-notice" style="display:none; background:#ccc; color:#333; padding:10px; border-radius:5px; margin-bottom:15px; font-weight:bold; border:2px solid #999;">
             🔒 TÄMÄ MIITTI ON ARKISTOITU (Vain luku)
@@ -269,10 +311,10 @@
         <div class="event-meta">
             <span id="gb-time">🕓 Aika</span>
             <span id="gb-date">📅 Pvm</span>
-            <span id="gb-gc">🆔 GC-koodi</span>
-            <span id="gb-coords">📍 Koordinaatit</span>
             <span id="gb-loc">🏠 Paikka</span>
-            <span id="gb-attrs" style="font-size:0.8em; color:#666; font-style:italic;"></span>
+            <span id="gb-gc">🆔 GC</span>
+            <span id="gb-coords">📍 Koordinaatit</span>
+            <span id="gb-attrs"></span>
         </div>
         
         <div id="gb-actions-area">
