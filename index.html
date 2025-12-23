@@ -3,88 +3,225 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sähköinen Miittikirja</title>
+    <title>MK:n Sähköinen Miittikirja</title>
     <style>
-        body { background-color: #1e1e1e; color: #ffffff; font-family: sans-serif; margin: 0; padding: 20px; text-align: center; }
-        h1, h2, h3 { color: #4caf50; margin-bottom: 15px; }
-        .view-section { display: none; max-width: 600px; margin: 0 auto; }
-        
-        /* Kortit */
-        .card { background: #333; padding: 15px; margin-bottom: 10px; border-radius: 8px; text-align: left; border: 1px solid #444; position: relative; }
-        .category-header { text-align: left; color: #aaa; text-transform: uppercase; font-size: 0.9em; margin-top: 30px; border-bottom: 1px solid #444; padding-bottom: 5px; }
-        
-        /* Lomakkeet */
-        input, select { width: 100%; padding: 10px; margin-bottom: 10px; background: #2c2c2c; border: 1px solid #555; color: white; border-radius: 4px; box-sizing: border-box; }
-        
-        /* Napit */
-        .btn { padding: 10px 20px; cursor: pointer; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; margin: 5px 0; width: 100%; }
-        .btn-blue { background-color: #2196f3; color: white; }
-        .btn-green { background-color: #4caf50; color: white; }
-        .btn-red { background-color: #f44336; color: white; }
-        .btn-gray { background-color: #555; color: white; }
-        .btn-small { width: auto; padding: 5px 10px; font-size: 14px; margin-right: 5px; }
-        .back-btn { background: none; border: none; color: #888; cursor: pointer; float: left; font-size: 14px; margin-bottom: 10px; }
+        /* --- MIKKOKALEVI THEME --- */
+        body { 
+            background-color: #FDF5E6; /* OldLace */
+            color: #4E342E; 
+            font-family: 'Verdana', sans-serif; 
+            margin: 0; 
+            padding: 10px; 
+            text-align: center; 
+            line-height: 1.6;
+        }
 
-        /* Miittisivu */
-        .event-meta { font-size: 0.9em; color: #ccc; margin-bottom: 20px; line-height: 1.6; border-left: 3px solid #4caf50; padding-left: 10px; }
-        .event-meta span { display: block; }
+        h1, h2, h3 { 
+            color: #8B4513; /* SaddleBrown */
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.1);
+            margin-bottom: 15px; 
+        }
+
+        /* Päälaatikko (tyylitelty kuten alkuperäinen kontti) */
+        .view-section { 
+            display: none; 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background-color: #FDF5E6;
+            border: 4px double #8B4513;
+            border-radius: 15px;
+            box-shadow: 0px 0px 20px rgba(139,69,19,0.25);
+            padding: 20px;
+        }
         
-        .log-list { max-height: 50vh; overflow-y: auto; text-align: left; margin-top: 20px; background: #252525; padding: 10px; border-radius: 8px; }
-        .log-item { border-bottom: 1px solid #444; padding: 8px 0; display: flex; justify-content: space-between; align-items: flex-start; }
-        .log-actions { min-width: 60px; text-align: right; }
+        /* Kortit ja listat (Valkoinen pohja, katkoviiva) */
+        .card { 
+            background: #FFFFFF; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            border-radius: 10px; 
+            text-align: left; 
+            border: 2px dashed #8B4513; 
+            box-shadow: 4px 4px 0px #FAEBD7;
+            position: relative; 
+        }
+
+        /* Varoituslaatikko (Warning Box) tyyli lomakkeille */
+        .card-form {
+            background-color: #FFF8E7;
+            border: 2px solid #CD5C5C;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: left;
+            margin-bottom: 15px;
+        }
+
+        .category-header { 
+            text-align: center; 
+            color: #D2691E; /* Chocolate */
+            font-weight: bold;
+            font-size: 1.1em; 
+            margin-top: 30px; 
+            margin-bottom: 10px;
+            border-bottom: 2px dotted #8B4513; 
+            padding-bottom: 5px; 
+            letter-spacing: 1px;
+        }
         
+        /* Lomakekentät */
+        input, select { 
+            width: 100%; 
+            padding: 12px; 
+            margin-bottom: 10px; 
+            background: #FFFFFF; 
+            border: 1px solid #8B4513; 
+            color: #4E342E; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+            font-family: 'Verdana', sans-serif;
+        }
+        
+        input::placeholder { color: #A0522D; opacity: 0.6; }
+
+        /* Napit (Earthy Tones) */
+        .btn { 
+            padding: 12px 20px; 
+            cursor: pointer; 
+            border: none; 
+            border-radius: 6px; 
+            font-size: 16px; 
+            font-weight: bold; 
+            margin: 5px 0; 
+            width: 100%; 
+            transition: transform 0.1s;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+        .btn:active { transform: scale(0.98); }
+
+        .btn-blue { background-color: #8B4513; color: white; } /* Päänappi on nyt Ruskea */
+        .btn-green { background-color: #4caf50; color: white; border: 1px solid #2e7d32; } /* Geocaching vihreä */
+        .btn-red { background-color: #B22222; color: white; } /* FireBrick */
+        .btn-gray { background-color: #A0522D; color: white; } /* Sienna */
+        .btn-small { width: auto; padding: 6px 12px; font-size: 14px; margin-right: 5px; }
+        
+        .back-btn { 
+            background: none; 
+            border: none; 
+            color: #8B4513; 
+            cursor: pointer; 
+            float: left; 
+            font-size: 14px; 
+            margin-bottom: 10px; 
+            font-weight: bold;
+        }
+
+        /* Miittisivun detaljit */
+        .event-meta { 
+            font-size: 1.0em; 
+            color: #4E342E; 
+            margin-bottom: 20px; 
+            line-height: 1.6; 
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 5px solid #8B4513;
+        }
+        .event-meta span { display: block; border-bottom: 1px solid #eee; padding: 3px 0; }
+        .event-meta span:last-child { border-bottom: none; }
+        
+        /* Lokilista */
+        .log-list { 
+            max-height: 50vh; 
+            overflow-y: auto; 
+            text-align: left; 
+            margin-top: 20px; 
+            background: #FFFFFF; 
+            padding: 10px; 
+            border-radius: 8px; 
+            border: 1px solid #D2B48C;
+        }
+        .log-item { 
+            border-bottom: 1px dashed #D2B48C; 
+            padding: 10px 0; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-start; 
+        }
+        .log-actions { min-width: 70px; text-align: right; }
+        
+        .logo-img {
+            width: 100px; height: 100px; 
+            object-fit: cover; 
+            border: 3px solid #D2B48C; 
+            border-radius: 50%; 
+            background-color: #000;
+            margin-bottom: 10px;
+        }
+
         /* MODAL (Muokkausikkuna) */
-        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); }
-        .modal-content { background-color: #333; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 8px; text-align: left; }
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(78, 52, 46, 0.8); }
+        .modal-content { 
+            background-color: #FDF5E6; 
+            margin: 10% auto; 
+            padding: 20px; 
+            border: 4px double #8B4513; 
+            width: 90%; 
+            max-width: 500px; 
+            border-radius: 15px; 
+            text-align: left; 
+        }
     </style>
 </head>
 <body>
 
+    <img src="https://img.geocaching.com:443/d75362fa-0668-414e-adb7-20a2b35c3eed.png" class="logo-img" alt="Mikkokalevin logo">
+
     <div id="login-view" class="view-section" style="display:flex; flex-direction:column; align-items:center;">
-        <h1>Miittikirja Admin</h1>
+        <h2>Sähköinen Miittikirja</h2>
+        <p style="font-style:italic;">Kirjaudu sisään hallinnoidaksesi.</p>
         <button id="btn-login" class="btn btn-blue">Kirjaudu Googlella</button>
     </div>
 
     <div id="admin-view" class="view-section">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-            <h2 style="margin:0;">Omat Tapahtumat</h2>
+            <h3 style="margin:0;">Omat Tapahtumat</h3>
             <button id="btn-logout" class="btn btn-red btn-small">Ulos</button>
         </div>
         
-        <div class="card">
-            <h3 style="margin-top:0;">Lisää uusi</h3>
-            <label style="font-size:0.8em; color:#aaa;">Tyyppi</label>
+        <div class="card-form">
+            <h3 style="margin-top:0; color:#B22222; text-align:center;">➕ Lisää uusi</h3>
+            <label style="font-size:0.8em; font-weight:bold;">Tyyppi</label>
             <select id="new-type">
-                <option value="miitti">📍 Miitti</option>
-                <option value="cito">🗑️ CITO</option>
+                <option value="miitti">☕ Tavallinen Miitti</option>
+                <option value="cito">🗑️ CITO (Siivous)</option>
                 <option value="cce">🎉 Yhteisöjuhla (CCE)</option>
             </select>
-            <input type="text" id="new-gc" placeholder="GC-koodi">
-            <input type="text" id="new-name" placeholder="Nimi">
+            <input type="text" id="new-gc" placeholder="GC-koodi (esim. GC12345)">
+            <input type="text" id="new-name" placeholder="Nimi (esim. MK:n tammikuu)">
             <div style="display:flex; gap:10px;">
                 <input type="date" id="new-date">
-                <input type="text" id="new-time" placeholder="Kello (06:00-06:30)">
+                <input type="text" id="new-time" placeholder="Klo (esim. 18:00-19:00)">
             </div>
             <input type="text" id="new-coords" placeholder="Koordinaatit">
-            <input type="text" id="new-loc" placeholder="Paikka">
-            <button id="btn-add-event" class="btn btn-green">Tallenna</button>
+            <input type="text" id="new-loc" placeholder="Paikka / Osoite">
+            <button id="btn-add-event" class="btn btn-blue">Tallenna Tapahtuma</button>
         </div>
 
-        <div class="category-header">🎉 Yhteisöjuhlat (CCE)</div>
-        <div id="list-cce"></div>
+        <div class="category-header">🎉 Yhteisöjuhlat</div>
+        <div id="list-cce"><p style="font-size:0.8em; color:#888;">Ei tulevia juhlia.</p></div>
 
         <div class="category-header">🗑️ CITO Tapahtumat</div>
-        <div id="list-cito"></div>
+        <div id="list-cito"><p style="font-size:0.8em; color:#888;">Ei siivouksia.</p></div>
 
-        <div class="category-header">📍 Miitit</div>
-        <div id="list-miitti"></div>
+        <div class="category-header">☕ Miitit</div>
+        <div id="list-miitti"><p style="font-size:0.8em; color:#888;">Ei miittejä.</p></div>
     </div>
 
     <div id="guestbook-view" class="view-section">
         <button onclick="showAdminView()" class="back-btn">< Takaisin listaan</button>
         <div style="clear:both;"></div>
         
-        <h1 id="gb-event-name">Miitin Nimi</h1>
+        <h2 id="gb-event-name" style="font-size:1.6em; color:#8B4513;">Miitin Nimi</h2>
         
         <div class="event-meta">
             <span id="gb-time">🕓 Aika</span>
@@ -94,17 +231,17 @@
             <span id="gb-loc">🏠 Paikka</span>
         </div>
         
-        <div class="card" style="border: 2px dashed #4caf50;">
-            <h3 style="text-align:center;">✍️ Lisää osallistuja</h3>
-            <input type="text" id="log-nickname" placeholder="Nimimerkki" style="font-size: 1.2em;">
-            <input type="text" id="log-from" placeholder="Paikkakunta">
+        <div class="card-form">
+            <h3 style="text-align:center; margin-top:0; color:#B22222;">✍️ Kirjaa käyntisi</h3>
+            <input type="text" id="log-nickname" placeholder="Nimimerkkisi" style="font-size: 1.2em; border: 2px solid #8B4513;">
+            <input type="text" id="log-from" placeholder="Mistä tulet? (Paikkakunta)">
             <input type="text" id="log-message" placeholder="Terveiset (vapaaehtoinen)">
-            <button id="btn-sign-log" class="btn btn-green">Tallenna</button>
+            <button id="btn-sign-log" class="btn btn-green" style="font-size: 1.2em; box-shadow: 4px 4px 0px #2e7d32;">KIRJAA KÄYNTI ✅</button>
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
-            <h3>Osallistujat</h3>
-            <span style="background:#4caf50; padding:2px 8px; border-radius:10px; font-size:0.9em;" id="attendee-count">0</span>
+            <h3 style="color:#D2691E;">Osallistujat</h3>
+            <span style="background:#8B4513; color:#fff; padding:2px 10px; border-radius:15px; font-weight:bold;" id="attendee-count">0</span>
         </div>
         
         <div id="attendee-list" class="log-list"></div>
@@ -112,24 +249,24 @@
 
     <div id="edit-modal" class="modal">
         <div class="modal-content">
-            <h3>Muokkaa tapahtumaa</h3>
+            <h3 style="text-align:center;">✏️ Muokkaa</h3>
             <input type="hidden" id="edit-key">
-            <label>Tyyppi</label>
+            <label style="font-weight:bold;">Tyyppi</label>
             <select id="edit-type">
                 <option value="miitti">Miitti</option>
                 <option value="cito">CITO</option>
                 <option value="cce">Yhteisöjuhla</option>
             </select>
-            <label>GC-Koodi</label><input type="text" id="edit-gc">
-            <label>Nimi</label><input type="text" id="edit-name">
-            <label>Pvm</label><input type="date" id="edit-date">
-            <label>Aika</label><input type="text" id="edit-time">
-            <label>Koordinaatit</label><input type="text" id="edit-coords">
-            <label>Paikka</label><input type="text" id="edit-loc">
+            <label style="font-weight:bold;">GC-Koodi</label><input type="text" id="edit-gc">
+            <label style="font-weight:bold;">Nimi</label><input type="text" id="edit-name">
+            <label style="font-weight:bold;">Pvm</label><input type="date" id="edit-date">
+            <label style="font-weight:bold;">Aika</label><input type="text" id="edit-time">
+            <label style="font-weight:bold;">Koordinaatit</label><input type="text" id="edit-coords">
+            <label style="font-weight:bold;">Paikka</label><input type="text" id="edit-loc">
             
-            <div style="display:flex; gap:10px; margin-top:10px;">
-                <button id="btn-save-edit" class="btn btn-green">Tallenna Muutokset</button>
-                <button onclick="closeModal()" class="btn btn-gray">Peruuta</button>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button id="btn-save-edit" class="btn btn-green">Tallenna</button>
+                <button onclick="closeModal()" class="btn btn-red">Peruuta</button>
             </div>
         </div>
     </div>
