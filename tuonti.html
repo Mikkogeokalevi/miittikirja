@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <title>Miittien Tuontityökalu</title>
+    <style>
+        body { background: #222; color: #fff; font-family: sans-serif; padding: 20px; text-align: center; }
+        .container { max-width: 600px; margin: 0 auto; background: #333; padding: 20px; border-radius: 8px; }
+        input[type="file"] { margin: 20px 0; }
+        .btn { padding: 10px 20px; background: #4caf50; color: white; border: none; cursor: pointer; font-size: 16px; border-radius: 4px; }
+        .btn:disabled { background: #555; cursor: not-allowed; }
+        #status { margin-top: 20px; white-space: pre-wrap; text-align: left; background: #111; padding: 10px; border: 1px solid #444; min-height: 100px; }
+        .log-ok { color: #4caf50; }
+        .log-warn { color: #ffeb3b; }
+        .log-err { color: #f44336; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📥 Tuo miitit GPX-tiedostosta</h2>
+    <p>Valitse GPX-tiedosto, joka sisältää omat miittisi.</p>
+    
+    <input type="file" id="file-input" accept=".gpx">
+    <br>
+    
+    <div id="auth-section">
+        <p>Sinun pitää kirjautua ensin, jotta tiedämme kenen kantaan tiedot viedään.</p>
+        <button id="btn-login" class="btn" style="background:#2196f3;">Kirjaudu Googlella</button>
+    </div>
+
+    <div id="import-section" style="display:none;">
+        <p>Kirjauduttu: <span id="user-email" style="font-weight:bold;"></span></p>
+        <button id="btn-process" class="btn" disabled>Lue tiedosto ja Tallenna kantaan</button>
+    </div>
+
+    <div id="status">Odottaa toimenpiteitä...</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+    // 1. ASETUKSET (Laita omat avaimet tähän!)
+    const firebaseConfig = {
+        apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
+        authDomain: "perhekalenteri-projekti.firebaseapp.com",
+        databaseURL: "https://perhekalenteri-projekti-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "perhekalenteri-projekti",
+        storageBucket: "perhekalenteri-projekti.appspot.com",
+        messagingSenderId: "588536838615",
+        appId: "1:588536838615:web:148de0581bbd46c42c7392"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+    let currentUser = null;
+
+    const statusEl = document.getElementById('status');
+    const fileInput = document.getElementById('file-input');
+    const btnProcess = document.getElementById('btn-process');
+
+    // 2. KIRJAUTUMINEN
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            currentUser = user;
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('import-section').style.display = 'block';
+            document.getElementById('user-email').innerText = user.email;
+        }
+    });
+
+    document.getElementById('btn-login').addEventListener('click', () => {
+        auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    });
+
+    fileInput.addEventListener('change', () => {
+        if(fileInput.files.length > 0) btnProcess.disabled = false;
+    });
+
+    // 3. TIEDOSTON KÄSITTELY
+    btnProcess.addEventListener('click', () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        log("Aloitetaan tiedoston luku...", "normal");
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            const xmlText = e.target.result;
+            parseGPX(xmlText);
+        };
+        
+        reader.readAsText(file);
+    });
+
+    function parseGPX(xmlText) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+        const wpts = xmlDoc.getElementsByTagName("wpt");
+        
+        log(`Löydetty ${wpts.length} reittipistettä. Etsitään miittejä...`, "normal");
+        
+        let eventCount = 0;
+        let promises = [];
+
+        // Käydään läpi kaikki pisteet
+        for (let i = 0; i < wpts.length; i++) {
+            const wpt = wpts[i];
+            
+            // GPX-rakenteen purkaminen
+            const lat = wpt.getAttribute("lat");
+            const lon = wpt.getAttribute("lon");
+            const name = getTagVal(wpt, "name"); // GC-koodi yleensä tässä
+            const urlname = getTagVal(wpt, "urlname"); // Miitin oikea nimi
+            const desc = getTagVal(wpt, "desc"); // Joskus nimi on täällä
+            const type = getTagVal(wpt, "type"); // Tärkeä!
+            const time = getTagVal(wpt, "time"); // Pvm
+
+            // Tarkistetaan onko kyseessä miitti (Event Cache, CITO, Mega, jne.)
+            // Geocaching GPX:ssä tyyppi on usein muodossa "Geocache|Event Cache"
+            if (type && (type.toLowerCase().includes("event") || type.toLowerCase().includes("cito"))) {
+                
+                // Selvitetään oikea nimi (urlname on yleensä paras GSAK/GC.com GPX:ssä)
+                const realName = urlname || desc || name;
+                
+                // Selvitetään päivämäärä (Poistetaan kellonaika jos halutaan vain pvm)
+                let dateStr = "";
+                if (time) {
+                    dateStr = time.split("T")[0]; // "2023-05-01"
+                }
+
+                // Luodaan objekti
+                const eventData = {
+                    gc: name, // GC-koodi
+                    name: realName,
+                    date: dateStr,
+                    location: `${lat}, ${lon}`, // Tallennetaan koordinaatit
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                };
+
+                log(`Löydetty: ${realName} (${name}) - ${dateStr}`, "log-ok");
+                
+                // Lähetetään Firebaseen
+                // Käytetään samaa polkua kuin app.js: miitit/USER_ID/events
+                const p = db.ref('miitit/' + currentUser.uid + '/events').push(eventData);
+                promises.push(p);
+                eventCount++;
+            }
+        }
+
+        if (eventCount === 0) {
+            log("Ei miittejä löytynyt GPX-tiedostosta. Tarkista että tiedostossa on 'Event Cache' tyyppisiä kätköjä.", "log-warn");
+        } else {
+            Promise.all(promises).then(() => {
+                log(`\nVALMIS! ${eventCount} miittiä tuotu onnistuneesti kantaan.`, "log-ok");
+                log("Voit nyt avata index.html sivun ja nähdä miitit siellä.", "normal");
+            }).catch(err => {
+                log("Virhe tallennuksessa: " + err.message, "log-err");
+            });
+        }
+    }
+
+    // Apu: Hakee XML-tagin arvon turvallisesti
+    function getTagVal(parent, tagName) {
+        const el = parent.getElementsByTagName(tagName)[0];
+        return el ? el.textContent : "";
+    }
+
+    function log(msg, type) {
+        const span = document.createElement('div');
+        span.innerText = msg;
+        if(type === 'log-ok') span.className = 'log-ok';
+        if(type === 'log-warn') span.className = 'log-warn';
+        if(type === 'log-err') span.className = 'log-err';
+        statusEl.appendChild(span);
+        statusEl.scrollTop = statusEl.scrollHeight;
+    }
+</script>
+
+</body>
+</html>
