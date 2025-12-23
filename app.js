@@ -131,12 +131,16 @@ function loadEvents() {
             const archiveBtnText = isArchived ? "♻️ Palauta" : "📁 Arkistoi";
             const archiveBtnClass = isArchived ? "btn-blue" : "btn-gray";
 
+            // --- LINKKI KORJAUS ---
+            // Luodaan linkki GC-koodista
+            const gcLink = `<a href="https://coord.info/${evt.gc}" target="_blank" style="font-weight:bold; color:#A0522D; text-decoration:none;">${evt.gc}</a>`;
+
             div.innerHTML = `
                 <div style="display:flex; justify-content:space-between;">
                     <strong>${icon} ${evt.name}</strong>
                     <span>${dateStr}</span>
                 </div>
-                <div style="font-size:0.9em; color:#A0522D;">${evt.gc} ${evt.location ? '• ' + evt.location : ''}</div>
+                <div style="font-size:0.9em; color:#A0522D;">${gcLink} ${evt.location ? '• ' + evt.location : ''}</div>
                 <div style="margin-top:10px; display:flex; gap:5px;">
                     <button class="btn btn-green btn-small" onclick="openGuestbook('${evt.key}')">📖 Avaa</button>
                     <button class="btn btn-blue btn-small" onclick="openEditModal('${evt.key}')">✏️</button>
@@ -243,7 +247,7 @@ document.getElementById('btn-parse-mass').addEventListener('click', () => {
     
     let names = [];
     
-    // 1. Pilkotaan teksti osiin "Näytä loki" -tekstin perusteella (se erottaa lokit toisistaan)
+    // 1. Pilkotaan teksti osiin "Näytä loki" -tekstin perusteella
     const blocks = text.split(/Näytä loki|View Log/i);
     
     blocks.forEach(block => {
@@ -251,16 +255,14 @@ document.getElementById('btn-parse-mass').addEventListener('click', () => {
         const cleanBlock = block.replace(/\s+/g, ' ').trim();
         
         // 2. Tarkistetaan onko lokityyppi "Osallistui" tai "Attended"
-        // (Geocaching.comissa "Aion osallistua" on eri sana kuin "Osallistui", joten tämä on turvallinen)
         const isAttended = /Osallistui|Attended/i.test(cleanBlock);
         
         if (isAttended) {
-            // 3. Etsitään nimi. Nimi on blokin alussa ennen "Premium Member", "Member" tai "Reviewer" tekstiä.
+            // 3. Etsitään nimi.
             const nameMatch = cleanBlock.match(/^(.*?)\s+(?:Premium\s+Member|Member|Reviewer)/i);
             
             if (nameMatch && nameMatch[1]) {
                 let name = nameMatch[1].trim();
-                // Poistetaan "Aion osallistua" jos se jotenkin eksyi tänne (varotoimi)
                 if(!name.includes("Aion osallistua") && name.length > 0) {
                     names.push(name);
                 }
@@ -316,7 +318,6 @@ function loadAttendees(eventKey) {
             
             let actionBtns = "";
             if (!currentEventArchived) {
-                // Käytetään nyt openLogEditModal
                 actionBtns = `
                 <div class="log-actions">
                     <button class="btn-blue btn-small" onclick="openLogEditModal('${log.key}')">✏️</button>
@@ -373,7 +374,6 @@ document.getElementById('btn-save-edit').addEventListener('click', () => {
     });
 });
 
-// UUSI: Kävijän muokkaus (Modal)
 window.openLogEditModal = (logKey) => {
     db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + logKey).once('value').then(snap => {
         const log = snap.val();
