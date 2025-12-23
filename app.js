@@ -16,12 +16,13 @@ const db = firebase.database();
 const auth = firebase.auth();
 
 let currentUser = null;
-let currentEventId = null; 
+let currentEventId = null;
 
-// Elementit
+// UI Elementit
 const loginView = document.getElementById('login-view');
 const adminView = document.getElementById('admin-view');
 const guestbookView = document.getElementById('guestbook-view');
+const editModal = document.getElementById('edit-modal');
 
 // ==========================================
 // 2. KIRJAUTUMINEN
@@ -37,16 +38,10 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-document.getElementById('btn-login').addEventListener('click', () => {
-    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-});
-document.getElementById('btn-logout').addEventListener('click', () => {
-    if(confirm("Kirjaudu ulos?")) auth.signOut().then(() => location.reload());
-});
+document.getElementById('btn-login').addEventListener('click', () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()));
+document.getElementById('btn-logout').addEventListener('click', () => { if(confirm("Ulos?")) auth.signOut().then(() => location.reload()); });
 
-function showLoginView() {
-    loginView.style.display = 'flex'; adminView.style.display = 'none'; guestbookView.style.display = 'none';
-}
+function showLoginView() { loginView.style.display = 'flex'; adminView.style.display = 'none'; guestbookView.style.display = 'none'; }
 function showAdminView() {
     if (!currentUser) { showLoginView(); return; }
     loginView.style.display = 'none'; adminView.style.display = 'block'; guestbookView.style.display = 'none';
@@ -55,68 +50,50 @@ function showAdminView() {
 window.showAdminView = showAdminView;
 
 // ==========================================
-// 3. ADMIN: MIITIEN HALLINTA
+// 3. MIITTIEN HALLINTA & LISTAUS
 // ==========================================
 
+// Uuden miitin lisäys
 document.getElementById('btn-add-event').addEventListener('click', () => {
-    // Luetaan uudet kentät
-    const type = document.getElementById('new-type').value;
-    const gc = document.getElementById('new-gc').value.trim();
-    const name = document.getElementById('new-name').value.trim();
-    const date = document.getElementById('new-date').value;
-    const time = document.getElementById('new-time').value.trim();
-    const coords = document.getElementById('new-coords').value.trim();
-    const loc = document.getElementById('new-loc').value.trim();
-
-    if(!gc || !name || !date) { alert("Täytä vähintään GC, Nimi ja Pvm!"); return; }
-
-    const eventData = {
-        type: type, // miitti, cito, cce
-        gc: gc.toUpperCase(),
-        name: name,
-        date: date,
-        time: time,
-        coords: coords,
-        location: loc,
+    const data = {
+        type: document.getElementById('new-type').value,
+        gc: document.getElementById('new-gc').value.trim().toUpperCase(),
+        name: document.getElementById('new-name').value.trim(),
+        date: document.getElementById('new-date').value,
+        time: document.getElementById('new-time').value.trim(),
+        coords: document.getElementById('new-coords').value.trim(),
+        location: document.getElementById('new-loc').value.trim(),
         createdAt: firebase.database.ServerValue.TIMESTAMP
     };
 
-    db.ref('miitit/' + currentUser.uid + '/events').push(eventData)
-        .then(() => {
-            alert("Tallennettu!");
-            document.getElementById('new-gc').value = "";
-            document.getElementById('new-name').value = "";
-            document.getElementById('new-time').value = "";
-            document.getElementById('new-coords').value = "";
-            document.getElementById('new-loc').value = "";
-        });
+    if(!data.gc || !data.name || !data.date) { alert("Täytä GC, Nimi ja Pvm!"); return; }
+
+    db.ref('miitit/' + currentUser.uid + '/events').push(data).then(() => {
+        alert("Tallennettu!");
+        // Tyhjennys
+        ['new-gc','new-name','new-time','new-coords','new-loc'].forEach(id => document.getElementById(id).value = "");
+    });
 });
 
 function loadEvents() {
     if (!currentUser) return;
-
-    // Tyhjennetään kaikki listat
     const listCce = document.getElementById('list-cce');
     const listCito = document.getElementById('list-cito');
     const listMiitti = document.getElementById('list-miitti');
     listCce.innerHTML = ""; listCito.innerHTML = ""; listMiitti.innerHTML = "";
 
     db.ref('miitit/' + currentUser.uid + '/events').orderByChild('date').on('value', (snapshot) => {
+        listCce.innerHTML = ""; listCito.innerHTML = ""; listMiitti.innerHTML = ""; // Tyhjennys varmuudeksi
         const events = [];
         snapshot.forEach(child => events.push({key: child.key, ...child.val()}));
-        
-        // Järjestetään uusin ensin
         events.sort((a,b) => new Date(b.date) - new Date(a.date));
 
         events.forEach(evt => {
             const div = document.createElement('div');
             div.className = "card";
             
-            // Muotoilu
             let dateStr = evt.date;
             try { dateStr = new Date(evt.date).toLocaleDateString('fi-FI'); } catch(e){}
-            
-            // Ikoni tyypin mukaan
             let icon = "📍";
             if(evt.type === 'cito') icon = "🗑️";
             if(evt.type === 'cce') icon = "🎉";
@@ -126,14 +103,14 @@ function loadEvents() {
                     <strong>${icon} ${evt.name}</strong>
                     <span>${dateStr}</span>
                 </div>
-                <div style="font-size:0.9em; color:#ccc;">${evt.gc}</div>
-                <div style="margin-top:10px;">
+                <div style="font-size:0.9em; color:#ccc;">${evt.gc} ${evt.location ? '• ' + evt.location : ''}</div>
+                <div style="margin-top:10px; display:flex; gap:5px;">
                     <button class="btn btn-green btn-small" onclick="openGuestbook('${evt.key}')">📖 Avaa</button>
-                    <button class="btn btn-red btn-small" onclick="deleteEvent('${evt.key}')" style="width:auto;">Poista</button>
+                    <button class="btn btn-blue btn-small" onclick="openEditModal('${evt.key}')">✏️ Muokkaa</button>
+                    <button class="btn btn-red btn-small" onclick="deleteEvent('${evt.key}')">🗑</button>
                 </div>
             `;
             
-            // Lisätään oikeaan laatikkoon
             if (evt.type === 'cce') listCce.appendChild(div);
             else if (evt.type === 'cito') listCito.appendChild(div);
             else listMiitti.appendChild(div);
@@ -141,97 +118,134 @@ function loadEvents() {
     });
 }
 
+// ==========================================
+// 4. MUOKKAUS (EDIT EVENT)
+// ==========================================
+
+window.openEditModal = (key) => {
+    db.ref('miitit/' + currentUser.uid + '/events/' + key).once('value').then(snap => {
+        const e = snap.val();
+        document.getElementById('edit-key').value = key;
+        document.getElementById('edit-type').value = e.type || 'miitti';
+        document.getElementById('edit-gc').value = e.gc || '';
+        document.getElementById('edit-name').value = e.name || '';
+        document.getElementById('edit-date').value = e.date || '';
+        document.getElementById('edit-time').value = e.time || '';
+        document.getElementById('edit-coords').value = e.coords || '';
+        document.getElementById('edit-loc').value = e.location || '';
+        editModal.style.display = "block";
+    });
+};
+
+document.getElementById('btn-save-edit').addEventListener('click', () => {
+    const key = document.getElementById('edit-key').value;
+    const updates = {
+        type: document.getElementById('edit-type').value,
+        gc: document.getElementById('edit-gc').value,
+        name: document.getElementById('edit-name').value,
+        date: document.getElementById('edit-date').value,
+        time: document.getElementById('edit-time').value,
+        coords: document.getElementById('edit-coords').value,
+        location: document.getElementById('edit-loc').value
+    };
+    db.ref('miitit/' + currentUser.uid + '/events/' + key).update(updates).then(() => {
+        editModal.style.display = "none";
+    });
+});
+
+window.closeModal = () => { editModal.style.display = "none"; };
 window.deleteEvent = (key) => {
-    if(confirm("Poista miitti ja kaikki kirjaukset?")) {
+    if(confirm("Poistetaanko miitti ja kaikki sen tiedot?")) {
         db.ref('miitit/' + currentUser.uid + '/events/' + key).remove();
         db.ref('miitit/' + currentUser.uid + '/logs/' + key).remove();
     }
 };
 
 // ==========================================
-// 4. MIITTIKIRJAN NÄKYMÄ (Guestbook)
+// 5. MIITTIKIRJA & LOGIEN MUOKKAUS
 // ==========================================
 
 window.openGuestbook = (eventKey) => {
     currentEventId = eventKey;
-    
-    db.ref('miitit/' + currentUser.uid + '/events/' + eventKey).once('value').then(snap => {
+    db.ref('miitit/' + currentUser.uid + '/events/' + eventKey).on('value', snap => {
         const evt = snap.val();
-        if (!evt) return;
-
-        // Täytetään tiedot kuten vihkossa
+        if(!evt) return; // Jos poistettiin
         document.getElementById('gb-event-name').innerText = evt.name;
-        
-        let dateStr = evt.date;
-        try { dateStr = new Date(evt.date).toLocaleDateString('fi-FI'); } catch(e){}
-        
         document.getElementById('gb-time').innerText = `🕓 ${evt.time || '-'}`;
-        document.getElementById('gb-date').innerText = `📅 ${dateStr}`;
+        document.getElementById('gb-date').innerText = `📅 ${evt.date}`;
         document.getElementById('gb-gc').innerText = `🆔 ${evt.gc}`;
         document.getElementById('gb-loc').innerText = `🏠 ${evt.location || '-'}`;
         
-        // Tehdään koordinaateista linkki karttaan
         const coordsEl = document.getElementById('gb-coords');
-        if(evt.coords) {
-            coordsEl.innerHTML = `📍 <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evt.coords)}" target="_blank" style="color:#4caf50;">${evt.coords}</a>`;
-        } else {
-            coordsEl.innerText = "📍 -";
-        }
-
-        loginView.style.display = 'none'; adminView.style.display = 'none'; guestbookView.style.display = 'block';
-        loadAttendees(eventKey);
+        if(evt.coords) coordsEl.innerHTML = `📍 <a href="https://maps.google.com/?q=${encodeURIComponent(evt.coords)}" target="_blank" style="color:#4caf50;">${evt.coords}</a>`;
+        else coordsEl.innerText = "📍 -";
     });
+    
+    showGuestbookView();
+    loadAttendees(eventKey);
 };
+
+function showGuestbookView() {
+    loginView.style.display = 'none'; adminView.style.display = 'none'; guestbookView.style.display = 'block';
+}
 
 document.getElementById('btn-sign-log').addEventListener('click', () => {
     const nick = document.getElementById('log-nickname').value.trim();
-    const from = document.getElementById('log-from').value.trim(); // Paikkakunta
-    const msg = document.getElementById('log-message').value.trim();
-
-    if(!nick) { alert("Nimimerkki vaaditaan!"); return; }
-
-    const logData = {
+    if(!nick) { alert("Nimi vaaditaan!"); return; }
+    db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({
         nickname: nick,
-        from: from,
-        message: msg,
+        from: document.getElementById('log-from').value.trim(),
+        message: document.getElementById('log-message').value.trim(),
         timestamp: firebase.database.ServerValue.TIMESTAMP
-    };
-
-    db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push(logData)
-        .then(() => {
-            alert("Kirjattu!");
-            document.getElementById('log-nickname').value = "";
-            document.getElementById('log-from').value = "";
-            document.getElementById('log-message').value = "";
-        });
+    }).then(() => {
+        ['log-nickname','log-from','log-message'].forEach(id => document.getElementById(id).value = "");
+    });
 });
 
 function loadAttendees(eventKey) {
-    const listEl = document.getElementById('attendee-list');
-    const countEl = document.getElementById('attendee-count');
-
     db.ref('miitit/' + currentUser.uid + '/logs/' + eventKey).on('value', (snapshot) => {
+        const listEl = document.getElementById('attendee-list');
         listEl.innerHTML = "";
         const logs = [];
-        snapshot.forEach(child => logs.push(child.val()));
+        snapshot.forEach(child => logs.push({key: child.key, ...child.val()}));
         logs.reverse();
 
         logs.forEach(log => {
             const row = document.createElement('div');
             row.className = "log-item";
-            const time = new Date(log.timestamp).toLocaleTimeString('fi-FI', {hour: '2-digit', minute:'2-digit'});
-            
-            // Muotoilu: NIMI / PAIKKAKUNTA
             row.innerHTML = `
                 <div>
                     <strong style="color:#4caf50; font-size:1.1em;">${log.nickname}</strong>
                     <span style="color:#ddd;"> / ${log.from || ''}</span>
-                    <span class="log-time">${time}</span>
+                    <div style="font-style:italic; color:#888; font-size:0.9em;">${log.message || ''}</div>
                 </div>
-                <div style="font-style:italic; color:#888; font-size:0.9em;">${log.message || ''}</div>
+                <div class="log-actions">
+                    <button class="btn-blue btn-small" onclick="editLog('${log.key}', '${log.nickname}', '${log.from}')">✏️</button>
+                    <button class="btn-red btn-small" onclick="deleteLog('${log.key}')">🗑</button>
+                </div>
             `;
             listEl.appendChild(row);
         });
-        countEl.innerText = logs.length;
+        document.getElementById('attendee-count').innerText = logs.length;
     });
 }
+
+// Osallistujan muokkaus (Quick Prompt)
+window.editLog = (logKey, oldNick, oldFrom) => {
+    const newNick = prompt("Muokkaa nimeä:", oldNick);
+    if(newNick !== null) {
+        const newFrom = prompt("Muokkaa paikkakuntaa:", oldFrom);
+        if(newFrom !== null) {
+            db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + logKey).update({
+                nickname: newNick,
+                from: newFrom
+            });
+        }
+    }
+};
+
+window.deleteLog = (logKey) => {
+    if(confirm("Poista osallistuja listalta?")) {
+        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + logKey).remove();
+    }
+};
