@@ -5,146 +5,100 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sähköinen Miittikirja</title>
     <style>
-        /* Yksinkertainen tumma teema */
-        body {
-            background-color: #1e1e1e;
-            color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            text-align: center;
-        }
-
-        h1, h2, h3 {
-            color: #4caf50; /* Geocaching vihreä */
-            margin-bottom: 15px;
-        }
-
-        /* Piilottaa näkymät oletuksena */
-        .view-section {
-            display: none;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        /* Korttimainen ulkoasu listauksille */
-        .card {
-            background: #333;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            text-align: left;
-            border: 1px solid #444;
-        }
-
-        /* Syötekentät */
-        input, select {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 10px;
-            background: #2c2c2c;
-            border: 1px solid #555;
-            color: white;
-            border-radius: 4px;
-            box-sizing: border-box; /* Pitää paddingin sisällä */
-            font-size: 16px;
-        }
-
-        /* Painikkeet */
-        .btn {
-            padding: 12px 20px;
-            cursor: pointer;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            font-weight: bold;
-            margin: 5px 0;
-            width: 100%;
-            transition: opacity 0.2s;
-        }
-
-        .btn:active { opacity: 0.7; }
+        body { background-color: #1e1e1e; color: #ffffff; font-family: sans-serif; margin: 0; padding: 20px; text-align: center; }
+        h1, h2, h3 { color: #4caf50; margin-bottom: 15px; }
+        .view-section { display: none; max-width: 600px; margin: 0 auto; }
+        
+        /* Kortit ja listat */
+        .card { background: #333; padding: 15px; margin-bottom: 10px; border-radius: 8px; text-align: left; border: 1px solid #444; }
+        .category-header { text-align: left; color: #aaa; text-transform: uppercase; font-size: 0.9em; margin-top: 20px; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        
+        /* Lomakekentät */
+        input, select { width: 100%; padding: 10px; margin-bottom: 10px; background: #2c2c2c; border: 1px solid #555; color: white; border-radius: 4px; box-sizing: border-box; }
+        
+        /* Napit */
+        .btn { padding: 12px 20px; cursor: pointer; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; margin: 5px 0; width: 100%; }
         .btn-blue { background-color: #2196f3; color: white; }
         .btn-green { background-color: #4caf50; color: white; }
         .btn-red { background-color: #f44336; color: white; }
         .btn-small { width: auto; padding: 5px 10px; font-size: 14px; }
+        .back-btn { background: none; border: none; color: #888; cursor: pointer; float: left; font-size: 14px; margin-bottom: 10px; }
 
-        /* Vieraskirjan lista */
-        .log-list {
-            max-height: 50vh;
-            overflow-y: auto;
-            text-align: left;
-            margin-top: 20px;
-            background: #252525;
-            padding: 10px;
-            border-radius: 8px;
-        }
-
-        .log-item {
-            border-bottom: 1px solid #444;
-            padding: 8px 0;
-        }
+        /* Miittisivun detaljit */
+        .event-meta { font-size: 0.9em; color: #ccc; margin-bottom: 20px; line-height: 1.6; border-left: 3px solid #4caf50; padding-left: 10px; }
+        .event-meta span { display: block; }
         
-        .log-time {
-            color: #888;
-            font-size: 0.8em;
-            display: block;
-        }
-
-        .back-btn {
-            background: none;
-            border: none;
-            color: #888;
-            cursor: pointer;
-            float: left;
-            font-size: 14px;
-        }
+        .log-list { max-height: 50vh; overflow-y: auto; text-align: left; margin-top: 20px; background: #252525; padding: 10px; border-radius: 8px; }
+        .log-item { border-bottom: 1px solid #444; padding: 8px 0; }
+        .log-time { color: #888; font-size: 0.8em; float: right; }
     </style>
 </head>
 <body>
 
     <div id="login-view" class="view-section" style="display:flex; flex-direction:column; align-items:center;">
-        <img src="https://www.geocaching.com/images/nav/logo_powered_by_200.png" alt="Logo" style="max-width: 150px; margin-bottom: 20px; filter: invert(1);">
         <h1>Miittikirja Admin</h1>
-        <p>Kirjaudu hallinnoidaksesi miittejä.</p>
         <button id="btn-login" class="btn btn-blue">Kirjaudu Googlella</button>
     </div>
 
     <div id="admin-view" class="view-section">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-            <h2 style="margin:0;">Omat Miitit</h2>
-            <button id="btn-logout" class="btn btn-red btn-small">Kirjaudu ulos</button>
+            <h2 style="margin:0;">Omat Tapahtumat</h2>
+            <button id="btn-logout" class="btn btn-red btn-small">Ulos</button>
         </div>
         
         <div class="card">
-            <h3 style="margin-top:0;">Lisää uusi miitti</h3>
+            <h3 style="margin-top:0;">Lisää uusi</h3>
+            
+            <label style="font-size:0.8em; color:#aaa;">Tyyppi</label>
+            <select id="new-type">
+                <option value="miitti">📍 Tavallinen Miitti</option>
+                <option value="cito">🗑️ CITO (Siivous)</option>
+                <option value="cce">🎉 CCE (Juhlamiitti)</option>
+            </select>
+
             <input type="text" id="new-gc" placeholder="GC-koodi (esim. GC12345)">
-            <input type="text" id="new-name" placeholder="Miitin nimi">
-            <input type="date" id="new-date">
-            <input type="text" id="new-loc" placeholder="Sijainti (esim. Lahti, Suomi)">
-            <button id="btn-add-event" class="btn btn-green">Tallenna Miitti</button>
+            <input type="text" id="new-name" placeholder="Tapahtuman nimi (Otsikko)">
+            
+            <div style="display:flex; gap:10px;">
+                <input type="date" id="new-date">
+                <input type="text" id="new-time" placeholder="Aika (esim. 18:00-19:00)">
+            </div>
+            
+            <input type="text" id="new-coords" placeholder="Koordinaatit (N60... tai 60.123, 25.123)">
+            <input type="text" id="new-loc" placeholder="Paikka / Osoite (esim. ABC Nastola)">
+            
+            <button id="btn-add-event" class="btn btn-green">Tallenna</button>
         </div>
 
-        <div id="event-list">
-            <p>Ladataan miittejä...</p>
-        </div>
+        <div class="category-header">CCE Juhlamiitit</div>
+        <div id="list-cce"><p style="font-size:0.8em; color:#666;">Ei tapahtumia.</p></div>
+
+        <div class="category-header">CITO Tapahtumat</div>
+        <div id="list-cito"><p style="font-size:0.8em; color:#666;">Ei tapahtumia.</p></div>
+
+        <div class="category-header">Tavalliset Miitit</div>
+        <div id="list-miitti"><p style="font-size:0.8em; color:#666;">Ei tapahtumia.</p></div>
     </div>
 
     <div id="guestbook-view" class="view-section">
-        <button onclick="showAdminView()" class="back-btn">&lt; Takaisin hallintaan</button>
+        <button onclick="showAdminView()" class="back-btn">&lt; Takaisin listaan</button>
         <div style="clear:both;"></div>
         
         <h1 id="gb-event-name">Miitin Nimi</h1>
-        <p id="gb-event-details" style="color:#aaa;">GCXXXXX • 1.1.2024</p>
+        
+        <div class="event-meta">
+            <span id="gb-time">🕓 Aika</span>
+            <span id="gb-date">📅 Pvm</span>
+            <span id="gb-gc">🆔 GC-koodi</span>
+            <span id="gb-coords">📍 Koordinaatit</span>
+            <span id="gb-loc">🏠 Paikka</span>
+        </div>
         
         <div class="card" style="border: 2px dashed #4caf50;">
             <h3 style="text-align:center;">✍️ Kirjaa käyntisi</h3>
-            <input type="text" id="log-nickname" placeholder="Nimimerkkisi" style="font-size: 1.2em;">
-            <input type="text" id="log-message" placeholder="Terveiset (valinnainen)">
-            <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-                <label>KK?</label>
-                <input type="number" id="log-kk" placeholder="0" style="width: 80px; margin-bottom:0;">
-            </div>
+            <input type="text" id="log-nickname" placeholder="Nimimerkkisi (Geocaching)" style="font-size: 1.2em;">
+            <input type="text" id="log-from" placeholder="Paikkakunta (mistä tulet?)">
+            <input type="text" id="log-message" placeholder="Terveiset (vapaaehtoinen)">
             <button id="btn-sign-log" class="btn btn-green" style="font-size: 1.1em;">KIRJAA KÄYNTI ✅</button>
         </div>
 
