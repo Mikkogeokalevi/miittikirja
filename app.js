@@ -224,7 +224,7 @@ document.getElementById('btn-sign-log').addEventListener('click', () => {
     });
 });
 
-// MASSALISÄYS LOGIIKKA
+// MASSALISÄYS LOGIIKKA (PÄIVITETTY)
 window.openMassImport = () => {
     document.getElementById('mass-input').value = ""; 
     document.getElementById('mass-output').value = ""; 
@@ -236,22 +236,48 @@ window.resetMassModal = () => {
     document.getElementById('mass-step-1').style.display = 'block';
     document.getElementById('mass-step-2').style.display = 'none';
 };
+
 document.getElementById('btn-parse-mass').addEventListener('click', () => {
     const text = document.getElementById('mass-input').value;
     if(!text) return;
+    
     let names = [];
-    const lines = text.split('\n');
-    lines.forEach(line => {
-        const match = line.match(/^\s*(.*?)\s{2,}(?:Premium\s+)?Member[\s\S]*?(Osallistui|Attended)/i);
-        if (match && match[1].trim().length > 0) names.push(match[1].trim());
+    
+    // 1. Pilkotaan teksti osiin "Näytä loki" -tekstin perusteella (se erottaa lokit toisistaan)
+    const blocks = text.split(/Näytä loki|View Log/i);
+    
+    blocks.forEach(block => {
+        // Siivotaan ylimääräiset rivinvaihdot ja välilyönnit
+        const cleanBlock = block.replace(/\s+/g, ' ').trim();
+        
+        // 2. Tarkistetaan onko lokityyppi "Osallistui" tai "Attended"
+        // (Geocaching.comissa "Aion osallistua" on eri sana kuin "Osallistui", joten tämä on turvallinen)
+        const isAttended = /Osallistui|Attended/i.test(cleanBlock);
+        
+        if (isAttended) {
+            // 3. Etsitään nimi. Nimi on blokin alussa ennen "Premium Member", "Member" tai "Reviewer" tekstiä.
+            const nameMatch = cleanBlock.match(/^(.*?)\s+(?:Premium\s+Member|Member|Reviewer)/i);
+            
+            if (nameMatch && nameMatch[1]) {
+                let name = nameMatch[1].trim();
+                // Poistetaan "Aion osallistua" jos se jotenkin eksyi tänne (varotoimi)
+                if(!name.includes("Aion osallistua") && name.length > 0) {
+                    names.push(name);
+                }
+            }
+        }
     });
-    if (names.length === 0) names = text.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
+
+    // Poistetaan duplikaatit
     names = [...new Set(names)];
-    if (names.length === 0) { alert("Ei nimiä."); return; }
+    
+    if (names.length === 0) { alert("Ei löydettyjä osallistujia. Tarkista että kopioit oikein."); return; }
+    
     document.getElementById('mass-output').value = names.join('\n');
     document.getElementById('mass-step-1').style.display = 'none';
     document.getElementById('mass-step-2').style.display = 'block';
 });
+
 document.getElementById('btn-save-mass').addEventListener('click', () => {
     const cleanText = document.getElementById('mass-output').value;
     const finalNames = cleanText.split('\n').map(s => s.trim()).filter(s => s.length > 0);
@@ -273,7 +299,6 @@ function loadAttendees(eventKey) {
         
         const logs = [];
         
-        // KORJATTU KOHTA: Lisätty aaltosulkeet {}, jotta push ei palauta arvoa ja katkaise looppia
         snapshot.forEach(child => { 
             logs.push({key: child.key, ...child.val()}); 
         });
