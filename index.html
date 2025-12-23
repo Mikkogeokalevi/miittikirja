@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MK:n Sähköinen Miittikirja</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#8B4513">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon.png"> 
+
     <style>
         /* --- MIKKOKALEVI THEME --- */
         body { 
@@ -14,6 +21,8 @@
             padding: 10px; 
             text-align: center; 
             line-height: 1.6;
+            -webkit-user-select: none; /* Estää tekstin valinnan vahingossa mobiilissa */
+            user-select: none;
         }
 
         h1, h2, h3 { 
@@ -22,7 +31,7 @@
             margin-bottom: 15px; 
         }
 
-        /* Päälaatikko (tyylitelty kuten alkuperäinen kontti) */
+        /* Päälaatikko */
         .view-section { 
             display: none; 
             max-width: 600px; 
@@ -32,9 +41,10 @@
             border-radius: 15px;
             box-shadow: 0px 0px 20px rgba(139,69,19,0.25);
             padding: 20px;
+            padding-bottom: 80px; /* Tilaa mobiiliselaukselle alareunassa */
         }
         
-        /* Kortit ja listat (Valkoinen pohja, katkoviiva) */
+        /* Kortit ja listat */
         .card { 
             background: #FFFFFF; 
             padding: 15px; 
@@ -46,7 +56,7 @@
             position: relative; 
         }
 
-        /* Varoituslaatikko (Warning Box) tyyli lomakkeille */
+        /* Varoituslaatikko (Lomake) */
         .card-form {
             background-color: #FFF8E7;
             border: 2px solid #CD5C5C;
@@ -79,11 +89,12 @@
             border-radius: 4px; 
             box-sizing: border-box; 
             font-family: 'Verdana', sans-serif;
+            font-size: 16px; /* Estää zoomauksen iPhonessa */
         }
         
         input::placeholder { color: #A0522D; opacity: 0.6; }
 
-        /* Napit (Earthy Tones) */
+        /* Napit */
         .btn { 
             padding: 12px 20px; 
             cursor: pointer; 
@@ -98,11 +109,10 @@
         }
         .btn:active { transform: scale(0.98); }
 
-        .btn-blue { background-color: #8B4513; color: white; } /* Päänappi on nyt Ruskea */
-        .btn-green { background-color: #4caf50; color: white; border: 1px solid #2e7d32; } /* Geocaching vihreä */
-        .btn-red { background-color: #B22222; color: white; } /* FireBrick */
-        .btn-gray { background-color: #A0522D; color: white; } /* Sienna */
-        .btn-small { width: auto; padding: 6px 12px; font-size: 14px; margin-right: 5px; }
+        .btn-blue { background-color: #8B4513; color: white; } 
+        .btn-green { background-color: #4caf50; color: white; border: 1px solid #2e7d32; } 
+        .btn-red { background-color: #B22222; color: white; } 
+        .btn-small { width: auto; padding: 8px 12px; font-size: 14px; margin-right: 5px; }
         
         .back-btn { 
             background: none; 
@@ -113,6 +123,7 @@
             font-size: 14px; 
             margin-bottom: 10px; 
             font-weight: bold;
+            padding: 10px; /* Helpompi osua sormella */
         }
 
         /* Miittisivun detaljit */
@@ -147,7 +158,7 @@
             justify-content: space-between; 
             align-items: flex-start; 
         }
-        .log-actions { min-width: 70px; text-align: right; }
+        .log-actions { min-width: 80px; text-align: right; }
         
         .logo-img {
             width: 100px; height: 100px; 
@@ -159,10 +170,10 @@
         }
 
         /* MODAL (Muokkausikkuna) */
-        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(78, 52, 46, 0.8); }
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(78, 52, 46, 0.9); overflow-y: auto; }
         .modal-content { 
             background-color: #FDF5E6; 
-            margin: 10% auto; 
+            margin: 5% auto; 
             padding: 20px; 
             border: 4px double #8B4513; 
             width: 90%; 
@@ -229,6 +240,7 @@
             <span id="gb-gc">🆔 GC-koodi</span>
             <span id="gb-coords">📍 Koordinaatit</span>
             <span id="gb-loc">🏠 Paikka</span>
+            <span id="gb-attrs" style="font-size:0.8em; color:#666; font-style:italic;"></span>
         </div>
         
         <div class="card-form">
@@ -251,12 +263,14 @@
         <div class="modal-content">
             <h3 style="text-align:center;">✏️ Muokkaa</h3>
             <input type="hidden" id="edit-key">
+            
             <label style="font-weight:bold;">Tyyppi</label>
             <select id="edit-type">
                 <option value="miitti">Miitti</option>
                 <option value="cito">CITO</option>
                 <option value="cce">Yhteisöjuhla</option>
             </select>
+            
             <label style="font-weight:bold;">GC-Koodi</label><input type="text" id="edit-gc">
             <label style="font-weight:bold;">Nimi</label><input type="text" id="edit-name">
             <label style="font-weight:bold;">Pvm</label><input type="date" id="edit-date">
