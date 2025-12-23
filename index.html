@@ -88,7 +88,7 @@
             font-size: 16px; 
         }
         
-        input::placeholder { color: #A0522D; opacity: 0.6; }
+        input::placeholder, textarea::placeholder { color: #A0522D; opacity: 0.6; }
 
         .btn { 
             padding: 12px 20px; 
@@ -309,13 +309,23 @@
     <div id="mass-modal" class="modal">
         <div class="modal-content">
             <h3 style="text-align:center;">📥 Tuo osallistujat</h3>
-            <p style="font-size:0.9em;">Liitä tähän lista nimimerkeistä (esim. Excelistä, vihkosta tai nettisivulta). Yksi nimi per rivi tai pilkulla erotettuna.</p>
-            <textarea id="mass-text" rows="10" placeholder="Mikkokalevi&#10;TeroA&#10;Bukka..." style="width:100%; border:2px solid #8B4513;"></textarea>
             
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button id="btn-save-mass" class="btn btn-green">Tuo Nimet</button>
-                <button onclick="closeModal()" class="btn btn-red">Peruuta</button>
+            <div id="mass-step-1">
+                <p style="font-size:0.9em;">1. Liitä tähän tekstisotku (esim. maalaa kaikki loggaukset kätkösivulta ja kopioi).</p>
+                <textarea id="mass-input" rows="8" placeholder="Liitä teksti tähän..." style="width:100%; border:2px solid #8B4513; margin-bottom:10px;"></textarea>
+                <button id="btn-parse-mass" class="btn btn-blue">🔍 Etsi nimimerkit</button>
             </div>
+
+            <div id="mass-step-2" style="display:none;">
+                <p style="font-size:0.9em; color:#4caf50; font-weight:bold;">2. Tarkista lista ja muokkaa tarvittaessa:</p>
+                <textarea id="mass-output" rows="10" style="width:100%; border:2px dashed #4caf50; background:#f1f8e9; margin-bottom:10px;"></textarea>
+                <div style="display:flex; gap:10px;">
+                    <button id="btn-save-mass" class="btn btn-green">💾 Tallenna kantaan</button>
+                    <button onclick="resetMassModal()" class="btn btn-gray">Takaisin</button>
+                </div>
+            </div>
+
+            <button onclick="closeModal()" class="btn btn-red" style="margin-top:20px; width:100%;">Sulje</button>
         </div>
     </div>
 
