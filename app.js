@@ -38,7 +38,6 @@ auth.onAuthStateChanged((user) => {
             userDisplay.innerText = "👤 " + user.email;
         }
         
-        // Jos ollaan tarkastelemassa miittiä, pysytään siellä, muuten adminiin
         if (guestbookView.style.display !== 'block') {
             showAdminView();
         }
@@ -94,7 +93,7 @@ function showAdminView() {
 window.showAdminView = showAdminView;
 
 // ==========================================
-// 3. MIITTIEN LISTAUS (KORJATTU)
+// 3. MIITTIEN LISTAUS
 // ==========================================
 
 document.getElementById('btn-add-event').addEventListener('click', () => {
@@ -120,15 +119,12 @@ document.getElementById('btn-add-event').addEventListener('click', () => {
 function loadEvents() {
     if (!currentUser) return;
     
-    // Tyhjennetään listat
     const listCce = document.getElementById('list-cce');
     const listCito = document.getElementById('list-cito');
     const listMiitti = document.getElementById('list-miitti');
     listCce.innerHTML = ""; listCito.innerHTML = ""; listMiitti.innerHTML = "";
 
-    // Haetaan KAIKKI ilman järjestystä ensin, jotta nähdään mitä siellä on
     db.ref('miitit/' + currentUser.uid + '/events').on('value', (snapshot) => {
-        // Tyhjennetään uudelleen (päivitys)
         listCce.innerHTML = ""; listCito.innerHTML = ""; listMiitti.innerHTML = "";
         
         const events = [];
@@ -141,7 +137,6 @@ function loadEvents() {
 
         if(eventStatsEl) eventStatsEl.innerText = `Löytyi ${count} tapahtumaa.`;
 
-        // Järjestetään (uusin ensin)
         events.sort((a,b) => {
             const dateA = new Date(a.date || 0);
             const dateB = new Date(b.date || 0);
@@ -159,7 +154,6 @@ function loadEvents() {
             if(evt.type === 'cito') icon = "🗑️";
             if(evt.type === 'cce') icon = "🎉";
 
-            // Lisätään selkeä Avaa-nappi
             div.innerHTML = `
                 <div style="display:flex; justify-content:space-between;">
                     <strong>${icon} ${evt.name}</strong>
@@ -173,10 +167,9 @@ function loadEvents() {
                 </div>
             `;
             
-            // Ohjataan oikeaan laariin
             if (evt.type === 'cce') listCce.appendChild(div);
             else if (evt.type === 'cito') listCito.appendChild(div);
-            else listMiitti.appendChild(div); // Oletus
+            else listMiitti.appendChild(div); 
         });
     });
 }
@@ -212,7 +205,6 @@ window.openGuestbook = (eventKey) => {
         }
     });
     
-    // Vaihda näkymä
     loginView.style.display = 'none'; 
     adminView.style.display = 'none'; 
     guestbookView.style.display = 'block';
@@ -220,7 +212,6 @@ window.openGuestbook = (eventKey) => {
     loadAttendees(eventKey);
 };
 
-// Yksittäinen kirjaus
 document.getElementById('btn-sign-log').addEventListener('click', () => {
     const nick = document.getElementById('log-nickname').value.trim();
     if(!nick) { alert("Nimi vaaditaan!"); return; }
@@ -234,34 +225,76 @@ document.getElementById('btn-sign-log').addEventListener('click', () => {
     });
 });
 
-// MASSALISÄYS LOGIIKKA
+// --- MASSALISÄYS (2-VAIHEINEN) ---
 window.openMassImport = () => {
-    document.getElementById('mass-text').value = ""; // Tyhjennä
+    document.getElementById('mass-input').value = ""; 
+    document.getElementById('mass-output').value = ""; 
+    document.getElementById('mass-step-1').style.display = 'block';
+    document.getElementById('mass-step-2').style.display = 'none';
     massModal.style.display = "block";
 };
 
-document.getElementById('btn-save-mass').addEventListener('click', () => {
-    const text = document.getElementById('mass-text').value;
+window.resetMassModal = () => {
+    document.getElementById('mass-step-1').style.display = 'block';
+    document.getElementById('mass-step-2').style.display = 'none';
+};
+
+// VAIHE 1: ETSI NIMET
+document.getElementById('btn-parse-mass').addEventListener('click', () => {
+    const text = document.getElementById('mass-input').value;
     if(!text) return;
     
-    // Pilkotaan rivinvaihdoista TAI pilkuista
-    const lines = text.split(/[\n,]+/); 
-    let count = 0;
+    let names = [];
     
+    // Yritetään "Smart Parse" geocaching copy-pasteen
+    // Etsii: [jotain tekstiä] + [vähintään 2 välilyöntiä] + (Premium) Member
+    const lines = text.split('\n');
     lines.forEach(line => {
-        const cleanName = line.trim();
-        if(cleanName.length > 0) {
-            db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({
-                nickname: cleanName,
-                from: "", // Massana ei tuoda paikkakuntia
-                message: "(Massalisäys)",
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            });
-            count++;
+        // Regex nappaa tekstin ennen isoa väliä ja Member-sanaa
+        const match = line.match(/^\s*(.*?)\s{2,}(?:Premium\s+)?Member/);
+        if (match) {
+            let cleanName = match[1].trim();
+            if(cleanName.length > 0) names.push(cleanName);
         }
     });
     
-    alert(`Lisätty ${count} nimeä jonoon!`);
+    // Jos Smart Parse ei löytänyt mitään, oletetaan että käyttäjä syötti pelkän listan
+    if (names.length === 0) {
+        names = text.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
+    }
+    
+    names = [...new Set(names)]; // Poista tuplat
+    
+    if (names.length === 0) {
+        alert("Ei löytynyt nimiä. Tarkista teksti.");
+        return;
+    }
+    
+    // Näytä tulokset vaiheessa 2
+    document.getElementById('mass-output').value = names.join('\n');
+    document.getElementById('mass-step-1').style.display = 'none';
+    document.getElementById('mass-step-2').style.display = 'block';
+});
+
+// VAIHE 2: TALLENNA
+document.getElementById('btn-save-mass').addEventListener('click', () => {
+    const cleanText = document.getElementById('mass-output').value;
+    const finalNames = cleanText.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+    
+    if (finalNames.length === 0) return;
+    
+    let count = 0;
+    finalNames.forEach(name => {
+        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({
+            nickname: name,
+            from: "", 
+            message: "(Massatuonti)",
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+        count++;
+    });
+    
+    alert(`Tallennettu ${count} osallistujaa!`);
     massModal.style.display = "none";
 });
 
@@ -271,7 +304,7 @@ function loadAttendees(eventKey) {
         listEl.innerHTML = "";
         const logs = [];
         snapshot.forEach(child => logs.push({key: child.key, ...child.val()}));
-        logs.reverse(); // Uusin ylös
+        logs.reverse();
 
         logs.forEach(log => {
             const row = document.createElement('div');
