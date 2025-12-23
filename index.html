@@ -54,11 +54,12 @@
             position: relative; 
         }
 
-        /* Arkistoidun miitin tyyli */
+        /* Arkistoidun miitin tyyli listassa */
         .card.archived {
-            background-color: #eee;
-            border-color: #999;
-            opacity: 0.8;
+            opacity: 0.7;
+            border-color: #aaa;
+            box-shadow: none;
+            background: #f4f4f4;
         }
 
         .card-form {
@@ -192,6 +193,17 @@
             border-radius: 15px; 
             text-align: left; 
         }
+        
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 5px;
+            font-weight: normal;
+        }
+        .badge-archived { background: #555; color: white; }
     </style>
 </head>
 <body>
@@ -260,8 +272,8 @@
         
         <h2 id="gb-event-name" style="font-size:1.6em; color:#8B4513;">Miitin Nimi</h2>
         
-        <div id="archived-notice" style="display:none; background:#ccc; color:#333; padding:10px; border-radius:5px; margin-bottom:15px; font-weight:bold;">
-            🔒 TÄMÄ MIITTI ON ARKISTOITU
+        <div id="locked-status" style="display:none; background:#555; color:white; padding:10px; border-radius:5px; margin-bottom:10px; font-weight:bold;">
+            🔒 TÄMÄ MIITTI ON ARKISTOITU (Vain luku)
         </div>
 
         <div class="event-meta">
@@ -321,7 +333,7 @@
 
     <div id="log-edit-modal" class="modal">
         <div class="modal-content">
-            <h3 style="text-align:center;">✏️ Muokkaa kävijää</h3>
+            <h3 style="text-align:center;">✏️ Muokkaa kirjausta</h3>
             <input type="hidden" id="log-edit-key">
             
             <label style="font-weight:bold;">Nimimerkki</label>
@@ -330,7 +342,7 @@
             <label style="font-weight:bold;">Mistä tulet?</label>
             <input type="text" id="log-edit-from">
             
-            <label style="font-weight:bold;">Terveiset</label>
+            <label style="font-weight:bold;">Terveiset / Viesti</label>
             <textarea id="log-edit-msg" rows="3"></textarea>
             
             <div style="display:flex; gap:10px; margin-top:20px;">
@@ -345,7 +357,7 @@
             <h3 style="text-align:center;">📥 Tuo osallistujat</h3>
             
             <div id="mass-step-1">
-                <p style="font-size:0.9em;">1. Liitä tähän kopioitu teksti.</p>
+                <p style="font-size:0.9em;">1. Liitä tähän kopioitu teksti (sis. roskat).</p>
                 <textarea id="mass-input" rows="8" placeholder="Liitä teksti tähän..." style="width:100%; border:2px solid #8B4513; margin-bottom:10px;"></textarea>
                 <button id="btn-parse-mass" class="btn btn-blue">🔍 2. Etsi ja Puhdista nimet</button>
             </div>
