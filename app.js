@@ -80,6 +80,16 @@ window.showAdminView = showAdminView;
 // 3. MIITTIEN LISTAUS & ARKISTOINTI
 // ==========================================
 
+// UUSI: Lomakkeen piilotus/näyttö logiikka
+document.getElementById('new-event-toggle').addEventListener('click', () => {
+    const formDiv = document.getElementById('new-event-form');
+    if (formDiv.style.display === 'none') {
+        formDiv.style.display = 'block';
+    } else {
+        formDiv.style.display = 'none';
+    }
+});
+
 document.getElementById('btn-add-event').addEventListener('click', () => {
     const data = {
         type: document.getElementById('new-type').value,
@@ -96,6 +106,7 @@ document.getElementById('btn-add-event').addEventListener('click', () => {
     db.ref('miitit/' + currentUser.uid + '/events').push(data).then(() => {
         alert("Tallennettu!");
         ['new-gc','new-name','new-time','new-coords','new-loc'].forEach(id => document.getElementById(id).value = "");
+        document.getElementById('new-event-form').style.display = 'none'; // Piilotetaan tallennuksen jälkeen
     });
 });
 
@@ -131,16 +142,21 @@ function loadEvents() {
             const archiveBtnText = isArchived ? "♻️ Palauta" : "📁 Arkistoi";
             const archiveBtnClass = isArchived ? "btn-blue" : "btn-gray";
 
-            // --- LINKKI KORJAUS ---
             // Luodaan linkki GC-koodista
             const gcLink = `<a href="https://coord.info/${evt.gc}" target="_blank" style="font-weight:bold; color:#A0522D; text-decoration:none;">${evt.gc}</a>`;
+
+            // ID osallistujamäärälle
+            const countId = `count-${evt.key}`;
 
             div.innerHTML = `
                 <div style="display:flex; justify-content:space-between;">
                     <strong>${icon} ${evt.name}</strong>
                     <span>${dateStr}</span>
                 </div>
-                <div style="font-size:0.9em; color:#A0522D;">${gcLink} ${evt.location ? '• ' + evt.location : ''}</div>
+                <div style="font-size:0.9em; color:#A0522D; display:flex; justify-content:space-between;">
+                    <span>${gcLink} ${evt.location ? '• ' + evt.location : ''}</span>
+                    <span id="${countId}" style="font-weight:bold; color:#333;">👤 0</span>
+                </div>
                 <div style="margin-top:10px; display:flex; gap:5px;">
                     <button class="btn btn-green btn-small" onclick="openGuestbook('${evt.key}')">📖 Avaa</button>
                     <button class="btn btn-blue btn-small" onclick="openEditModal('${evt.key}')">✏️</button>
@@ -148,6 +164,13 @@ function loadEvents() {
                     <button class="btn btn-red btn-small" onclick="deleteEvent('${evt.key}')">🗑</button>
                 </div>
             `;
+            
+            // Haetaan osallistujamäärä (live-päivitys)
+            db.ref('miitit/' + currentUser.uid + '/logs/' + evt.key).on('value', (snap) => {
+                const num = snap.numChildren();
+                const el = document.getElementById(countId);
+                if (el) el.innerText = "👤 " + num;
+            });
             
             if (evt.type === 'cce') listCce.appendChild(div);
             else if (evt.type === 'cito') listCito.appendChild(div);
