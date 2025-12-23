@@ -6,37 +6,34 @@
     <style>
         body { background: #222; color: #fff; font-family: sans-serif; padding: 20px; text-align: center; }
         .container { max-width: 600px; margin: 0 auto; background: #333; padding: 20px; border-radius: 8px; }
-        input[type="file"], input[type="text"] { margin: 10px 0; padding: 10px; width: 80%; border-radius: 4px; border: 1px solid #555; background: #222; color: white; }
+        input { margin: 10px 0; padding: 10px; width: 80%; border-radius: 4px; border: 1px solid #555; background: #222; color: white; }
         .btn { padding: 10px 20px; background: #4caf50; color: white; border: none; cursor: pointer; font-size: 16px; border-radius: 4px; }
         .btn:disabled { background: #555; cursor: not-allowed; }
         #status { margin-top: 20px; white-space: pre-wrap; text-align: left; background: #111; padding: 10px; border: 1px solid #444; min-height: 300px; max-height: 500px; overflow-y: auto; font-family: monospace; }
         .log-ok { color: #4caf50; }
         .log-warn { color: #ffeb3b; }
-        .log-err { color: #f44336; }
         .log-skip { color: #777; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📥 Tuo omat miitit</h2>
-    <p>Lataa "My Finds" GPX geocaching.comista ja syötä nimimerkkisi alle.</p>
+    <h2>📥 Tuo omat miitit ja CITO:t</h2>
+    <p>Lataa "My Finds" GPX ja syötä nimimerkkisi.</p>
     
-    <label style="font-weight:bold;">Oma nimimerkkisi (Owner):</label><br>
+    <label>Oma nimimerkkisi (Järjestäjä):</label><br>
     <input type="text" id="owner-filter" placeholder="Esim. Mikkokalevi">
     <br>
-
     <input type="file" id="file-input" accept=".gpx">
-    <br>
     
     <div id="auth-section">
-        <p>Kirjaudu ensin, jotta tiedämme kenen kantaan tiedot viedään.</p>
+        <p>Kirjaudu ensin:</p>
         <button id="btn-login" class="btn" style="background:#2196f3;">Kirjaudu Googlella</button>
     </div>
 
     <div id="import-section" style="display:none;">
-        <p>Kirjauduttu: <span id="user-email" style="font-weight:bold;"></span></p>
-        <button id="btn-process" class="btn" disabled>Suodata ja Tuo miitit</button>
+        <p>Kirjauduttu: <span id="user-email"></span></p>
+        <button id="btn-process" class="btn" disabled>Suodata ja Tuo</button>
     </div>
 
     <div id="status">Loki:</div>
@@ -47,9 +44,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-    // =============================================
-    // 1. ASETUKSET (Vaihda omat avaimet tähän!)
-    // =============================================
     const firebaseConfig = {
         apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
         authDomain: "perhekalenteri-projekti.firebaseapp.com",
@@ -60,10 +54,7 @@
         appId: "1:588536838615:web:148de0581bbd46c42c7392"
     };
 
-    try {
-        firebase.initializeApp(firebaseConfig);
-    } catch(e) { console.error(e); }
-
+    try { firebase.initializeApp(firebaseConfig); } catch(e) { console.error(e); }
     const db = firebase.database();
     const auth = firebase.auth();
     let currentUser = null;
@@ -73,7 +64,6 @@
     const ownerInput = document.getElementById('owner-filter');
     const btnProcess = document.getElementById('btn-process');
 
-    // 2. KIRJAUTUMINEN
     auth.onAuthStateChanged((user) => {
         if (user) {
             currentUser = user;
@@ -87,32 +77,15 @@
         auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
     });
 
-    fileInput.addEventListener('change', checkButtonState);
-    ownerInput.addEventListener('input', checkButtonState);
+    fileInput.addEventListener('change', checkBtn);
+    ownerInput.addEventListener('input', checkBtn);
+    function checkBtn() { btnProcess.disabled = !(fileInput.files.length > 0 && ownerInput.value.trim().length > 0); }
 
-    function checkButtonState() {
-        if(fileInput.files.length > 0 && ownerInput.value.trim().length > 0) {
-            btnProcess.disabled = false;
-        } else {
-            btnProcess.disabled = true;
-        }
-    }
-
-    // 3. TIEDOSTON KÄSITTELY
     btnProcess.addEventListener('click', () => {
         const file = fileInput.files[0];
         const myName = ownerInput.value.trim().toLowerCase();
-        
-        if (!file || !myName) return;
-
-        statusEl.innerHTML = "Aloitetaan tiedoston luku...\n";
         const reader = new FileReader();
-
-        reader.onload = function(e) {
-            const xmlText = e.target.result;
-            parseGPX(xmlText, myName);
-        };
-        
+        reader.onload = (e) => parseGPX(e.target.result, myName);
         reader.readAsText(file);
     });
 
@@ -121,110 +94,68 @@
         const xmlDoc = parser.parseFromString(xmlText, "text/xml");
         const wpts = xmlDoc.getElementsByTagName("wpt");
         
-        log(`Löydetty ${wpts.length} reittipistettä tiedostosta.`, "normal");
-        log(`Suodatetaan miitit, joiden järjestäjä on: "${myName}"`, "normal");
-        log("---------------------------------------------------", "normal");
-        
-        let eventCount = 0;
-        let promises = [];
+        statusEl.innerHTML = `Tutkitaan ${wpts.length} pistettä...\n`;
+        let count = 0;
 
         for (let i = 0; i < wpts.length; i++) {
             const wpt = wpts[i];
             
-            // Haetaan tagit
-            const gcCode = getTagVal(wpt, "name");
-            const type = getTagVal(wpt, "type") || ""; // "Geocache|Event Cache"
-            
-            // Groundspeak laajennukset (omistaja löytyy täältä)
-            let owner = "";
-            let eventName = "";
-            
-            // Yritetään löytää groundspeak:cache -tagi
-            const gsCache = wpt.getElementsByTagName("groundspeak:cache")[0];
-            if (gsCache) {
-                owner = getTagVal(gsCache, "groundspeak:placed_by");
-                eventName = getTagVal(gsCache, "groundspeak:name");
-            } else {
-                // Fallback jos ei groundspeak laajennusta
-                owner = getTagVal(wpt, "groundspeak:placed_by") || getTagVal(wpt, "placed_by");
-                eventName = getTagVal(wpt, "urlname") || getTagVal(wpt, "desc");
-            }
+            // 1. Tunnistetaan omistaja
+            let owner = getTagVal(wpt, "groundspeak:placed_by") || getTagVal(wpt, "placed_by");
+            if (!owner || owner.toLowerCase() !== myName) continue;
 
-            // TARKISTUKSET:
-            // 1. Onko tyyppi Event, CITO, Mega, Giga?
-            const isEvent = type.toLowerCase().includes("event") || 
-                          type.toLowerCase().includes("cito") || 
-                          type.toLowerCase().includes("mega") || 
-                          type.toLowerCase().includes("lost and found"); // 10v miitit
+            // 2. Tunnistetaan tyyppi
+            let typeStr = getTagVal(wpt, "type").toLowerCase();
+            let myType = "miitti"; // oletus
+            let isEvent = false;
 
-            // 2. Täsmääkö omistaja?
-            const isMine = owner && owner.toLowerCase() === myName;
+            if (typeStr.includes("event cache")) { isEvent = true; }
+            else if (typeStr.includes("cache in trash out")) { isEvent = true; myType = "cito"; }
+            else if (typeStr.includes("lost and found") || typeStr.includes("celebration")) { isEvent = true; myType = "cce"; } // CCE
+            else if (typeStr.includes("mega")) { isEvent = true; } 
 
             if (isEvent) {
-                if (isMine) {
-                    // TÄMÄ ON SINUN MIITTI -> TALLENNETAAN
-                    const time = getTagVal(wpt, "time");
-                    let dateStr = time ? time.split("T")[0] : "1970-01-01";
-                    
-                    const lat = wpt.getAttribute("lat");
-                    const lon = wpt.getAttribute("lon");
+                const gc = getTagVal(wpt, "name");
+                let name = getTagVal(wpt, "urlname") || getTagVal(wpt, "desc");
+                // Joskus GPX:ssä nimi on 'groundspeak:name'
+                const gsCache = wpt.getElementsByTagName("groundspeak:cache")[0];
+                if(gsCache) name = getTagVal(gsCache, "groundspeak:name");
 
-                    const eventData = {
-                        gc: gcCode,
-                        name: eventName,
-                        date: dateStr,
-                        location: `${lat}, ${lon}`,
-                        createdAt: firebase.database.ServerValue.TIMESTAMP
-                    };
+                const time = getTagVal(wpt, "time");
+                const dateStr = time ? time.split("T")[0] : "";
+                
+                // Koordinaatit
+                const lat = wpt.getAttribute("lat");
+                const lon = wpt.getAttribute("lon");
 
-                    log(`✅ TUODAAN: ${eventName} (${gcCode}) - ${dateStr}`, "log-ok");
-                    
-                    const p = db.ref('miitit/' + currentUser.uid + '/events').push(eventData);
-                    promises.push(p);
-                    eventCount++;
-                } else {
-                    // Toisen järjestämä miitti
-                    log(`⏭️ Ohitetaan (Toisen miitti): ${eventName} (tekijä: ${owner})`, "log-skip");
-                }
+                const eventData = {
+                    type: myType,
+                    gc: gc,
+                    name: name,
+                    date: dateStr,
+                    coords: `${lat}, ${lon}`,
+                    location: "", // GPX ei kerro osoitetta suoraan
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                };
+
+                log(`✅ [${myType.toUpperCase()}] ${name}`, "log-ok");
+                db.ref('miitit/' + currentUser.uid + '/events').push(eventData);
+                count++;
             }
         }
-
-        log("---------------------------------------------------", "normal");
-        if (eventCount === 0) {
-            log("⚠️ Yhtään sinun järjestämääsi miittiä ei löytynyt.", "log-warn");
-            log("Vinkki: Tarkista kirjoititko nimimerkkisi täsmälleen oikein.", "log-warn");
-        } else {
-            Promise.all(promises).then(() => {
-                log(`\n🎉 VALMIS! ${eventCount} omaa miittiäsi tallennettu kantaan.`, "log-ok");
-            }).catch(err => {
-                log("Virhe tallennuksessa: " + err.message, "log-err");
-            });
-        }
+        log(`\nVALMIS! ${count} omaa tapahtumaa tuotu.`, "log-ok");
     }
 
-    // Hakee XML-tagin arvon, tukee namespaceja "groundspeak:name"
     function getTagVal(parent, tagName) {
         let el = parent.getElementsByTagName(tagName)[0];
-        if (!el && tagName.includes(":")) {
-             // Jos selain ei tue namespace-hakua suoraan, kokeillaan ilman etuliitettä
-             const cleanName = tagName.split(":")[1];
-             el = parent.getElementsByTagName(cleanName)[0];
-        }
+        if (!el && tagName.includes(":")) el = parent.getElementsByTagName(tagName.split(":")[1])[0];
         return el ? el.textContent : "";
     }
 
-    function log(msg, type) {
-        const span = document.createElement('div');
-        span.innerText = msg;
-        if(type === 'log-ok') span.className = 'log-ok';
-        if(type === 'log-warn') span.className = 'log-warn';
-        if(type === 'log-err') span.className = 'log-err';
-        if(type === 'log-skip') span.className = 'log-skip';
-        statusEl.appendChild(span);
-        // Autoscroll
-        statusEl.scrollTop = statusEl.scrollHeight; 
+    function log(msg, cls) {
+        const div = document.createElement('div'); div.innerText = msg; div.className = cls; statusEl.appendChild(div);
+        statusEl.scrollTop = statusEl.scrollHeight;
     }
 </script>
-
 </body>
 </html>
