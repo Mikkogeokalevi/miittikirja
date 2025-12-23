@@ -9,28 +9,33 @@
         h1, h2, h3 { color: #4caf50; margin-bottom: 15px; }
         .view-section { display: none; max-width: 600px; margin: 0 auto; }
         
-        /* Kortit ja listat */
-        .card { background: #333; padding: 15px; margin-bottom: 10px; border-radius: 8px; text-align: left; border: 1px solid #444; }
-        .category-header { text-align: left; color: #aaa; text-transform: uppercase; font-size: 0.9em; margin-top: 20px; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        /* Kortit */
+        .card { background: #333; padding: 15px; margin-bottom: 10px; border-radius: 8px; text-align: left; border: 1px solid #444; position: relative; }
+        .category-header { text-align: left; color: #aaa; text-transform: uppercase; font-size: 0.9em; margin-top: 30px; border-bottom: 1px solid #444; padding-bottom: 5px; }
         
-        /* Lomakekentät */
+        /* Lomakkeet */
         input, select { width: 100%; padding: 10px; margin-bottom: 10px; background: #2c2c2c; border: 1px solid #555; color: white; border-radius: 4px; box-sizing: border-box; }
         
         /* Napit */
-        .btn { padding: 12px 20px; cursor: pointer; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; margin: 5px 0; width: 100%; }
+        .btn { padding: 10px 20px; cursor: pointer; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; margin: 5px 0; width: 100%; }
         .btn-blue { background-color: #2196f3; color: white; }
         .btn-green { background-color: #4caf50; color: white; }
         .btn-red { background-color: #f44336; color: white; }
-        .btn-small { width: auto; padding: 5px 10px; font-size: 14px; }
+        .btn-gray { background-color: #555; color: white; }
+        .btn-small { width: auto; padding: 5px 10px; font-size: 14px; margin-right: 5px; }
         .back-btn { background: none; border: none; color: #888; cursor: pointer; float: left; font-size: 14px; margin-bottom: 10px; }
 
-        /* Miittisivun detaljit */
+        /* Miittisivu */
         .event-meta { font-size: 0.9em; color: #ccc; margin-bottom: 20px; line-height: 1.6; border-left: 3px solid #4caf50; padding-left: 10px; }
         .event-meta span { display: block; }
         
         .log-list { max-height: 50vh; overflow-y: auto; text-align: left; margin-top: 20px; background: #252525; padding: 10px; border-radius: 8px; }
-        .log-item { border-bottom: 1px solid #444; padding: 8px 0; }
-        .log-time { color: #888; font-size: 0.8em; float: right; }
+        .log-item { border-bottom: 1px solid #444; padding: 8px 0; display: flex; justify-content: space-between; align-items: flex-start; }
+        .log-actions { min-width: 60px; text-align: right; }
+        
+        /* MODAL (Muokkausikkuna) */
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); }
+        .modal-content { background-color: #333; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 8px; text-align: left; }
     </style>
 </head>
 <body>
@@ -48,40 +53,35 @@
         
         <div class="card">
             <h3 style="margin-top:0;">Lisää uusi</h3>
-            
             <label style="font-size:0.8em; color:#aaa;">Tyyppi</label>
             <select id="new-type">
-                <option value="miitti">📍 Tavallinen Miitti</option>
-                <option value="cito">🗑️ CITO (Siivous)</option>
-                <option value="cce">🎉 CCE (Juhlamiitti)</option>
+                <option value="miitti">📍 Miitti</option>
+                <option value="cito">🗑️ CITO</option>
+                <option value="cce">🎉 Yhteisöjuhla (CCE)</option>
             </select>
-
-            <input type="text" id="new-gc" placeholder="GC-koodi (esim. GC12345)">
-            <input type="text" id="new-name" placeholder="Tapahtuman nimi (Otsikko)">
-            
+            <input type="text" id="new-gc" placeholder="GC-koodi">
+            <input type="text" id="new-name" placeholder="Nimi">
             <div style="display:flex; gap:10px;">
                 <input type="date" id="new-date">
-                <input type="text" id="new-time" placeholder="Aika (esim. 18:00-19:00)">
+                <input type="text" id="new-time" placeholder="Kello (06:00-06:30)">
             </div>
-            
-            <input type="text" id="new-coords" placeholder="Koordinaatit (N60... tai 60.123, 25.123)">
-            <input type="text" id="new-loc" placeholder="Paikka / Osoite (esim. ABC Nastola)">
-            
+            <input type="text" id="new-coords" placeholder="Koordinaatit">
+            <input type="text" id="new-loc" placeholder="Paikka">
             <button id="btn-add-event" class="btn btn-green">Tallenna</button>
         </div>
 
-        <div class="category-header">CCE Juhlamiitit</div>
-        <div id="list-cce"><p style="font-size:0.8em; color:#666;">Ei tapahtumia.</p></div>
+        <div class="category-header">🎉 Yhteisöjuhlat (CCE)</div>
+        <div id="list-cce"></div>
 
-        <div class="category-header">CITO Tapahtumat</div>
-        <div id="list-cito"><p style="font-size:0.8em; color:#666;">Ei tapahtumia.</p></div>
+        <div class="category-header">🗑️ CITO Tapahtumat</div>
+        <div id="list-cito"></div>
 
-        <div class="category-header">Tavalliset Miitit</div>
-        <div id="list-miitti"><p style="font-size:0.8em; color:#666;">Ei tapahtumia.</p></div>
+        <div class="category-header">📍 Miitit</div>
+        <div id="list-miitti"></div>
     </div>
 
     <div id="guestbook-view" class="view-section">
-        <button onclick="showAdminView()" class="back-btn">&lt; Takaisin listaan</button>
+        <button onclick="showAdminView()" class="back-btn">< Takaisin listaan</button>
         <div style="clear:both;"></div>
         
         <h1 id="gb-event-name">Miitin Nimi</h1>
@@ -95,11 +95,11 @@
         </div>
         
         <div class="card" style="border: 2px dashed #4caf50;">
-            <h3 style="text-align:center;">✍️ Kirjaa käyntisi</h3>
-            <input type="text" id="log-nickname" placeholder="Nimimerkkisi (Geocaching)" style="font-size: 1.2em;">
-            <input type="text" id="log-from" placeholder="Paikkakunta (mistä tulet?)">
+            <h3 style="text-align:center;">✍️ Lisää osallistuja</h3>
+            <input type="text" id="log-nickname" placeholder="Nimimerkki" style="font-size: 1.2em;">
+            <input type="text" id="log-from" placeholder="Paikkakunta">
             <input type="text" id="log-message" placeholder="Terveiset (vapaaehtoinen)">
-            <button id="btn-sign-log" class="btn btn-green" style="font-size: 1.1em;">KIRJAA KÄYNTI ✅</button>
+            <button id="btn-sign-log" class="btn btn-green">Tallenna</button>
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
@@ -110,10 +110,33 @@
         <div id="attendee-list" class="log-list"></div>
     </div>
 
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <h3>Muokkaa tapahtumaa</h3>
+            <input type="hidden" id="edit-key">
+            <label>Tyyppi</label>
+            <select id="edit-type">
+                <option value="miitti">Miitti</option>
+                <option value="cito">CITO</option>
+                <option value="cce">Yhteisöjuhla</option>
+            </select>
+            <label>GC-Koodi</label><input type="text" id="edit-gc">
+            <label>Nimi</label><input type="text" id="edit-name">
+            <label>Pvm</label><input type="date" id="edit-date">
+            <label>Aika</label><input type="text" id="edit-time">
+            <label>Koordinaatit</label><input type="text" id="edit-coords">
+            <label>Paikka</label><input type="text" id="edit-loc">
+            
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button id="btn-save-edit" class="btn btn-green">Tallenna Muutokset</button>
+                <button onclick="closeModal()" class="btn btn-gray">Peruuta</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    
     <script src="app.js"></script>
 </body>
 </html>
