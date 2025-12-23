@@ -17,7 +17,7 @@ const auth = firebase.auth();
 
 let currentUser = null;
 let currentEventId = null;
-let currentEventArchived = false; // Seurataan onko nykyinen miitti arkistoitu
+let currentEventArchived = false; // Tila-muuttuja
 
 // UI Elementit
 const loginView = document.getElementById('login-view');
@@ -25,7 +25,7 @@ const adminView = document.getElementById('admin-view');
 const guestbookView = document.getElementById('guestbook-view');
 const editModal = document.getElementById('edit-modal');
 const massModal = document.getElementById('mass-modal');
-const logEditModal = document.getElementById('log-edit-modal'); // Uusi
+const logEditModal = document.getElementById('log-edit-modal'); // UUSI
 const userDisplay = document.getElementById('user-display');
 const eventStatsEl = document.getElementById('event-stats');
 
@@ -90,7 +90,7 @@ document.getElementById('btn-add-event').addEventListener('click', () => {
         coords: document.getElementById('new-coords').value.trim(),
         location: document.getElementById('new-loc').value.trim(),
         createdAt: firebase.database.ServerValue.TIMESTAMP,
-        isArchived: false
+        isArchived: false // Uusi kenttä
     };
     if(!data.gc || !data.name || !data.date) { alert("Täytä GC, Nimi ja Pvm!"); return; }
     db.ref('miitit/' + currentUser.uid + '/events').push(data).then(() => {
@@ -113,12 +113,11 @@ function loadEvents() {
         snapshot.forEach(child => { events.push({key: child.key, ...child.val()}); count++; });
         if(eventStatsEl) eventStatsEl.innerText = `Löytyi ${count} tapahtumaa.`;
 
-        // Järjestetään uusin ensin
         events.sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0));
 
         events.forEach(evt => {
             const div = document.createElement('div');
-            // Jos arkistoitu, lisätään luokka
+            // Jos arkistoitu, lisätään CSS-luokka
             const isArchived = evt.isArchived === true;
             div.className = "card" + (isArchived ? " archived" : "");
             
@@ -128,9 +127,9 @@ function loadEvents() {
             let icon = "📍";
             if(evt.type === 'cito') icon = "🗑️";
             if(evt.type === 'cce') icon = "🎉";
-            if(isArchived) icon = "🔒 " + icon; // Lukon kuva jos arkistoitu
+            if(isArchived) icon = "🔒 " + icon;
 
-            // Arkistointinappi (vaihtuu tilan mukaan)
+            // Arkistointinapin tila
             const archiveBtnText = isArchived ? "♻️ Palauta" : "📁 Arkistoi";
             const archiveBtnClass = isArchived ? "btn-blue" : "btn-gray";
 
@@ -155,7 +154,7 @@ function loadEvents() {
     });
 }
 
-// UUSI: Arkistoi / Palauta
+// Arkistointitoiminto
 window.toggleArchiveEvent = (key, newState) => {
     const msg = newState ? "Haluatko arkistoida miitin? (Piilottaa muokkauksen)" : "Palautetaanko miitti aktiiviseksi?";
     if(confirm(msg)) {
@@ -181,7 +180,6 @@ window.openGuestbook = (eventKey) => {
         document.getElementById('gb-gc').innerText = `🆔 ${evt.gc}`;
         document.getElementById('gb-loc').innerText = `🏠 ${evt.location || '-'}`;
         
-        // Attribuutit
         const attrEl = document.getElementById('gb-attrs');
         if (evt.attributes && Array.isArray(evt.attributes)) {
             attrEl.innerText = "⭐ " + evt.attributes.join(", ");
@@ -189,7 +187,6 @@ window.openGuestbook = (eventKey) => {
             attrEl.innerText = "";
         }
         
-        // Karttalinkki
         const coordsEl = document.getElementById('gb-coords');
         if(evt.coords) coordsEl.innerHTML = `📍 <a href="http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(evt.coords)}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
         else coordsEl.innerText = "📍 -";
@@ -230,7 +227,7 @@ document.getElementById('btn-sign-log').addEventListener('click', () => {
     });
 });
 
-// MASSALISÄYS LOGIIKKA (Sama kuin aiemmin)
+// MASSALISÄYS LOGIIKKA (Pidetty ennallaan)
 window.openMassImport = () => {
     document.getElementById('mass-input').value = ""; 
     document.getElementById('mass-output').value = ""; 
@@ -271,14 +268,20 @@ document.getElementById('btn-save-mass').addEventListener('click', () => {
     massModal.style.display = "none";
 });
 
+// OSALLISTUJALISTAN LATAUS (KORJATTU)
 function loadAttendees(eventKey) {
     db.ref('miitit/' + currentUser.uid + '/logs/' + eventKey).on('value', (snapshot) => {
         const listEl = document.getElementById('attendee-list');
         listEl.innerHTML = "";
         const logs = [];
+        
+        // Kerätään kaikki logit
         snapshot.forEach(child => logs.push({key: child.key, ...child.val()}));
+        
+        // Järjestetään käänteisesti
         logs.reverse();
 
+        // Renderöidään rivit
         logs.forEach(log => {
             const row = document.createElement('div');
             row.className = "log-item";
@@ -345,8 +348,6 @@ document.getElementById('btn-save-edit').addEventListener('click', () => {
 
 // UUSI: Kävijän muokkaus (Modal)
 window.openLogEditModal = (logKey) => {
-    // Haetaan nykyiset tiedot suoraan DOM:sta tai tietokannasta
-    // Helpoin hakea kannasta, jotta saadaan 'from' ja 'message'
     db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + logKey).once('value').then(snap => {
         const log = snap.val();
         document.getElementById('log-edit-key').value = logKey;
@@ -372,7 +373,7 @@ document.getElementById('btn-save-log-edit').addEventListener('click', () => {
 window.closeModal = () => { 
     editModal.style.display = "none"; 
     massModal.style.display = "none"; 
-    logEditModal.style.display = "none"; // Sulje myös tämä
+    logEditModal.style.display = "none"; 
 };
 
 window.deleteEvent = (key) => {
