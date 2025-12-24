@@ -93,6 +93,18 @@
             padding-bottom: 5px; 
             letter-spacing: 1px;
         }
+
+        /* UUSI: Alaotsikko menneille/tuleville */
+        .sub-category-header {
+            font-size: 0.8em;
+            text-transform: uppercase;
+            color: #8B4513;
+            margin: 10px 0;
+            text-align: left;
+            border-left: 4px solid #D2691E;
+            padding-left: 10px;
+            opacity: 0.8;
+        }
         
         input, select, textarea { 
             width: 100%; 
@@ -305,7 +317,7 @@
                 
                 <div style="background:#fff; border:1px dashed #D2691E; padding:10px; margin-bottom:15px; border-radius:5px;">
                     <p style="margin:0 0 5px 0; font-size:0.9em; font-weight:bold; color:#D2691E;">📥 Tuo tiedot tekstistä:</p>
-                    <textarea id="import-text" rows="3" placeholder="Liitä Geocaching.com sivun teksti tähän (sis. pvm, aika, koordinaatit)..." style="font-size:0.8em; height:60px;"></textarea>
+                    <textarea id="import-text" rows="3" placeholder="Liitä Geocaching.com sivun teksti tähän..." style="font-size:0.8em; height:60px;"></textarea>
                     <button id="btn-process-import" class="btn btn-gray btn-small" style="width:100%;">🪄 Täytä lomake automaattisesti</button>
                 </div>
                 
@@ -332,13 +344,22 @@
         </div>
 
         <div class="category-header">☕ Miitit</div>
-        <div id="list-miitti"><p style="font-size:0.8em; color:#888;">Ei miittejä.</p></div>
+        <div class="sub-category-header">Tulevat</div>
+        <div id="list-miitti-future"><p style="font-size:0.8em; color:#888;">Ei tulevia.</p></div>
+        <div class="sub-category-header">Menneet</div>
+        <div id="list-miitti-past"></div>
 
         <div class="category-header">🎉 Yhteisöjuhlat</div>
-        <div id="list-cce"><p style="font-size:0.8em; color:#888;">Ei tulevia juhlia.</p></div>
+        <div class="sub-category-header">Tulevat</div>
+        <div id="list-cce-future"><p style="font-size:0.8em; color:#888;">Ei tulevia.</p></div>
+        <div class="sub-category-header">Menneet</div>
+        <div id="list-cce-past"></div>
 
         <div class="category-header">🗑️ CITO Tapahtumat</div>
-        <div id="list-cito"><p style="font-size:0.8em; color:#888;">Ei siivouksia.</p></div>
+        <div class="sub-category-header">Tulevat</div>
+        <div id="list-cito-future"><p style="font-size:0.8em; color:#888;">Ei tulevia.</p></div>
+        <div class="sub-category-header">Menneet</div>
+        <div id="list-cito-past"></div>
     </div>
 
     <div id="guestbook-view" class="view-section">
