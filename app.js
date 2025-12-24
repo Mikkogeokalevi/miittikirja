@@ -18,7 +18,7 @@ const auth = firebase.auth();
 let currentUser = null;
 let currentEventId = null;
 let currentEventArchived = false;
-let globalEventList = []; // Kaikki tapahtumat navigointia varten
+let globalEventList = []; 
 
 // UI Elementit
 const loginView = document.getElementById('login-view');
@@ -55,7 +55,6 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// Pyyhkäisytoiminnallisuus
 guestbookView.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
 });
@@ -67,10 +66,10 @@ guestbookView.addEventListener('touchend', e => {
 
 function handleSwipe() {
     if (touchEndX < touchStartX - 50) {
-        navigateEvent(-1); // Seuraava (vasemmalle)
+        navigateEvent(-1); 
     }
     if (touchEndX > touchStartX + 50) {
-        navigateEvent(1);  // Edellinen (oikealle)
+        navigateEvent(1);
     }
 }
 
@@ -100,53 +99,52 @@ function showAdminView() {
 window.showAdminView = showAdminView;
 
 // ==========================================
-// 3. MIITTIEN LISTAUS & NAVIGOINTI
+// 3. SIJAINTI-ÄLY JA TIETOJEN PARSINTA
 // ==========================================
 
-document.getElementById('btn-find-today').addEventListener('click', () => {
-    const today = new Date().toISOString().split('T')[0]; 
-    const todayEvent = globalEventList.find(e => e.date === today);
-    if (todayEvent) {
-        openGuestbook(todayEvent.key);
+async function fetchCityFromCoords(coords, targetId) {
+    const match = coords.match(/([NS])\s*(\d+)°\s*([\d\.]+)\s*([EW])\s*(\d+)°\s*([\d\.]+)/);
+    let lat, lon;
+    if (match) {
+        lat = parseInt(match[2]) + parseFloat(match[3]) / 60;
+        if (match[1] === 'S') lat = -lat;
+        lon = parseInt(match[5]) + parseFloat(match[6]) / 60;
+        if (match[4] === 'W') lon = -lon;
     } else {
-        alert("Ei miittejä tälle päivälle (" + new Date().toLocaleDateString('fi-FI') + ")");
+        const parts = coords.split(',');
+        if (parts.length === 2) { 
+            lat = parseFloat(parts[0]); 
+            lon = parseFloat(parts[1]); 
+        }
     }
-});
 
-window.navigateEvent = (direction) => {
-    if (!currentEventId || globalEventList.length === 0) return;
-    const currentIndex = globalEventList.findIndex(e => e.key === currentEventId);
-    if (currentIndex === -1) return;
-    
-    const newIndex = currentIndex - direction; 
-    if (newIndex >= 0 && newIndex < globalEventList.length) {
-        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
-        openGuestbook(globalEventList[newIndex].key);
+    if (!lat || !lon) return;
+
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+        const data = await res.json();
+        if (data.address) {
+            const city = data.address.city || data.address.town || data.address.village || "";
+            const country = data.address.country || "";
+            const result = (city && country) ? `${city}, ${country}` : country;
+            const el = document.getElementById(targetId);
+            if (el) el.value = result;
+        }
+    } catch (e) { 
+        console.error("Sijaintihaku epäonnistui", e); 
     }
-};
+}
 
-document.getElementById('new-event-toggle').addEventListener('click', () => {
-    const formDiv = document.getElementById('new-event-form');
-    if (formDiv.style.display === 'none') {
-        formDiv.style.display = 'block';
-    } else {
-        formDiv.style.display = 'none';
-    }
-});
-
-// Automaattinen tekstin poiminta uuden miitin lomakkeelle
-document.getElementById('btn-process-import').addEventListener('click', () => {
-    const text = document.getElementById('import-text').value;
-    if (!text) return;
+function processTextImport(text, mode) {
+    const prefix = mode === 'new' ? 'new-' : 'edit-';
+    const locId = prefix + 'loc';
 
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    
     if (lines.length > 0) {
         const firstLine = lines[0];
         const ignorePrefixes = ["Tapahtuman tekijä", "Tapahtumapäivä", "Alkamisaika", "Loppumisaika", "Vaikeustaso", "Maasto", "Koko", "Maa:", "N ", "E ", "UTM"];
-        const isMetadata = ignorePrefixes.some(prefix => firstLine.startsWith(prefix));
-        if (!isMetadata) {
-            document.getElementById('new-name').value = firstLine;
+        if (!ignorePrefixes.some(p => firstLine.startsWith(p))) {
+            document.getElementById(prefix + 'name').value = firstLine;
         }
     }
 
@@ -154,10 +152,7 @@ document.getElementById('btn-process-import').addEventListener('click', () => {
     if (dateMatch) {
         const parts = dateMatch[1].split('.');
         if(parts.length === 3) {
-            const yyyy = parts[2];
-            const mm = parts[1].padStart(2, '0');
-            const dd = parts[0].padStart(2, '0');
-            document.getElementById('new-date').value = `${yyyy}-${mm}-${dd}`;
+            document.getElementById(prefix + 'date').value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
     }
 
@@ -171,19 +166,58 @@ document.getElementById('btn-process-import').addEventListener('click', () => {
             end = endMatch[1].replace('.', ':');
             if(end.indexOf(':') === 1) end = '0' + end;
         }
-        document.getElementById('new-time').value = end ? `${start} - ${end}` : start;
+        document.getElementById(prefix + 'time').value = end ? `${start} - ${end}` : start;
     }
 
     const coordMatch = text.match(/([NS]\s*\d+°\s*[\d\.]+\s*[EW]\s*\d+°\s*[\d\.]+)/);
     if (coordMatch) {
-        document.getElementById('new-coords').value = coordMatch[1].trim();
+        const coords = coordMatch[1].trim();
+        document.getElementById(prefix + 'coords').value = coords;
+        fetchCityFromCoords(coords, locId);
     }
 
     const gcMatch = text.match(/(GC[A-Z0-9]+)/);
     if (gcMatch) {
-        document.getElementById('new-gc').value = gcMatch[1];
+        document.getElementById(prefix + 'gc').value = gcMatch[1];
     }
-    alert("Tiedot haettu tekstistä!");
+}
+
+document.getElementById('btn-process-import').addEventListener('click', () => {
+    processTextImport(document.getElementById('import-text').value, 'new');
+});
+
+document.getElementById('btn-process-edit-import').addEventListener('click', () => {
+    processTextImport(document.getElementById('edit-import-text').value, 'edit');
+});
+
+// ==========================================
+// 4. MIITTIEN LISTAUS & NAVIGOINTI
+// ==========================================
+
+document.getElementById('btn-find-today').addEventListener('click', () => {
+    const today = new Date().toISOString().split('T')[0]; 
+    const todayEvent = globalEventList.find(e => e.date === today);
+    if (todayEvent) {
+        openGuestbook(todayEvent.key);
+    } else {
+        alert("Ei miittejä tälle päivälle.");
+    }
+});
+
+window.navigateEvent = (direction) => {
+    if (!currentEventId || globalEventList.length === 0) return;
+    const currentIndex = globalEventList.findIndex(e => e.key === currentEventId);
+    if (currentIndex === -1) return;
+    const newIndex = currentIndex - direction; 
+    if (newIndex >= 0 && newIndex < globalEventList.length) {
+        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
+        openGuestbook(globalEventList[newIndex].key);
+    }
+};
+
+document.getElementById('new-event-toggle').addEventListener('click', () => {
+    const formDiv = document.getElementById('new-event-form');
+    formDiv.style.display = (formDiv.style.display === 'none') ? 'block' : 'none';
 });
 
 document.getElementById('btn-add-event').addEventListener('click', () => {
@@ -275,7 +309,7 @@ function loadEvents() {
         
         ['miitti', 'cito', 'cce'].forEach(type => {
             const fList = lists[type].future;
-            if(fList.children.length > 1) {
+            if(fList && fList.children.length > 1) {
                 const p = fList.querySelector('p');
                 if(p) p.remove();
             }
@@ -284,8 +318,9 @@ function loadEvents() {
 }
 
 // ==========================================
-// 4. MIITTIKIRJA (GUESTBOOK)
+// 5. VIERASKIRJA (GUESTBOOK)
 // ==========================================
+
 window.toggleArchiveEvent = (key, newState) => {
     const msg = newState ? "Haluatko arkistoida miitin?" : "Palautetaanko miitti aktiiviseksi?";
     if(confirm(msg)) {
@@ -308,10 +343,10 @@ window.openGuestbook = (eventKey) => {
         document.getElementById('gb-loc').innerText = `🏠 ${evt.location || '-'}`;
         
         const coordsEl = document.getElementById('gb-coords');
-        // KORJATTU: Google Maps -linkki viralliseen haku-muotoon
         if(evt.coords) {
-            const encodedCoords = encodeURIComponent(evt.coords);
-            coordsEl.innerHTML = `📍 <a href="https://www.google.com/maps/search/?api=1&query=${encodedCoords}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
+            const cleanCoords = evt.coords.replace(/[^a-zA-Z0-9.,°\s]/g, "");
+            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanCoords)}`;
+            coordsEl.innerHTML = `📍 <a href="${mapsUrl}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
         } else {
             coordsEl.innerText = "📍 -";
         }
@@ -362,8 +397,9 @@ document.getElementById('btn-sign-log').addEventListener('click', () => {
 });
 
 // ==========================================
-// 5. APUFUNKTIOT & MUOKKAUS
+// 6. MASSA-TUONTI JA MUOKKAUS
 // ==========================================
+
 window.openMassImport = () => {
     document.getElementById('mass-input').value = ""; 
     document.getElementById('mass-output').value = ""; 
@@ -455,6 +491,7 @@ window.openEditModal = (key) => {
     db.ref('miitit/' + currentUser.uid + '/events/' + key).once('value').then(snap => {
         const e = snap.val();
         document.getElementById('edit-key').value = key;
+        document.getElementById('edit-import-text').value = "";
         document.getElementById('edit-type').value = e.type || 'miitti';
         document.getElementById('edit-gc').value = e.gc || '';
         document.getElementById('edit-name').value = e.name || '';
@@ -507,6 +544,21 @@ document.getElementById('btn-save-log-edit').addEventListener('click', () => {
     });
 });
 
-window.closeModal = () => { editModal.style.display = "none"; massModal.style.display = "none"; logEditModal.style.display = "none"; };
-window.deleteEvent = (key) => { if(confirm("Poistetaanko miitti?")) { db.ref('miitit/' + currentUser.uid + '/events/' + key).remove(); db.ref('miitit/' + currentUser.uid + '/logs/' + key).remove(); } };
-window.deleteLog = (logKey) => { if(confirm("Poista?")) db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + logKey).remove(); };
+window.closeModal = () => { 
+    editModal.style.display = "none"; 
+    massModal.style.display = "none"; 
+    logEditModal.style.display = "none"; 
+};
+
+window.deleteEvent = (key) => {
+    if(confirm("Poistetaanko miitti?")) {
+        db.ref('miitit/' + currentUser.uid + '/events/' + key).remove();
+        db.ref('miitit/' + currentUser.uid + '/logs/' + key).remove();
+    }
+};
+
+window.deleteLog = (logKey) => {
+    if(confirm("Poista?")) {
+        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + logKey).remove();
+    }
+};
