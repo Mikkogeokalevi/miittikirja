@@ -41,7 +41,7 @@ async function initStats() {
 function populateYearFilter(events) {
     const yearSelect = document.getElementById('filter-year');
     if(!yearSelect) return;
-    const years = [...new Set(events.map(e => e.date.split('-')[0]))].sort((a, b) => b - a);
+    const years = [...new Set(events.map(e => e.date ? e.date.split('-')[0] : ""))].filter(y => y !== "").sort((a, b) => b - a);
     yearSelect.innerHTML = '<option value="">Kaikki vuodet</option>';
     years.forEach(y => {
         const opt = document.createElement('option');
@@ -58,10 +58,10 @@ document.getElementById('btn-apply-filters').onclick = () => {
     const monthFilter = document.getElementById('filter-month').value;
 
     const filtered = allStatsData.events.filter(evt => {
-        const matchName = evt.name.toLowerCase().includes(nameFilter);
-        const matchUser = userFilter === "" || evt.attendeeNames.some(n => n.toLowerCase().includes(userFilter));
-        const matchYear = yearFilter === "" || evt.date.startsWith(yearFilter);
-        const matchMonth = monthFilter === "" || evt.date.split('-')[1] === monthFilter;
+        const matchName = evt.name ? evt.name.toLowerCase().includes(nameFilter) : false;
+        const matchUser = userFilter === "" || (evt.attendeeNames && evt.attendeeNames.some(n => n.toLowerCase().includes(userFilter)));
+        const matchYear = yearFilter === "" || (evt.date && evt.date.startsWith(yearFilter));
+        const matchMonth = monthFilter === "" || (evt.date && evt.date.split('-')[1] === monthFilter);
         return matchName && matchUser && matchYear && matchMonth;
     });
     updateStatsView(filtered);
@@ -77,6 +77,33 @@ function updateStatsView(data) {
             Osallistumisia yhteensä: <strong>${totalAttendees}</strong> kpl<br>
             Keskiarvo: <strong>${data.length ? (totalAttendees / data.length).toFixed(1) : 0}</strong> kävijää/miitti
         `;
+    }
+
+    // 2. Miittien listaus (Hakutulokset)
+    const resultsEl = document.getElementById('stats-results-list');
+    if(resultsEl) {
+        resultsEl.innerHTML = "";
+        if (data.length === 0) {
+            resultsEl.innerHTML = "Ei hakua vastaavia miittejä.";
+        } else {
+            // Järjestetään tulokset uusimmasta vanhimpaan
+            const sortedResults = [...data].sort((a,b) => new Date(b.date) - new Date(a.date));
+            sortedResults.forEach(evt => {
+                const item = document.createElement('div');
+                item.className = "result-item";
+                item.innerHTML = `
+                    <div style="font-weight:bold; color:#8B4513;">${evt.name}</div>
+                    <div style="font-size:0.8em; display:flex; justify-content:space-between;">
+                        <span>📅 ${evt.date}</span>
+                        <span>👤 ${evt.attendeeCount} kävijää</span>
+                    </div>
+                `;
+                item.onclick = () => {
+                    if (window.openGuestbook) window.openGuestbook(evt.key);
+                };
+                resultsEl.appendChild(item);
+            });
+        }
     }
 
     renderAlphabetStats(data);
@@ -109,17 +136,14 @@ function updateStatsView(data) {
         `).join('');
     }
 
-    // 6. ATTRIBUUTIT - KORJATTU LASKENTA (SISÄLTÄÄ KIELTEISET)
-    const attrMap = {}; // "Nimi" -> { pos: 0, neg: 0 }
-    
+    // 6. Attribuutit
+    const attrMap = {};
     data.forEach(e => {
         if (e.attributes && Array.isArray(e.attributes)) {
             e.attributes.forEach(attr => {
                 const name = attr.name || attr;
                 const isNeg = (attr.inc === 0);
-                
                 if (!attrMap[name]) attrMap[name] = { pos: 0, neg: 0 };
-                
                 if (isNeg) attrMap[name].neg++;
                 else attrMap[name].pos++;
             });
@@ -129,9 +153,7 @@ function updateStatsView(data) {
     const attrEl = document.getElementById('stats-attributes');
     if(attrEl) {
         attrEl.innerHTML = "";
-        // Lajitellaan nimen mukaan
         const sortedEntries = Object.entries(attrMap).sort((a, b) => a[0].localeCompare(b[0]));
-        
         sortedEntries.forEach(([name, counts]) => {
             if (counts.pos > 0) {
                 const row = document.createElement('div');
@@ -142,7 +164,6 @@ function updateStatsView(data) {
             if (counts.neg > 0) {
                 const row = document.createElement('div');
                 row.className = "stats-row";
-                // Kielteisille attribuuteille punainen yliviivaus
                 row.innerHTML = `<span style="color:#721c24; text-decoration:line-through; opacity:0.7;">${name}</span> <strong>${counts.neg}</strong>`;
                 attrEl.appendChild(row);
             }
