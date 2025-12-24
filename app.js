@@ -18,8 +18,6 @@ const auth = firebase.auth();
 let currentUser = null;
 let currentEventId = null;
 let currentEventArchived = false;
-
-// UUSI: Lista kaikista tapahtumista navigointia varten
 let globalEventList = [];
 
 // UI Elementit
@@ -32,7 +30,6 @@ const logEditModal = document.getElementById('log-edit-modal');
 const userDisplay = document.getElementById('user-display');
 const eventStatsEl = document.getElementById('event-stats');
 
-// SWIPE MUUTTUJAT
 let touchStartX = 0;
 let touchEndX = 0;
 
@@ -58,7 +55,6 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// Lisätään SWIPE kuuntelijat vieraskirjanäkymään
 guestbookView.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
 });
@@ -69,13 +65,10 @@ guestbookView.addEventListener('touchend', e => {
 });
 
 function handleSwipe() {
-    // Kynnysarvo pyyhkäisylle (pikseleinä)
     if (touchEndX < touchStartX - 50) {
-        // Pyyhkäisy vasemmalle -> Seuraava miitti (tulevaisuus tai lista alas)
         navigateEvent(-1); 
     }
     if (touchEndX > touchStartX + 50) {
-        // Pyyhkäisy oikealle -> Edellinen miitti
         navigateEvent(1);
     }
 }
@@ -109,11 +102,9 @@ window.showAdminView = showAdminView;
 // 3. MIITTIEN LISTAUS & NAVIGOINTI
 // ==========================================
 
-// UUSI: Etsi tämän päivän miitti
 document.getElementById('btn-find-today').addEventListener('click', () => {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const today = new Date().toISOString().split('T')[0]; 
     const todayEvent = globalEventList.find(e => e.date === today);
-    
     if (todayEvent) {
         openGuestbook(todayEvent.key);
     } else {
@@ -121,29 +112,14 @@ document.getElementById('btn-find-today').addEventListener('click', () => {
     }
 });
 
-// UUSI: Navigoi edelliseen/seuraavaan
 window.navigateEvent = (direction) => {
     if (!currentEventId || globalEventList.length === 0) return;
-    
-    // Etsi nykyisen indeksi
     const currentIndex = globalEventList.findIndex(e => e.key === currentEventId);
     if (currentIndex === -1) return;
-
-    // Laske uusi indeksi
-    // Koska lista on järjestetty [Uusin ... Vanhin]
-    // Suunta 1 (Oikealle/Edellinen) = Menee indeksissä taaksepäin (Uudempaan)
-    // Suunta -1 (Vasemmalle/Seuraava) = Menee indeksissä eteenpäin (Vanhempaan)
-    // Voit kääntää logiikan vaihtamalla merkit jos tuntuu väärältä
-    const newIndex = currentIndex - direction; // Miinus koska nuoli vasemmalle on "vanhempi" listassa
-
+    const newIndex = currentIndex - direction; 
     if (newIndex >= 0 && newIndex < globalEventList.length) {
-        // Sulje nykyinen kuuntelija
         db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
-        // Avaa uusi
         openGuestbook(globalEventList[newIndex].key);
-    } else {
-        // Visuaalinen palaute jos ollaan päädyssä (valinnainen)
-        console.log("Listan pääty saavutettu");
     }
 };
 
@@ -154,6 +130,74 @@ document.getElementById('new-event-toggle').addEventListener('click', () => {
     } else {
         formDiv.style.display = 'none';
     }
+});
+
+// UUSI: Tietojen parsinta tekstistä (Automaattitäyttö)
+document.getElementById('btn-process-import').addEventListener('click', () => {
+    const text = document.getElementById('import-text').value;
+    if (!text) return;
+
+    // --- 0. Nimen (Otsikon) haku ---
+    // Pilkotaan rivit, poistetaan tyhjät
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    
+    if (lines.length > 0) {
+        const firstLine = lines[0];
+        // Lista sanoista, joilla tekniset rivit yleensä alkavat. Jos eka rivi ei ala näillä, se on otsikko.
+        const ignorePrefixes = [
+            "Tapahtuman tekijä", "Tapahtumapäivä", "Alkamisaika", "Loppumisaika", 
+            "Vaikeustaso", "Maasto", "Koko", "Maa:", "N ", "E ", "UTM"
+        ];
+        
+        const isMetadata = ignorePrefixes.some(prefix => firstLine.startsWith(prefix));
+        
+        if (!isMetadata) {
+            document.getElementById('new-name').value = firstLine;
+        }
+    }
+
+    // --- 1. Päivämäärä ---
+    const dateMatch = text.match(/Tapahtumapäivä:\s*(\d{1,2}\.\d{1,2}\.\d{4})/);
+    if (dateMatch) {
+        const parts = dateMatch[1].split('.');
+        if(parts.length === 3) {
+            const yyyy = parts[2];
+            const mm = parts[1].padStart(2, '0');
+            const dd = parts[0].padStart(2, '0');
+            document.getElementById('new-date').value = `${yyyy}-${mm}-${dd}`;
+        }
+    }
+
+    // --- 2. Kellonaika ---
+    const startMatch = text.match(/Alkamisaika:\s*(\d{1,2}[:\.]\d{2})/);
+    const endMatch = text.match(/Loppumisaika:\s*(\d{1,2}[:\.]\d{2})/);
+    
+    if (startMatch) {
+        let start = startMatch[1].replace('.', ':');
+        if(start.indexOf(':') === 1) start = '0' + start;
+        
+        let end = "";
+        if (endMatch) {
+            end = endMatch[1].replace('.', ':');
+            if(end.indexOf(':') === 1) end = '0' + end;
+        }
+        
+        document.getElementById('new-time').value = end ? `${start} - ${end}` : start;
+    }
+
+    // --- 3. Koordinaatit ---
+    const coordMatch = text.match(/([NS]\s*\d+°\s*[\d\.]+\s*[EW]\s*\d+°\s*[\d\.]+)/);
+    if (coordMatch) {
+        document.getElementById('new-coords').value = coordMatch[1].trim();
+    }
+
+    // --- 4. GC Koodi ---
+    const gcMatch = text.match(/(GC[A-Z0-9]+)/);
+    if (gcMatch) {
+        document.getElementById('new-gc').value = gcMatch[1];
+    }
+
+    alert("Tiedot haettu! Tarkista kentät.");
 });
 
 document.getElementById('btn-add-event').addEventListener('click', () => {
@@ -172,7 +216,7 @@ document.getElementById('btn-add-event').addEventListener('click', () => {
     if(!data.gc || !data.name || !data.date) { alert("Täytä GC, Nimi ja Pvm!"); return; }
     db.ref('miitit/' + currentUser.uid + '/events').push(data).then(() => {
         alert("Tallennettu!");
-        ['new-gc','new-name','new-time','new-coords','new-loc', 'new-desc'].forEach(id => document.getElementById(id).value = "");
+        ['new-gc','new-name','new-time','new-coords','new-loc', 'new-desc', 'import-text'].forEach(id => document.getElementById(id).value = "");
         document.getElementById('new-event-form').style.display = 'none';
     });
 });
@@ -191,10 +235,7 @@ function loadEvents() {
         snapshot.forEach(child => { events.push({key: child.key, ...child.val()}); count++; });
         if(eventStatsEl) eventStatsEl.innerText = `Löytyi ${count} tapahtumaa.`;
 
-        // Järjestetään päivämäärän mukaan (Uusin ensin)
         events.sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0));
-        
-        // Tallennetaan globaaliin muuttujaan navigointia varten
         globalEventList = events;
 
         events.forEach(evt => {
@@ -253,10 +294,6 @@ window.toggleArchiveEvent = (key, newState) => {
     }
 };
 
-// ==========================================
-// 4. MIITTIKIRJA (GUESTBOOK)
-// ==========================================
-
 window.openGuestbook = (eventKey) => {
     currentEventId = eventKey;
     db.ref('miitit/' + currentUser.uid + '/events/' + eventKey).on('value', snap => {
@@ -310,7 +347,6 @@ window.openGuestbook = (eventKey) => {
     adminView.style.display = 'none'; 
     guestbookView.style.display = 'block';
     
-    // Nollataan skrollaus ylös kun vaihdetaan sivua
     window.scrollTo(0,0);
     
     loadAttendees(eventKey);
@@ -329,7 +365,6 @@ document.getElementById('btn-sign-log').addEventListener('click', () => {
     });
 });
 
-// MASSALISÄYS LOGIIKKA
 window.openMassImport = () => {
     document.getElementById('mass-input').value = ""; 
     document.getElementById('mass-output').value = ""; 
@@ -391,7 +426,6 @@ document.getElementById('btn-save-mass').addEventListener('click', () => {
     massModal.style.display = "none";
 });
 
-// --- LISTAUKSEN KORJAUS ---
 function loadAttendees(eventKey) {
     db.ref('miitit/' + currentUser.uid + '/logs/' + eventKey).on('value', (snapshot) => {
         const listEl = document.getElementById('attendee-list');
@@ -434,10 +468,6 @@ function loadAttendees(eventKey) {
         document.getElementById('attendee-count').innerText = logs.length;
     });
 }
-
-// ==========================================
-// 5. APUFUNKTIOT & MODALIT
-// ==========================================
 
 window.openEditModal = (key) => {
     db.ref('miitit/' + currentUser.uid + '/events/' + key).once('value').then(snap => {
