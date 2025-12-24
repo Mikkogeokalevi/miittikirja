@@ -308,8 +308,12 @@ window.openGuestbook = (eventKey) => {
         document.getElementById('gb-loc').innerText = `🏠 ${evt.location || '-'}`;
         
         const coordsEl = document.getElementById('gb-coords');
-        if(evt.coords) coordsEl.innerHTML = `📍 <a href="http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(evt.coords)}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
-        else coordsEl.innerText = "📍 -";
+        // KORJATTU: Google Maps -linkki
+        if(evt.coords) {
+            coordsEl.innerHTML = `📍 <a href="https://www.google.com/maps?q=${encodeURIComponent(evt.coords)}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
+        } else {
+            coordsEl.innerText = "📍 -";
+        }
 
         const descEl = document.getElementById('gb-description');
         if (evt.descriptionHtml && evt.descriptionHtml.length > 0) {
