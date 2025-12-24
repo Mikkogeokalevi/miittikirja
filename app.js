@@ -52,7 +52,9 @@ auth.onAuthStateChanged((user) => {
             userDisplay.style.display = 'block';
             userDisplay.innerText = "👤 " + user.email;
         }
-        if (guestbookView.style.display !== 'block' && document.getElementById('stats-view').style.display !== 'block') {
+        // Tarkistetaan ettei olla jo jossain näkymässä
+        if (guestbookView.style.display !== 'block' && 
+            document.getElementById('stats-view').style.display !== 'block') {
             showAdminView();
         }
         loadEvents();
@@ -123,7 +125,8 @@ function decimalToDMS(lat, lon) {
         const degrees = Math.floor(abs);
         const minutes = ((abs - degrees) * 60).toFixed(3);
         const direction = val >= 0 ? pos : neg;
-        return `${direction} ${degrees}° ${minutes.padStart(6, '0')}`;
+        const degStr = degrees.toString().padStart(pos === 'E' ? 3 : 2, '0');
+        return `${direction} ${degStr}° ${minutes.padStart(6, '0')}`;
     };
     return `${convert(lat, 'N', 'S')} ${convert(lon, 'E', 'W')}`;
 }
@@ -164,7 +167,6 @@ async function fetchCityFromCoords(coords, targetId) {
     return "";
 }
 
-// Avattavien laatikoiden toiminto
 window.toggleDetails = (id) => {
     const content = document.getElementById(id);
     const arrow = document.getElementById('arrow-' + id);
@@ -190,6 +192,7 @@ function parseGPX(xmlText) {
     const lat = parseFloat(wpt.getAttribute("lat"));
     const lon = parseFloat(wpt.getAttribute("lon"));
     
+    // Kellonaika short_descriptionista
     let timeStr = "";
     const shortDesc = wpt.getElementsByTagNameNS("*", "short_description")[0]?.textContent || "";
     const timeMatch = shortDesc.match(/(\d{1,2}[:\.]\d{2})\s*-\s*(\d{1,2}[:\.]\d{2})/);
@@ -197,6 +200,7 @@ function parseGPX(xmlText) {
         timeStr = `${timeMatch[1].replace('.', ':')} - ${timeMatch[2].replace('.', ':')}`;
     }
 
+    // Attribuutit
     const attributes = [];
     const attrElements = wpt.getElementsByTagNameNS("*", "attribute");
     for (let attr of attrElements) {
@@ -205,6 +209,7 @@ function parseGPX(xmlText) {
         }
     }
 
+    // Logit (Attended)
     const attendees = [];
     const logs = wpt.getElementsByTagNameNS("*", "log");
     for (let log of logs) {
@@ -228,7 +233,7 @@ function parseGPX(xmlText) {
 }
 
 // ==========================================
-// 5. TAPAHTUMIEN TUONTI JA LOMAKKEET
+// 5. TUONTI JA LOMAKKEET
 // ==========================================
 
 document.getElementById('import-gpx-new').onchange = async (e) => {
@@ -244,7 +249,7 @@ document.getElementById('import-gpx-new').onchange = async (e) => {
         document.getElementById('new-coords').value = data.coords;
         document.getElementById('new-desc').value = data.descriptionHtml;
         fetchCityFromCoords(data.coords, 'new-loc');
-        alert("Tiedot ladattu!");
+        alert("GPX tiedot ladattu!");
     }
 };
 
@@ -280,6 +285,8 @@ document.getElementById('import-gpx-sync').onchange = async (e) => {
         const city = await fetchCityFromCoords(gpxData.coords, 'gb-loc');
         if (city) updates.location = city;
     }
+    // Päivitetään koordinaatit jos ne olivat väärässä muodossa
+    updates.coords = gpxData.coords;
     
     if (Object.keys(updates).length > 0) {
         await db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update(updates);
@@ -296,7 +303,7 @@ document.getElementById('import-gpx-sync').onchange = async (e) => {
     }
 
     if(loadingOverlay) loadingOverlay.style.display = 'none';
-    alert(`Valmis! Lisätty ${addedCount} uutta osallistujaa.`);
+    alert(`Valmis! Päivitetty tiedot ja lisätty ${addedCount} uutta osallistujaa.`);
 };
 
 function processTextImport(text, mode) {
@@ -469,7 +476,7 @@ window.openGuestbook = (eventKey) => {
         
         const coordsEl = document.getElementById('gb-coords');
         if(evt.coords) {
-            const cleanCoords = evt.coords.replace(/[^a-zA-Z0-9.,°\s]/g, "");
+            const cleanCoords = evt.coords.replace(/[^a-zA-Z0-9.°\s]/g, "").trim();
             const mapsUrl = `http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(cleanCoords)}`;
             coordsEl.innerHTML = `<a href="${mapsUrl}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
         } else {
@@ -543,21 +550,14 @@ function loadAttendees(eventKey) {
         logs.forEach(log => {
             const row = document.createElement('div');
             row.className = "log-item";
-            let actionBtns = "";
-            if (!currentEventArchived) {
-                actionBtns = `
-                <div class="log-actions">
-                    <button class="btn-blue btn-small" onclick="openLogEditModal('${log.key}')">✏️</button>
-                    <button class="btn-red btn-small" onclick="deleteLog('${log.key}')">🗑</button>
-                </div>`;
-            }
+            let btns = !currentEventArchived ? `<div class="log-actions"><button class="btn-blue btn-small" onclick="openLogEditModal('${log.key}')">✏️</button><button class="btn-red btn-small" onclick="deleteLog('${log.key}')">🗑</button></div>` : "";
             row.innerHTML = `
                 <div>
                     <strong style="color:#4caf50;">${log.nickname}</strong>
                     <span>${log.from ? ' / ' + log.from : ''}</span>
                     <div style="font-style:italic; color:#888; font-size:0.9em;">${log.message || ''}</div>
                 </div>
-                ${actionBtns}
+                ${btns}
             `;
             listEl.appendChild(row);
         });
@@ -657,7 +657,7 @@ document.getElementById('btn-parse-mass').onclick = () => {
 document.getElementById('btn-save-mass').onclick = () => {
     const nicks = document.getElementById('mass-output').value.split('\n').map(s => s.trim()).filter(s => s.length > 0);
     nicks.forEach(n => {
-        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({ nickname: n, from: "", message: "(Massatuonti)", timestamp: firebase.database.ServerValue.TIMESTAMP });
+        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({ nickname: n, from: "", message: "(Massa)", timestamp: firebase.database.ServerValue.TIMESTAMP });
     });
     if(massModal) massModal.style.display = "none";
 };
