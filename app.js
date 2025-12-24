@@ -165,8 +165,10 @@ function loadEvents() {
                 </div>
             `;
             
-            // Haetaan osallistujamäärä (live-päivitys)
-            db.ref('miitit/' + currentUser.uid + '/logs/' + evt.key).on('value', (snap) => {
+            // --- KORJAUS ---
+            // Käytetään .once() -komentoa, jotta haku tehdään varmasti vain kerran per päivitys.
+            // Tämä estää 0-ongelman, kun lista päivittyy.
+            db.ref('miitit/' + currentUser.uid + '/logs/' + evt.key).once('value').then((snap) => {
                 const num = snap.numChildren();
                 const el = document.getElementById(countId);
                 if (el) el.innerText = "👤 " + num;
