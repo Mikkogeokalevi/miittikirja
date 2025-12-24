@@ -164,13 +164,12 @@
             grid-template-areas: 
                 "time date"
                 "loc loc"
-                "gc coords"
-                "attrs attrs";
+                "gc coords";
             
             background: #fff;
             border: 2px solid #8B4513;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             box-shadow: 4px 4px 0px rgba(139,69,19,0.15);
             font-size: 0.95em;
             text-align: left;
@@ -189,26 +188,43 @@
         #gb-time { grid-area: time; border-right: 1px dashed #D2B48C; }
         #gb-date { grid-area: date; }
         #gb-loc  { grid-area: loc; }
-        #gb-gc   { grid-area: gc; border-right: 1px dashed #D2B48C; }
-        #gb-coords { grid-area: coords; }
-        
-        #gb-attrs { 
-            grid-area: attrs; 
-            border-bottom: none; 
-            background-color: #FFF8E7; 
-            font-size: 0.85em; 
-            color: #666;
-            padding: 10px;
+        #gb-gc   { grid-area: gc; border-right: 1px dashed #D2B48C; border-bottom: none; }
+        #gb-coords { grid-area: coords; border-bottom: none; }
+
+        /* UUDET AVATTAVAT LAATIKOT */
+        .details-box {
+            margin-bottom: 10px;
+            border: 1px solid #D2B48C;
+            border-radius: 8px;
+            background: #fff;
+            overflow: hidden;
+            text-align: left;
+        }
+        .details-header {
+            background: #FFF8E7;
+            padding: 10px 15px;
+            font-weight: bold;
+            font-size: 0.9em;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+        }
+        .details-content {
+            padding: 15px;
+            display: none; /* Oletuksena piilossa */
+            font-size: 0.9em;
         }
 
         .attr-tag {
             display: inline-block;
             background: #D2691E;
             color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            margin: 2px;
-            font-size: 0.9em;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin: 3px;
+            font-size: 0.85em;
             font-style: normal;
         }
 
@@ -220,15 +236,6 @@
             line-height: 1.3;
         }
 
-        .description-container {
-            background: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #D2B48C;
-            margin-bottom: 20px;
-            text-align: left;
-            overflow-x: auto; 
-        }
         .description-container img {
             max-width: 100% !important;
             height: auto !important;
@@ -285,7 +292,6 @@
             text-align: left; 
         }
 
-        /* Latausilmaisin */
         #loading-overlay {
             display: none;
             position: fixed;
@@ -411,15 +417,28 @@
             <span id="gb-loc">Paikka</span>
             <span id="gb-gc">GC</span>
             <span id="gb-coords">Koordinaatit</span>
-            <div id="gb-attrs"></div>
+        </div>
+
+        <div id="box-attrs" class="details-box" style="display:none;">
+            <div class="details-header" onclick="toggleDetails('gb-attrs')">
+                <span>⭐ Miitin ominaisuudet (Attribuutit)</span>
+                <span id="arrow-gb-attrs">▼</span>
+            </div>
+            <div id="gb-attrs" class="details-content"></div>
+        </div>
+
+        <div id="box-desc" class="details-box" style="display:none;">
+            <div class="details-header" onclick="toggleDetails('gb-description')">
+                <span>📖 Miittikuvaus</span>
+                <span id="arrow-gb-description">▼</span>
+            </div>
+            <div id="gb-description" class="details-content description-container"></div>
         </div>
         
         <div id="gb-sync-area" style="margin-bottom: 20px;">
-            <button id="btn-sync-gpx-trigger" class="btn btn-small btn-green" style="width:100%;">🔄 Päivitä puuttuvat tiedot & osallistujat GPX-tiedostosta</button>
+            <button id="btn-sync-gpx-trigger" class="btn btn-small btn-green" style="width:100%;">🔄 Päivitä puuttuvat tiedot & osallistujat GPX:stä</button>
             <input type="file" id="import-gpx-sync" accept=".gpx" style="display:none;">
         </div>
-
-        <div id="gb-description" class="description-container" style="display:none;"></div>
         
         <div id="gb-actions-area">
             <div class="card-form">
@@ -444,13 +463,11 @@
     <div id="edit-modal" class="modal">
         <div class="modal-content">
             <h3 style="text-align:center;">✏️ Muokkaa Miittiä</h3>
-            
             <div style="background:#fff; border:1px dashed #D2691E; padding:10px; margin-bottom:15px; border-radius:5px;">
                 <p style="margin:0 0 5px 0; font-size:0.8em; font-weight:bold; color:#D2691E;">🪄 Päivitä tiedot tekstistä:</p>
                 <textarea id="edit-import-text" rows="2" placeholder="Liitä Geocaching.com teksti tähän..." style="font-size:0.8em;"></textarea>
                 <button id="btn-process-edit-import" class="btn btn-gray btn-small" style="width:100%;">Täytä automaattisesti</button>
             </div>
-
             <input type="hidden" id="edit-key">
             <label style="font-weight:bold;">Tyyppi</label>
             <select id="edit-type"><option value="miitti">Miitti</option><option value="cito">CITO</option><option value="cce">Yhteisöjuhla</option></select>
@@ -461,7 +478,6 @@
             <label style="font-weight:bold;">Koordinaatit</label><input type="text" id="edit-coords">
             <label style="font-weight:bold;">Paikka</label><input type="text" id="edit-loc">
             <label style="font-weight:bold;">HTML Kuvaus</label><textarea id="edit-desc" rows="5"></textarea>
-
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button id="btn-save-edit" class="btn btn-green">Tallenna</button>
                 <button onclick="closeModal()" class="btn btn-red">Peruuta</button>
