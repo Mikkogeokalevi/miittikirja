@@ -99,13 +99,14 @@ document.getElementById('btn-add-event').addEventListener('click', () => {
         time: document.getElementById('new-time').value.trim(),
         coords: document.getElementById('new-coords').value.trim(),
         location: document.getElementById('new-loc').value.trim(),
+        descriptionHtml: document.getElementById('new-desc').value.trim(), // UUSI KENTTÄ
         createdAt: firebase.database.ServerValue.TIMESTAMP,
         isArchived: false
     };
     if(!data.gc || !data.name || !data.date) { alert("Täytä GC, Nimi ja Pvm!"); return; }
     db.ref('miitit/' + currentUser.uid + '/events').push(data).then(() => {
         alert("Tallennettu!");
-        ['new-gc','new-name','new-time','new-coords','new-loc'].forEach(id => document.getElementById(id).value = "");
+        ['new-gc','new-name','new-time','new-coords','new-loc', 'new-desc'].forEach(id => document.getElementById(id).value = "");
         document.getElementById('new-event-form').style.display = 'none'; // Piilotetaan tallennuksen jälkeen
     });
 });
@@ -214,6 +215,16 @@ window.openGuestbook = (eventKey) => {
         const coordsEl = document.getElementById('gb-coords');
         if(evt.coords) coordsEl.innerHTML = `📍 <a href="http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(evt.coords)}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
         else coordsEl.innerText = "📍 -";
+
+        // --- UUSI: Kuvauslaatikon päivitys (HTML) ---
+        const descEl = document.getElementById('gb-description');
+        if (evt.descriptionHtml && evt.descriptionHtml.length > 0) {
+            descEl.innerHTML = evt.descriptionHtml;
+            descEl.style.display = 'block';
+        } else {
+            descEl.innerHTML = "";
+            descEl.style.display = 'none';
+        }
 
         // PIILOTUSLOGIIKKA
         const actionsArea = document.getElementById('gb-actions-area');
@@ -383,6 +394,8 @@ window.openEditModal = (key) => {
         document.getElementById('edit-time').value = e.time || '';
         document.getElementById('edit-coords').value = e.coords || '';
         document.getElementById('edit-loc').value = e.location || '';
+        // Ladataan olemassa oleva HTML kuvaus
+        document.getElementById('edit-desc').value = e.descriptionHtml || '';
         editModal.style.display = "block";
     });
 };
@@ -396,7 +409,8 @@ document.getElementById('btn-save-edit').addEventListener('click', () => {
         date: document.getElementById('edit-date').value,
         time: document.getElementById('edit-time').value,
         coords: document.getElementById('edit-coords').value,
-        location: document.getElementById('edit-loc').value
+        location: document.getElementById('edit-loc').value,
+        descriptionHtml: document.getElementById('edit-desc').value // TALLENNETAAN HTML
     };
     db.ref('miitit/' + currentUser.uid + '/events/' + key).update(updates).then(() => {
         editModal.style.display = "none";
