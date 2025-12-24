@@ -308,9 +308,10 @@ window.openGuestbook = (eventKey) => {
         document.getElementById('gb-loc').innerText = `🏠 ${evt.location || '-'}`;
         
         const coordsEl = document.getElementById('gb-coords');
-        // KORJATTU: Google Maps -linkki
+        // KORJATTU: Google Maps -linkki viralliseen haku-muotoon
         if(evt.coords) {
-            coordsEl.innerHTML = `📍 <a href="https://www.google.com/maps?q=${encodeURIComponent(evt.coords)}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
+            const encodedCoords = encodeURIComponent(evt.coords);
+            coordsEl.innerHTML = `📍 <a href="https://www.google.com/maps/search/?api=1&query=${encodedCoords}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
         } else {
             coordsEl.innerText = "📍 -";
         }
