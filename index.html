@@ -23,6 +23,7 @@
             line-height: 1.6;
             -webkit-user-select: none;
             user-select: none;
+            overflow-x: hidden; /* Estää vaakaskrollauksen swipatessa */
         }
 
         h1, h2, h3 { 
@@ -41,6 +42,7 @@
             box-shadow: 0px 0px 20px rgba(139,69,19,0.25);
             padding: 20px;
             padding-bottom: 80px; 
+            min-height: 80vh; /* Varmistaa että pyyhkäisyalue on iso */
         }
         
         .card { 
@@ -129,6 +131,13 @@
         .btn-gray { background-color: #A0522D; color: white; }
         .btn-small { width: auto; padding: 8px 12px; font-size: 14px; margin-right: 5px; }
         
+        /* Navigointinuolet vieraskirjassa */
+        .nav-arrow {
+            background: none; border: none; font-size: 2em; cursor: pointer; color: #8B4513; padding: 0 15px;
+            user-select: none;
+        }
+        .nav-arrow:active { transform: scale(0.8); }
+
         .back-btn { 
             background: none; 
             border: none; 
@@ -206,7 +215,6 @@
             text-align: left;
             overflow-x: auto; /* Jos sisältö on liian leveää */
         }
-        /* Varmistetaan että kuvat eivät leviä käsiin mobiilissa */
         .description-container img {
             max-width: 100% !important;
             height: auto !important;
@@ -293,6 +301,8 @@
             <button id="btn-logout" class="btn btn-red btn-small">Ulos</button>
         </div>
         
+        <button id="btn-find-today" class="btn btn-green" style="margin-bottom: 20px; border: 2px dashed #fff; box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);">📅 AVAA TÄMÄ PÄIVÄ</button>
+        
         <p id="event-stats" style="font-size:0.8em; color:#666; text-align:center;">Ladataan tietoja...</p>
 
         <div class="card-form">
@@ -335,7 +345,11 @@
         <button onclick="showAdminView()" class="back-btn">< Takaisin listaan</button>
         <div style="clear:both;"></div>
         
-        <h2 id="gb-event-name">Miitin Nimi</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <button id="nav-prev" class="nav-arrow" onclick="navigateEvent(1)">&#10094;</button>
+            <h2 id="gb-event-name" style="flex:1;">Miitin Nimi</h2>
+            <button id="nav-next" class="nav-arrow" onclick="navigateEvent(-1)">&#10095;</button>
+        </div>
         
         <div id="archived-notice" style="display:none; background:#ccc; color:#333; padding:10px; border-radius:5px; margin-bottom:15px; font-weight:bold; border:2px solid #999;">
             🔒 TÄMÄ MIITTI ON ARKISTOITU (Vain luku)
