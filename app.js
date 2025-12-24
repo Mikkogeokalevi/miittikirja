@@ -35,7 +35,7 @@ let touchStartX = 0;
 let touchEndX = 0;
 
 // ==========================================
-// 2. KIRJAUTUMINEN JA SWIPE-LOGIIKKA
+// 2. KIRJAUTUMINEN JA NAVIGOINTI
 // ==========================================
 auth.onAuthStateChanged((user) => {
     if (user) {
@@ -55,46 +55,6 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// Pyyhkäisy kuuntelijat
-guestbookView.addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-});
-
-guestbookView.addEventListener('touchend', e => {
-    touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-});
-
-function handleSwipe() {
-    const swipeThreshold = 50;
-    if (touchEndX < touchStartX - swipeThreshold) {
-        navigateEvent(-1); // Seuraava (vasemmalle)
-    }
-    if (touchEndX > touchStartX + swipeThreshold) {
-        navigateEvent(1);  // Edellinen (oikealle)
-    }
-}
-
-document.getElementById('btn-login-google').onclick = () => {
-    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert(e.message));
-};
-
-document.getElementById('btn-email-login').onclick = () => {
-    const email = document.getElementById('email-input').value;
-    const pass = document.getElementById('password-input').value;
-    auth.signInWithEmailAndPassword(email, pass).catch(e => alert(e.message));
-};
-
-document.getElementById('btn-email-register').onclick = () => {
-    const email = document.getElementById('email-input').value;
-    const pass = document.getElementById('password-input').value;
-    auth.createUserWithEmailAndPassword(email, pass).catch(e => alert(e.message));
-};
-
-document.getElementById('btn-logout').onclick = () => { 
-    if(confirm("Haluatko kirjautua ulos?")) auth.signOut().then(() => location.reload()); 
-};
-
 function showLoginView() { 
     loginView.style.display = 'flex'; 
     adminView.style.display = 'none'; 
@@ -113,95 +73,122 @@ function showAdminView() {
 }
 window.showAdminView = showAdminView;
 
+// Swipe-logiikka
+guestbookView.addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX);
+guestbookView.addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; handleSwipe(); });
+
+function handleSwipe() {
+    if (touchEndX < touchStartX - 50) navigateEvent(-1); 
+    if (touchEndX > touchStartX + 50) navigateEvent(1);
+}
+
+window.navigateEvent = (direction) => {
+    if (!currentEventId || globalEventList.length === 0) return;
+    const currentIndex = globalEventList.findIndex(e => e.key === currentEventId);
+    if (currentIndex === -1) return;
+    const newIndex = currentIndex - direction;
+    if (newIndex >= 0 && newIndex < globalEventList.length) {
+        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
+        openGuestbook(globalEventList[newIndex].key);
+    }
+};
+
 // ==========================================
-// 3. GPX-PARSERI JA SIJAINTIHAKU
+// 3. KOORDINAATIT JA SIJAINTI-ÄLY
 // ==========================================
+
+function decimalToDMS(lat, lon) {
+    const convert = (val, pos, neg) => {
+        const abs = Math.abs(val);
+        const degrees = Math.floor(abs);
+        const minutes = ((abs - degrees) * 60).toFixed(3);
+        const direction = val >= 0 ? pos : neg;
+        return `${direction} ${degrees}° ${minutes.padStart(6, '0')}`;
+    };
+    return `${convert(lat, 'N', 'S')} ${convert(lon, 'E', 'W')}`;
+}
 
 async function fetchCityFromCoords(coords, targetId) {
-    const match = coords.match(/([NS])\s*(\d+)°\s*([\d\.]+)\s*([EW])\s*(\d+)°\s*([\d\.]+)/);
     let lat, lon;
-    if (match) {
-        lat = parseInt(match[2]) + parseFloat(match[3]) / 60;
-        if (match[1] === 'S') lat = -lat;
-        lon = parseInt(match[5]) + parseFloat(match[6]) / 60;
-        if (match[4] === 'W') lon = -lon;
+    const dmsMatch = coords.match(/([NS])\s*(\d+)°\s*([\d\.]+)\s*([EW])\s*(\d+)°\s*([\d\.]+)/);
+    
+    if (dmsMatch) {
+        lat = parseInt(dmsMatch[2]) + parseFloat(dmsMatch[3]) / 60;
+        if (dmsMatch[1] === 'S') lat = -lat;
+        lon = parseInt(dmsMatch[5]) + parseFloat(dmsMatch[6]) / 60;
+        if (dmsMatch[4] === 'W') lon = -lon;
     } else {
-        const parts = coords.split(',');
-        if (parts.length === 2) { 
-            lat = parseFloat(parts[0]); 
-            lon = parseFloat(parts[1]); 
-        }
+        const parts = coords.replace(/[NE]/g, '').split(/[,\sE]/).filter(s => s.trim().length > 0);
+        if (parts.length >= 2) { lat = parseFloat(parts[0]); lon = parseFloat(parts[1]); }
     }
 
-    if (!lat || !lon) return "";
+    if (isNaN(lat) || isNaN(lon)) return "";
 
     try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
         const data = await res.json();
         if (data.address) {
-            const city = data.address.city || data.address.town || data.address.village || "";
+            const city = data.address.city || data.address.town || data.address.village || data.address.municipality || "";
             const country = data.address.country || "";
             const result = (city && country) ? `${city}, ${country}` : country;
             const el = document.getElementById(targetId);
             if (el) el.value = result;
             return result;
         }
-    } catch (e) { 
-        console.error("Sijaintihaku epäonnistui", e); 
-    }
+    } catch (e) { console.error("Sijaintihaku epäonnistui", e); }
     return "";
 }
+
+// ==========================================
+// 4. GPX-PROSESSOINTI
+// ==========================================
 
 function parseGPX(xmlText) {
     const parser = new DOMParser();
     const xml = parser.parseFromString(xmlText, "text/xml");
     const wpt = xml.querySelector("wpt");
-    const cache = xml.querySelector("cache");
+    if (!wpt) return null;
 
-    if (!wpt || !cache) return null;
-
-    const lat = wpt.getAttribute("lat");
-    const lon = wpt.getAttribute("lon");
-
-    // Kellonajan etsintä
+    const lat = parseFloat(wpt.getAttribute("lat"));
+    const lon = parseFloat(wpt.getAttribute("lon"));
+    
+    // Etsi kellonaika
     let timeStr = "";
-    const shortDesc = cache.querySelector("short_description")?.textContent || "";
-    const timeMatch = shortDesc.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
-    if (timeMatch) timeStr = `${timeMatch[1]} - ${timeMatch[2]}`;
+    const shortDesc = wpt.getElementsByTagNameNS("*", "short_description")[0]?.textContent || "";
+    const timeMatch = shortDesc.match(/(\d{1,2}[:\.]\d{2})\s*-\s*(\d{1,2}[:\.]\d{2})/);
+    if (timeMatch) {
+        timeStr = `${timeMatch[1].replace('.', ':')} - ${timeMatch[2].replace('.', ':')}`;
+    }
 
     // Attribuutit
     const attributes = [];
-    cache.querySelectorAll("attribute").forEach(attr => {
-        if (attr.getAttribute("inc") === "1") {
-            attributes.push(attr.textContent.trim());
-        }
-    });
+    const attrElements = wpt.getElementsByTagNameNS("*", "attribute");
+    for (let attr of attrElements) {
+        if (attr.getAttribute("inc") === "1") attributes.push(attr.textContent.trim());
+    }
 
-    // Osallistujat (Vain Attended, ei mikkokalevi)
+    // Osallistujat (Vain Attended)
     const attendees = [];
-    xml.querySelectorAll("log").forEach(log => {
-        const type = log.querySelector("type")?.textContent;
-        const finder = log.querySelector("finder")?.textContent;
+    const logs = wpt.getElementsByTagNameNS("*", "log");
+    for (let log of logs) {
+        const type = log.getElementsByTagNameNS("*", "type")[0]?.textContent;
+        const finder = log.getElementsByTagNameNS("*", "finder")[0]?.textContent;
         if (type === "Attended" && finder && finder.toLowerCase() !== "mikkokalevi") {
             attendees.push(finder);
         }
-    });
+    }
 
     return {
-        gc: xml.querySelector("name")?.textContent || "",
-        name: cache.querySelector("name")?.textContent || "",
-        date: xml.querySelector("time")?.textContent?.split('T')[0] || "",
+        gc: wpt.querySelector("name")?.textContent || "",
+        name: wpt.getElementsByTagNameNS("*", "name")[1]?.textContent || wpt.querySelector("urlname")?.textContent || "Nimetön miitti",
+        date: wpt.querySelector("time")?.textContent?.split('T')[0] || "",
         time: timeStr,
-        coords: `N ${lat} E ${lon}`,
-        descriptionHtml: cache.querySelector("long_description")?.textContent || "",
+        coords: decimalToDMS(lat, lon),
+        descriptionHtml: wpt.getElementsByTagNameNS("*", "long_description")[0]?.textContent || "",
         attributes: attributes,
         attendees: [...new Set(attendees)]
     };
 }
-
-// ==========================================
-// 4. TAPAHTUMIEN TUONTI JA LOMAKKEET
-// ==========================================
 
 document.getElementById('import-gpx-new').onchange = async (e) => {
     const file = e.target.files[0];
@@ -216,13 +203,11 @@ document.getElementById('import-gpx-new').onchange = async (e) => {
         document.getElementById('new-coords').value = data.coords;
         document.getElementById('new-desc').value = data.descriptionHtml;
         fetchCityFromCoords(data.coords, 'new-loc');
-        alert("Tiedot haettu GPX-tiedostosta!");
+        alert("Tiedot ladattu GPX-tiedostosta!");
     }
 };
 
-document.getElementById('btn-sync-gpx-trigger').onclick = () => {
-    document.getElementById('import-gpx-sync').click();
-};
+document.getElementById('btn-sync-gpx-trigger').onclick = () => document.getElementById('import-gpx-sync').click();
 
 document.getElementById('import-gpx-sync').onchange = async (e) => {
     const file = e.target.files[0];
@@ -261,21 +246,23 @@ document.getElementById('import-gpx-sync').onchange = async (e) => {
     for (const nick of gpxData.attendees) {
         if (!existingNicks.includes(nick.toLowerCase())) {
             await db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({
-                nickname: nick,
-                from: "",
-                message: "(GPX Päivitys)",
-                timestamp: firebase.database.ServerValue.TIMESTAMP
+                nickname: nick, from: "", message: "(GPX Päivitys)", timestamp: firebase.database.ServerValue.TIMESTAMP
             });
             addedCount++;
         }
     }
 
     loadingOverlay.style.display = 'none';
-    alert(`Synkronointi valmis!\n- Lisätty ${addedCount} uutta osallistujaa.\n- Puuttuvat tiedot päivitetty.`);
+    alert(`Valmis!\n- Lisätty ${addedCount} osallistujaa.\n- Tiedot synkronoitu.`);
 };
+
+// ==========================================
+// 5. TEKSTINTUONTI (UUSI JA MUOKKAUS)
+// ==========================================
 
 function processTextImport(text, mode) {
     const prefix = mode === 'new' ? 'new-' : 'edit-';
+    const locId = prefix + 'loc';
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     
     if (lines.length > 0) {
@@ -303,66 +290,19 @@ function processTextImport(text, mode) {
     if (coordMatch) {
         const coords = coordMatch[1].trim();
         document.getElementById(prefix + 'coords').value = coords;
-        fetchCityFromCoords(coords, prefix + 'loc');
+        fetchCityFromCoords(coords, locId);
     }
 
     const gcMatch = text.match(/(GC[A-Z0-9]+)/);
     if (gcMatch) document.getElementById(prefix + 'gc').value = gcMatch[1];
 }
 
-document.getElementById('btn-process-import').onclick = () => {
-    processTextImport(document.getElementById('import-text').value, 'new');
-};
-
-document.getElementById('btn-process-edit-import').onclick = () => {
-    processTextImport(document.getElementById('edit-import-text').value, 'edit');
-};
+document.getElementById('btn-process-import').onclick = () => processTextImport(document.getElementById('import-text').value, 'new');
+document.getElementById('btn-process-edit-import').onclick = () => processTextImport(document.getElementById('edit-import-text').value, 'edit');
 
 // ==========================================
-// 5. MIITTIEN LISTAUS JA NAVIGOINTI
+// 6. MIITTIEN HALLINTA JA LATAUS
 // ==========================================
-
-document.getElementById('btn-find-today').onclick = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const todayEvent = globalEventList.find(e => e.date === today);
-    if (todayEvent) openGuestbook(todayEvent.key); else alert("Ei miittejä tälle päivälle.");
-};
-
-window.navigateEvent = (direction) => {
-    if (!currentEventId || globalEventList.length === 0) return;
-    const currentIndex = globalEventList.findIndex(e => e.key === currentEventId);
-    if (currentIndex === -1) return;
-    const newIndex = currentIndex - direction;
-    if (newIndex >= 0 && newIndex < globalEventList.length) {
-        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
-        openGuestbook(globalEventList[newIndex].key);
-    }
-};
-
-document.getElementById('new-event-toggle').onclick = () => {
-    const f = document.getElementById('new-event-form');
-    f.style.display = (f.style.display === 'none') ? 'block' : 'none';
-};
-
-document.getElementById('btn-add-event').onclick = () => {
-    const data = {
-        type: document.getElementById('new-type').value,
-        gc: document.getElementById('new-gc').value.trim().toUpperCase(),
-        name: document.getElementById('new-name').value.trim(),
-        date: document.getElementById('new-date').value,
-        time: document.getElementById('new-time').value.trim(),
-        coords: document.getElementById('new-coords').value.trim(),
-        location: document.getElementById('new-loc').value.trim(),
-        descriptionHtml: document.getElementById('new-desc').value.trim(),
-        createdAt: firebase.database.ServerValue.TIMESTAMP,
-        isArchived: false
-    };
-    if(!data.gc || !data.name || !data.date) return alert("Täytä GC, Nimi ja Pvm!");
-    db.ref('miitit/' + currentUser.uid + '/events').push(data).then(() => {
-        ['new-gc','new-name','new-time','new-coords','new-loc', 'new-desc', 'import-text'].forEach(id => document.getElementById(id).value = "");
-        document.getElementById('new-event-form').style.display = 'none';
-    });
-};
 
 function loadEvents() {
     if (!currentUser) return;
@@ -371,23 +311,27 @@ function loadEvents() {
         cito: { past: document.getElementById('list-cito-past'), future: document.getElementById('list-cito-future') },
         cce: { past: document.getElementById('list-cce-past'), future: document.getElementById('list-cce-future') }
     };
+
     db.ref('miitit/' + currentUser.uid + '/events').on('value', (snapshot) => {
         Object.values(lists).forEach(l => { l.past.innerHTML = ""; l.future.innerHTML = ""; });
         const events = []; snapshot.forEach(child => { events.push({key: child.key, ...child.val()}); });
         events.sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0));
         globalEventList = events;
+        
         if(eventStatsEl) eventStatsEl.innerText = `Löytyi ${events.length} tapahtumaa.`;
         const today = new Date().toISOString().split('T')[0];
+
         events.forEach(evt => {
             const div = document.createElement('div');
             const isArchived = evt.isArchived === true;
             div.className = "card" + (isArchived ? " archived" : "");
             const countId = `count-${evt.key}`;
+            
             div.innerHTML = `
                 <div style="display:flex; justify-content:space-between;"><strong>${evt.name}</strong><span>${evt.date}</span></div>
-                <div style="font-size:0.8em; color:#666;">🕓 ${evt.time || '-'}</div>
+                <div style="font-size:0.8em; color:#666; margin-bottom:5px;">🕓 ${evt.time || '-'}</div>
                 <div style="font-size:0.9em; color:#A0522D; display:flex; justify-content:space-between;">
-                    <span>${evt.gc} • ${evt.location || ''}</span>
+                    <span><a href="https://coord.info/${evt.gc}" target="_blank" style="color:#A0522D; font-weight:bold;">${evt.gc}</a> • ${evt.location || ''}</span>
                     <span id="${countId}" style="font-weight:bold; color:#333;">👤 0</span>
                 </div>
                 <div style="margin-top:10px; display:flex; gap:5px;">
@@ -395,14 +339,46 @@ function loadEvents() {
                     <button class="btn btn-blue btn-small" onclick="openEditModal('${evt.key}')">✏️</button>
                     <button class="btn btn-red btn-small" onclick="deleteEvent('${evt.key}')">🗑</button>
                 </div>`;
+            
             db.ref('miitit/' + currentUser.uid + '/logs/' + evt.key).once('value').then(s => { const el = document.getElementById(countId); if (el) el.innerText = "👤 " + s.numChildren(); });
-            lists[evt.type][(evt.date >= today) ? "future" : "past"].appendChild(div);
+            const target = (evt.date >= today) ? "future" : "past";
+            lists[evt.type][target].appendChild(div);
         });
+        
+        ['miitti', 'cito', 'cce'].forEach(t => { if(lists[t].future.children.length > 1) { const p = lists[t].future.querySelector('p'); if(p) p.remove(); }});
     });
 }
 
+document.getElementById('btn-add-event').onclick = () => {
+    const data = {
+        type: document.getElementById('new-type').value, gc: document.getElementById('new-gc').value.trim().toUpperCase(),
+        name: document.getElementById('new-name').value.trim(), date: document.getElementById('new-date').value,
+        time: document.getElementById('new-time').value.trim(), coords: document.getElementById('new-coords').value.trim(),
+        location: document.getElementById('new-loc').value.trim(), descriptionHtml: document.getElementById('new-desc').value.trim(),
+        createdAt: firebase.database.ServerValue.TIMESTAMP, isArchived: false
+    };
+    if(!data.gc || !data.name || !data.date) return alert("Täytä GC, Nimi ja Pvm!");
+    db.ref('miitit/' + currentUser.uid + '/events').push(data).then(() => {
+        ['new-gc','new-name','new-time','new-coords','new-loc', 'new-desc', 'import-text', 'import-gpx-new'].forEach(id => {
+            const el = document.getElementById(id); if(el) el.value = "";
+        });
+        document.getElementById('new-event-form').style.display = 'none';
+    });
+};
+
+document.getElementById('btn-find-today').onclick = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const todayEvent = globalEventList.find(e => e.date === today);
+    if (todayEvent) openGuestbook(todayEvent.key); else alert("Ei miittejä tänään.");
+};
+
+document.getElementById('new-event-toggle').onclick = () => {
+    const f = document.getElementById('new-event-form');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+};
+
 // ==========================================
-// 6. VIERASKIRJA JA MUOKKAUKSET
+// 7. VIERASKIRJA (GUESTBOOK)
 // ==========================================
 
 window.openGuestbook = (eventKey) => {
@@ -466,6 +442,10 @@ function loadAttendees(eventKey) {
     });
 }
 
+// ==========================================
+// 8. MUOKKAUS JA MASSA-TOIMINNOT
+// ==========================================
+
 window.openEditModal = (key) => {
     db.ref('miitit/' + currentUser.uid + '/events/' + key).once('value').then(snap => {
         const e = snap.val(); document.getElementById('edit-key').value = key;
@@ -502,23 +482,15 @@ document.getElementById('btn-save-log-edit').onclick = () => {
     db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + k).update(u).then(() => logEditModal.style.display = "none");
 };
 
-window.closeModal = () => { editModal.style.display = "none"; massModal.style.display = "none"; logEditModal.style.display = "none"; };
-window.deleteEvent = (k) => { if(confirm("Poistetaanko tapahtuma?")) { db.ref('miitit/'+currentUser.uid+'/events/'+k).remove(); db.ref('miitit/'+currentUser.uid+'/logs/'+k).remove(); } };
-window.deleteLog = (lk) => { if(confirm("Poistetaanko kirjaus?")) db.ref('miitit/'+currentUser.uid+'/logs/'+currentEventId+'/'+lk).remove(); };
-window.resetMassModal = () => { document.getElementById('mass-step-1').style.display = 'block'; document.getElementById('mass-step-2').style.display = 'none'; };
-
 window.openMassImport = () => {
-    document.getElementById('mass-input').value = ""; 
-    document.getElementById('mass-output').value = ""; 
-    document.getElementById('mass-step-1').style.display = 'block'; 
-    document.getElementById('mass-step-2').style.display = 'none';
+    document.getElementById('mass-input').value = ""; document.getElementById('mass-output').value = ""; 
+    document.getElementById('mass-step-1').style.display = 'block'; document.getElementById('mass-step-2').style.display = 'none';
     massModal.style.display = "block";
 };
 
 document.getElementById('btn-parse-mass').onclick = () => {
     const text = document.getElementById('mass-input').value; if(!text) return;
-    let names = []; 
-    const blocks = text.split(/Näytä\s+loki|View\s+Log|Näytä\s+\/\s+Muokkaa|View\s+\/\s+Edit/i);
+    let names = []; const blocks = text.split(/Näytä\s+loki|View\s+Log|Näytä\s+\/\s+Muokkaa|View\s+\/\s+Edit/i);
     blocks.forEach(b => {
         const clean = b.replace(/\s+/g, ' ').trim();
         if (/Osallistui|Attended/i.test(clean)) {
@@ -529,10 +501,9 @@ document.getElementById('btn-parse-mass').onclick = () => {
             }
         }
     });
-    names = [...new Set(names)]; if (names.length === 0) return alert("Ei nimiä löytynyt!");
+    names = [...new Set(names)]; if (names.length === 0) return alert("Ei nimiä!");
     document.getElementById('mass-output').value = names.join('\n');
-    document.getElementById('mass-step-1').style.display = 'none'; 
-    document.getElementById('mass-step-2').style.display = 'block';
+    document.getElementById('mass-step-1').style.display = 'none'; document.getElementById('mass-step-2').style.display = 'block';
 };
 
 document.getElementById('btn-save-mass').onclick = () => {
@@ -541,3 +512,8 @@ document.getElementById('btn-save-mass').onclick = () => {
     });
     massModal.style.display = "none";
 };
+
+window.closeModal = () => { editModal.style.display = "none"; massModal.style.display = "none"; logEditModal.style.display = "none"; };
+window.deleteEvent = (k) => { if(confirm("Poistetaanko tapahtuma?")) { db.ref('miitit/'+currentUser.uid+'/events/'+k).remove(); db.ref('miitit/'+currentUser.uid+'/logs/'+k).remove(); } };
+window.deleteLog = (lk) => { if(confirm("Poistetaanko kirjaus?")) db.ref('miitit/'+currentUser.uid+'/logs/'+currentEventId+'/'+lk).remove(); };
+window.resetMassModal = () => { document.getElementById('mass-step-1').style.display = 'block'; document.getElementById('mass-step-2').style.display = 'none'; };
