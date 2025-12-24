@@ -191,7 +191,6 @@
         #gb-gc   { grid-area: gc; border-right: 1px dashed #D2B48C; border-bottom: none; }
         #gb-coords { grid-area: coords; border-bottom: none; }
 
-        /* UUDET AVATTAVAT LAATIKOT */
         .details-box {
             margin-bottom: 10px;
             border: 1px solid #D2B48C;
@@ -213,7 +212,7 @@
         }
         .details-content {
             padding: 15px;
-            display: none; /* Oletuksena piilossa */
+            display: none; 
             font-size: 0.9em;
         }
 
@@ -303,6 +302,51 @@
             color: white;
             font-weight: bold;
         }
+
+        /* TILASTOJEN TYYLIT */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+            gap: 5px;
+            margin: 15px 0;
+        }
+        .char-box {
+            background: #fff;
+            border: 1px solid #8B4513;
+            border-radius: 4px;
+            padding: 5px 0;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .char-box.empty {
+            background: #eee;
+            color: #999;
+            border-color: #ccc;
+        }
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px dotted #ccc;
+            font-size: 0.9em;
+        }
+        .autocomplete-list {
+            position: absolute;
+            background: #fff;
+            border: 1px solid #8B4513;
+            width: calc(100% - 40px);
+            z-index: 50;
+            max-height: 200px;
+            overflow-y: auto;
+            text-align: left;
+        }
+        .autocomplete-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        .autocomplete-item:hover { background: #FFF8E7; }
+
     </style>
 </head>
 <body>
@@ -336,7 +380,10 @@
             <button id="btn-logout" class="btn btn-red btn-small">Ulos</button>
         </div>
         
-        <button id="btn-find-today" class="btn btn-green" style="margin-bottom: 20px; border: 2px dashed #fff; box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);">📅 AVAA TÄMÄ PÄIVÄ</button>
+        <div style="display:flex; gap:10px; margin-bottom: 20px;">
+            <button id="btn-find-today" class="btn btn-green" style="flex:2;">📅 AVAA TÄMÄ PÄIVÄ</button>
+            <button id="btn-show-stats" class="btn btn-blue" style="flex:1;">📊 TILASTOT</button>
+        </div>
         
         <p id="event-stats" style="font-size:0.8em; color:#666; text-align:center;">Ladataan tietoja...</p>
 
@@ -344,7 +391,6 @@
             <h3 id="new-event-toggle" style="margin-top:0; color:#B22222; text-align:center;">➕ Lisää uusi (Klikkaa tästä)</h3>
             
             <div id="new-event-form" style="display: none;">
-                
                 <div style="background:#fff; border:1px dashed #4caf50; padding:10px; margin-bottom:15px; border-radius:5px;">
                     <p style="margin:0 0 5px 0; font-size:0.9em; font-weight:bold; color:#2e7d32;">📄 Tuo kerralla GPX-tiedostosta:</p>
                     <input type="file" id="import-gpx-new" accept=".gpx" style="font-size:0.8em; border:none; padding:5px;">
@@ -379,22 +425,84 @@
         </div>
 
         <div class="category-header">☕ Miitit</div>
-        <div class="sub-category-header">Tulevat</div>
         <div id="list-miitti-future"></div>
         <div class="sub-category-header">Menneet</div>
         <div id="list-miitti-past"></div>
 
         <div class="category-header">🎉 Yhteisöjuhlat</div>
-        <div class="sub-category-header">Tulevat</div>
         <div id="list-cce-future"></div>
         <div class="sub-category-header">Menneet</div>
         <div id="list-cce-past"></div>
 
         <div class="category-header">🗑️ CITO Tapahtumat</div>
-        <div class="sub-category-header">Tulevat</div>
         <div id="list-cito-future"></div>
         <div class="sub-category-header">Menneet</div>
         <div id="list-cito-past"></div>
+    </div>
+
+    <div id="stats-view" class="view-section">
+        <button onclick="showAdminView()" class="back-btn">< Takaisin</button>
+        <div style="clear:both;"></div>
+        <h2>📊 Miittitilastot</h2>
+
+        <div class="card-form">
+            <h3 style="margin-top:0;">🔍 Hae ja suodata</h3>
+            <input type="text" id="search-miitti-name" placeholder="Miitin nimi...">
+            <div style="position:relative;">
+                <input type="text" id="search-user-name" placeholder="Etsi kätköilijää (esim. Lahjemies)...">
+                <div id="user-autocomplete" class="autocomplete-list" style="display:none;"></div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <select id="filter-year">
+                    <option value="">Kaikki vuodet</option>
+                </select>
+                <select id="filter-month">
+                    <option value="">Kaikki kuukaudet</option>
+                    <option value="01">Tammikuu</option><option value="02">Helmikuu</option><option value="03">Maaliskuu</option>
+                    <option value="04">Huhtikuu</option><option value="05">Toukokuu</option><option value="06">Kesäkuu</option>
+                    <option value="07">Heinäkuu</option><option value="08">Elokuu</option><option value="09">Syyskuu</option>
+                    <option value="10">Lokakuu</option><option value="11">Marraskuu</option><option value="12">Joulukuu</option>
+                </select>
+            </div>
+            <button id="btn-apply-filters" class="btn btn-green btn-small">Päivitä suodatus</button>
+        </div>
+
+        <div class="card">
+            <h3>📈 Yhteenveto</h3>
+            <div id="stats-summary-text">Ladataan tilastoja...</div>
+        </div>
+
+        <div class="card">
+            <h3>🔤 Alkukirjaimet & Numerot</h3>
+            <p style="font-size:0.7em; color:#666;">Miittien nimien ensimmäinen merkki</p>
+            <div id="stats-alphabet" class="stats-grid"></div>
+        </div>
+
+        <div class="card">
+            <h3>📅 Viikonpäivien mukaan</h3>
+            <div id="stats-weekdays"></div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div class="card">
+                <h3>🏆 TOP 10</h3>
+                <div id="stats-top-10" style="font-size:0.8em; text-align:left;"></div>
+            </div>
+            <div class="card">
+                <h3>🧊 BOTTOM 10</h3>
+                <div id="stats-bottom-10" style="font-size:0.8em; text-align:left;"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>🏘️ Paikkakunnat</h3>
+            <div id="stats-locations" style="max-height: 200px; overflow-y: auto;"></div>
+        </div>
+
+        <div class="card">
+            <h3>⭐ Attribuutit</h3>
+            <div id="stats-attributes"></div>
+        </div>
     </div>
 
     <div id="guestbook-view" class="view-section">
@@ -517,6 +625,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    
     <script src="app.js"></script>
+    <script src="stats.js"></script>
 </body>
 </html>
