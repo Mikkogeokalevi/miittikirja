@@ -23,7 +23,7 @@
             line-height: 1.6;
             -webkit-user-select: none;
             user-select: none;
-            overflow-x: hidden; /* Estää vaakaskrollauksen swipatessa */
+            overflow-x: hidden; 
         }
 
         h1, h2, h3 { 
@@ -42,7 +42,7 @@
             box-shadow: 0px 0px 20px rgba(139,69,19,0.25);
             padding: 20px;
             padding-bottom: 80px; 
-            min-height: 80vh; /* Varmistaa että pyyhkäisyalue on iso */
+            min-height: 80vh; 
         }
         
         .card { 
@@ -56,7 +56,6 @@
             position: relative; 
         }
 
-        /* Arkistoidun miitin tyyli listassa */
         .card.archived {
             opacity: 0.7;
             background: #e0e0e0;
@@ -74,7 +73,6 @@
             margin-bottom: 15px;
         }
 
-        /* UUSI: Klikattava otsikko */
         #new-event-toggle {
             cursor: pointer;
             user-select: none;
@@ -131,7 +129,6 @@
         .btn-gray { background-color: #A0522D; color: white; }
         .btn-small { width: auto; padding: 8px 12px; font-size: 14px; margin-right: 5px; }
         
-        /* Navigointinuolet vieraskirjassa */
         .nav-arrow {
             background: none; border: none; font-size: 2em; cursor: pointer; color: #8B4513; padding: 0 15px;
             user-select: none;
@@ -150,7 +147,6 @@
             padding: 10px; 
         }
 
-        /* --- UUDISTETTU INFO-LAATIKKO (Grid Layout) --- */
         .event-meta { 
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -180,7 +176,6 @@
             text-overflow: ellipsis;
         }
 
-        /* Kohdistetaan grid-alueet ID:n perusteella */
         #gb-time { grid-area: time; border-right: 1px dashed #D2B48C; }
         #gb-date { grid-area: date; }
         #gb-loc  { grid-area: loc; }
@@ -196,7 +191,6 @@
             font-style: italic;
         }
 
-        /* Tiivistetty otsikko mobiilissa */
         #gb-event-name {
             font-size: 1.3em; 
             margin: 10px 0;
@@ -205,7 +199,6 @@
             line-height: 1.3;
         }
 
-        /* UUSI: Kuvauslaatikko (HTML Renderöinti) */
         .description-container {
             background: #fff;
             padding: 15px;
@@ -213,7 +206,7 @@
             border: 1px solid #D2B48C;
             margin-bottom: 20px;
             text-align: left;
-            overflow-x: auto; /* Jos sisältö on liian leveää */
+            overflow-x: auto; 
         }
         .description-container img {
             max-width: 100% !important;
@@ -309,6 +302,13 @@
             <h3 id="new-event-toggle" style="margin-top:0; color:#B22222; text-align:center;">➕ Lisää uusi (Klikkaa tästä)</h3>
             
             <div id="new-event-form" style="display: none;">
+                
+                <div style="background:#fff; border:1px dashed #D2691E; padding:10px; margin-bottom:15px; border-radius:5px;">
+                    <p style="margin:0 0 5px 0; font-size:0.9em; font-weight:bold; color:#D2691E;">📥 Tuo tiedot tekstistä:</p>
+                    <textarea id="import-text" rows="3" placeholder="Liitä Geocaching.com sivun teksti tähän (sis. pvm, aika, koordinaatit)..." style="font-size:0.8em; height:60px;"></textarea>
+                    <button id="btn-process-import" class="btn btn-gray btn-small" style="width:100%;">🪄 Täytä lomake automaattisesti</button>
+                </div>
+                
                 <label style="font-size:0.8em; font-weight:bold;">Tyyppi</label>
                 <select id="new-type">
                     <option value="miitti">☕ Tavallinen Miitti</option>
