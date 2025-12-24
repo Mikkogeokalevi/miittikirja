@@ -48,9 +48,10 @@ async function initStats() {
 
 function populateYearFilter(events) {
     const yearSelect = document.getElementById('filter-year');
+    if(!yearSelect) return;
+
     const years = [...new Set(events.map(e => e.date.split('-')[0]))].sort((a, b) => b - a);
     
-    // Tyhjennetään vanhat ja lisätään uudet
     yearSelect.innerHTML = '<option value="">Kaikki vuodet</option>';
     years.forEach(y => {
         const opt = document.createElement('option');
@@ -82,11 +83,14 @@ document.getElementById('btn-apply-filters').onclick = () => {
 function updateStatsView(data) {
     // 1. Yhteenveto
     const totalAttendees = data.reduce((sum, e) => sum + e.attendeeCount, 0);
-    document.getElementById('stats-summary-text').innerHTML = `
-        Tapahtumia: <strong>${data.length}</strong> kpl<br>
-        Osallistumisia yhteensä: <strong>${totalAttendees}</strong> kpl<br>
-        Keskiarvo: <strong>${data.length ? (totalAttendees / data.length).toFixed(1) : 0}</strong> kävijää/miitti
-    `;
+    const summaryEl = document.getElementById('stats-summary-text');
+    if(summaryEl) {
+        summaryEl.innerHTML = `
+            Tapahtumia: <strong>${data.length}</strong> kpl<br>
+            Osallistumisia yhteensä: <strong>${totalAttendees}</strong> kpl<br>
+            Keskiarvo: <strong>${data.length ? (totalAttendees / data.length).toFixed(1) : 0}</strong> kävijää/miitti
+        `;
+    }
 
     // 2. Alkukirjaimet & Numerot
     renderAlphabetStats(data);
@@ -99,6 +103,7 @@ function updateStatsView(data) {
     
     const renderList = (list, elementId) => {
         const el = document.getElementById(elementId);
+        if(!el) return;
         el.innerHTML = list.length ? "" : "Ei tietoja.";
         list.forEach((e, i) => {
             const row = document.createElement('div');
@@ -120,34 +125,49 @@ function updateStatsView(data) {
     });
     const sortedLocs = Object.entries(locMap).sort((a, b) => b[1] - a[1]);
     const locEl = document.getElementById('stats-locations');
-    locEl.innerHTML = sortedLocs.map(([loc, count]) => `
-        <div class="stats-row"><span>${loc}</span> <strong>${count}</strong></div>
-    `).join('');
+    if(locEl) {
+        locEl.innerHTML = sortedLocs.map(([loc, count]) => `
+            <div class="stats-row"><span>${loc}</span> <strong>${count}</strong></div>
+        `).join('');
+    }
 
-    // 6. Attribuutit
+    // 6. Attribuutit (Huomioi uusi rakenne: {name, inc})
     const attrMap = {};
     data.forEach(e => {
-        if (e.attributes) {
+        if (e.attributes && Array.isArray(e.attributes)) {
             e.attributes.forEach(attr => {
-                attrMap[attr] = (attrMap[attr] || 0) + 1;
+                // Lasketaan tilastoihin vain positiiviset (inc: 1) attribuutit
+                // Jos data on vanhaa (pelkkä merkkijono), lasketaan sekin mukaan
+                const attrName = attr.name || attr;
+                const isPositive = (attr.inc === undefined || attr.inc === 1);
+                
+                if (isPositive) {
+                    attrMap[attrName] = (attrMap[attrName] || 0) + 1;
+                }
             });
         }
     });
     const sortedAttrs = Object.entries(attrMap).sort((a, b) => b[1] - a[1]);
-    document.getElementById('stats-attributes').innerHTML = sortedAttrs.map(([attr, count]) => `
-        <div class="stats-row"><span>${attr}</span> <strong>${count}</strong></div>
-    `).join('');
+    const attrEl = document.getElementById('stats-attributes');
+    if(attrEl) {
+        attrEl.innerHTML = sortedAttrs.map(([attr, count]) => `
+            <div class="stats-row"><span>${attr}</span> <strong>${count}</strong></div>
+        `).join('');
+    }
 }
 
 function renderAlphabetStats(data) {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZÅÄÖ0123456789".split("");
     const counts = {};
     data.forEach(e => {
-        const firstChar = e.name.trim().charAt(0).toUpperCase();
-        counts[firstChar] = (counts[firstChar] || 0) + 1;
+        if(e.name) {
+            const firstChar = e.name.trim().charAt(0).toUpperCase();
+            counts[firstChar] = (counts[firstChar] || 0) + 1;
+        }
     });
 
     const grid = document.getElementById('stats-alphabet');
+    if(!grid) return;
     grid.innerHTML = "";
     chars.forEach(c => {
         const box = document.createElement('div');
@@ -163,11 +183,14 @@ function renderWeekdayStats(data) {
     const dayCounts = [0, 0, 0, 0, 0, 0, 0];
     
     data.forEach(e => {
-        const d = new Date(e.date).getDay();
-        dayCounts[d]++;
+        if(e.date) {
+            const d = new Date(e.date).getDay();
+            dayCounts[d]++;
+        }
     });
 
     const el = document.getElementById('stats-weekdays');
+    if(!el) return;
     el.innerHTML = dayCounts.map((count, i) => `
         <div class="stats-row"><span>${days[i]}</span> <strong>${count}</strong></div>
     `).join('');
@@ -177,23 +200,31 @@ function renderWeekdayStats(data) {
 const userSearchInput = document.getElementById('search-user-name');
 const userAutoList = document.getElementById('user-autocomplete');
 
-userSearchInput.oninput = () => {
-    const val = userSearchInput.value.toLowerCase();
-    if (val.length < 1) { userAutoList.style.display = 'none'; return; }
+if(userSearchInput) {
+    userSearchInput.oninput = () => {
+        const val = userSearchInput.value.toLowerCase();
+        if (val.length < 1) { 
+            if(userAutoList) userAutoList.style.display = 'none'; 
+            return; 
+        }
 
-    // Kerätään kaikki uniikit nimet
-    const allNames = [...new Set(allStatsData.events.flatMap(e => e.attendeeNames))];
-    const matches = allNames.filter(n => n.toLowerCase().startsWith(val)).sort().slice(0, 10);
+        const allNames = [...new Set(allStatsData.events.flatMap(e => e.attendeeNames || []))];
+        const matches = allNames.filter(n => n && n.toLowerCase().startsWith(val)).sort().slice(0, 10);
 
-    if (matches.length > 0) {
-        userAutoList.innerHTML = matches.map(m => `<div class="autocomplete-item" onclick="selectUser('${m}')">${m}</div>`).join('');
-        userAutoList.style.display = 'block';
-    } else {
-        userAutoList.style.display = 'none';
-    }
-};
+        if (userAutoList) {
+            if (matches.length > 0) {
+                userAutoList.innerHTML = matches.map(m => `<div class="autocomplete-item" onclick="selectUser('${m}')">${m}</div>`).join('');
+                userAutoList.style.display = 'block';
+            } else {
+                userAutoList.style.display = 'none';
+            }
+        }
+    };
+}
 
 window.selectUser = (name) => {
-    userSearchInput.value = name;
-    userAutoList.style.display = 'none';
+    if(userSearchInput) userSearchInput.value = name;
+    if(userAutoList) userAutoList.style.display = 'none';
+    // Päivitetään suodatus heti valinnan jälkeen
+    document.getElementById('btn-apply-filters').click();
 };
