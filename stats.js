@@ -4,27 +4,23 @@
 
 let allStatsData = {
     events: [],
-    attendees: {} // eventKey -> [nimet]
+    attendees: {}
 };
 
-// Alustetaan tilastot, kun näkymä avataan
 async function initStats() {
     if (!currentUser) return;
     loadingOverlay.style.display = 'flex';
     
     try {
-        // Haetaan kaikki tapahtumat
         const eventsSnap = await db.ref('miitit/' + currentUser.uid + '/events').once('value');
         const events = [];
         eventsSnap.forEach(child => {
             events.push({ key: child.key, ...child.val() });
         });
 
-        // Haetaan kaikki logit kerralla osallistujamääriä varten
         const logsSnap = await db.ref('miitit/' + currentUser.uid + '/logs').once('value');
         const logsData = logsSnap.val() || {};
 
-        // Lasketaan osallistujat ja tallennetaan ne muistiin
         events.forEach(evt => {
             const evtLogs = logsData[evt.key] || {};
             evt.attendeeCount = Object.keys(evtLogs).length;
@@ -32,11 +28,7 @@ async function initStats() {
         });
 
         allStatsData.events = events;
-        
-        // Täytetään vuosi-valikko uniikeilla vuosilla
         populateYearFilter(events);
-        
-        // Piirretään alkutilastot
         updateStatsView(events);
 
     } catch (e) {
@@ -49,9 +41,7 @@ async function initStats() {
 function populateYearFilter(events) {
     const yearSelect = document.getElementById('filter-year');
     if(!yearSelect) return;
-
     const years = [...new Set(events.map(e => e.date.split('-')[0]))].sort((a, b) => b - a);
-    
     yearSelect.innerHTML = '<option value="">Kaikki vuodet</option>';
     years.forEach(y => {
         const opt = document.createElement('option');
@@ -61,7 +51,6 @@ function populateYearFilter(events) {
     });
 }
 
-// Hakujen ja suodatusten soveltaminen
 document.getElementById('btn-apply-filters').onclick = () => {
     const nameFilter = document.getElementById('search-miitti-name').value.toLowerCase();
     const userFilter = document.getElementById('search-user-name').value.toLowerCase();
@@ -73,10 +62,8 @@ document.getElementById('btn-apply-filters').onclick = () => {
         const matchUser = userFilter === "" || evt.attendeeNames.some(n => n.toLowerCase().includes(userFilter));
         const matchYear = yearFilter === "" || evt.date.startsWith(yearFilter);
         const matchMonth = monthFilter === "" || evt.date.split('-')[1] === monthFilter;
-        
         return matchName && matchUser && matchYear && matchMonth;
     });
-
     updateStatsView(filtered);
 };
 
@@ -92,15 +79,11 @@ function updateStatsView(data) {
         `;
     }
 
-    // 2. Alkukirjaimet & Numerot
     renderAlphabetStats(data);
-
-    // 3. Viikonpäivät
     renderWeekdayStats(data);
 
     // 4. TOP 10 & BOTTOM 10
     const sortedByCount = [...data].sort((a, b) => b.attendeeCount - a.attendeeCount);
-    
     const renderList = (list, elementId) => {
         const el = document.getElementById(elementId);
         if(!el) return;
@@ -112,17 +95,12 @@ function updateStatsView(data) {
             el.appendChild(row);
         });
     };
-
     renderList(sortedByCount.slice(0, 10), 'stats-top-10');
     renderList([...sortedByCount].reverse().slice(0, 10), 'stats-bottom-10');
 
     // 5. Paikkakunnat
     const locMap = {};
-    data.forEach(e => {
-        if (e.location) {
-            locMap[e.location] = (locMap[e.location] || 0) + 1;
-        }
-    });
+    data.forEach(e => { if (e.location) locMap[e.location] = (locMap[e.location] || 0) + 1; });
     const sortedLocs = Object.entries(locMap).sort((a, b) => b[1] - a[1]);
     const locEl = document.getElementById('stats-locations');
     if(locEl) {
@@ -131,28 +109,44 @@ function updateStatsView(data) {
         `).join('');
     }
 
-    // 6. Attribuutit (Huomioi uusi rakenne: {name, inc})
-    const attrMap = {};
+    // 6. ATTRIBUUTIT - KORJATTU LASKENTA (SISÄLTÄÄ KIELTEISET)
+    const attrMap = {}; // "Nimi" -> { pos: 0, neg: 0 }
+    
     data.forEach(e => {
         if (e.attributes && Array.isArray(e.attributes)) {
             e.attributes.forEach(attr => {
-                // Lasketaan tilastoihin vain positiiviset (inc: 1) attribuutit
-                // Jos data on vanhaa (pelkkä merkkijono), lasketaan sekin mukaan
-                const attrName = attr.name || attr;
-                const isPositive = (attr.inc === undefined || attr.inc === 1);
+                const name = attr.name || attr;
+                const isNeg = (attr.inc === 0);
                 
-                if (isPositive) {
-                    attrMap[attrName] = (attrMap[attrName] || 0) + 1;
-                }
+                if (!attrMap[name]) attrMap[name] = { pos: 0, neg: 0 };
+                
+                if (isNeg) attrMap[name].neg++;
+                else attrMap[name].pos++;
             });
         }
     });
-    const sortedAttrs = Object.entries(attrMap).sort((a, b) => b[1] - a[1]);
+
     const attrEl = document.getElementById('stats-attributes');
     if(attrEl) {
-        attrEl.innerHTML = sortedAttrs.map(([attr, count]) => `
-            <div class="stats-row"><span>${attr}</span> <strong>${count}</strong></div>
-        `).join('');
+        attrEl.innerHTML = "";
+        // Lajitellaan nimen mukaan
+        const sortedEntries = Object.entries(attrMap).sort((a, b) => a[0].localeCompare(b[0]));
+        
+        sortedEntries.forEach(([name, counts]) => {
+            if (counts.pos > 0) {
+                const row = document.createElement('div');
+                row.className = "stats-row";
+                row.innerHTML = `<span>${name}</span> <strong>${counts.pos}</strong>`;
+                attrEl.appendChild(row);
+            }
+            if (counts.neg > 0) {
+                const row = document.createElement('div');
+                row.className = "stats-row";
+                // Kielteisille attribuuteille punainen yliviivaus
+                row.innerHTML = `<span style="color:#721c24; text-decoration:line-through; opacity:0.7;">${name}</span> <strong>${counts.neg}</strong>`;
+                attrEl.appendChild(row);
+            }
+        });
     }
 }
 
@@ -165,7 +159,6 @@ function renderAlphabetStats(data) {
             counts[firstChar] = (counts[firstChar] || 0) + 1;
         }
     });
-
     const grid = document.getElementById('stats-alphabet');
     if(!grid) return;
     grid.innerHTML = "";
@@ -181,14 +174,7 @@ function renderAlphabetStats(data) {
 function renderWeekdayStats(data) {
     const days = ["Su", "Ma", "Ti", "Ke", "To", "Pe", "La"];
     const dayCounts = [0, 0, 0, 0, 0, 0, 0];
-    
-    data.forEach(e => {
-        if(e.date) {
-            const d = new Date(e.date).getDay();
-            dayCounts[d]++;
-        }
-    });
-
+    data.forEach(e => { if(e.date) { const d = new Date(e.date).getDay(); dayCounts[d]++; } });
     const el = document.getElementById('stats-weekdays');
     if(!el) return;
     el.innerHTML = dayCounts.map((count, i) => `
@@ -196,35 +182,24 @@ function renderWeekdayStats(data) {
     `).join('');
 }
 
-// Kätköilijähaku Autocomplete
 const userSearchInput = document.getElementById('search-user-name');
 const userAutoList = document.getElementById('user-autocomplete');
-
 if(userSearchInput) {
     userSearchInput.oninput = () => {
         const val = userSearchInput.value.toLowerCase();
-        if (val.length < 1) { 
-            if(userAutoList) userAutoList.style.display = 'none'; 
-            return; 
-        }
-
+        if (val.length < 1) { if(userAutoList) userAutoList.style.display = 'none'; return; }
         const allNames = [...new Set(allStatsData.events.flatMap(e => e.attendeeNames || []))];
         const matches = allNames.filter(n => n && n.toLowerCase().startsWith(val)).sort().slice(0, 10);
-
         if (userAutoList) {
             if (matches.length > 0) {
                 userAutoList.innerHTML = matches.map(m => `<div class="autocomplete-item" onclick="selectUser('${m}')">${m}</div>`).join('');
                 userAutoList.style.display = 'block';
-            } else {
-                userAutoList.style.display = 'none';
-            }
+            } else { userAutoList.style.display = 'none'; }
         }
     };
 }
-
 window.selectUser = (name) => {
     if(userSearchInput) userSearchInput.value = name;
     if(userAutoList) userAutoList.style.display = 'none';
-    // Päivitetään suodatus heti valinnan jälkeen
     document.getElementById('btn-apply-filters').click();
 };
