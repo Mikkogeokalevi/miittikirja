@@ -11,7 +11,6 @@ const firebaseConfig = {
     appId: "1:588536838615:web:148de0581bbd46c42c7392"
 };
 
-// Alustetaan Firebase
 try { 
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig); 
@@ -28,7 +27,6 @@ let currentEventId = null;
 let currentEventArchived = false;
 let globalEventList = []; 
 
-// UI Elementit
 const loginView = document.getElementById('login-view');
 const adminView = document.getElementById('admin-view');
 const guestbookView = document.getElementById('guestbook-view');
@@ -52,7 +50,6 @@ auth.onAuthStateChanged((user) => {
             userDisplay.style.display = 'block';
             userDisplay.innerText = "👤 " + user.email;
         }
-        // Tarkistetaan ettei olla jo jossain näkymässä
         if (guestbookView.style.display !== 'block' && 
             document.getElementById('stats-view').style.display !== 'block') {
             showAdminView();
@@ -85,16 +82,13 @@ function showAdminView() {
 }
 window.showAdminView = showAdminView;
 
-// Tilastonäkymän avaaminen
 document.getElementById('btn-show-stats').onclick = () => {
     if(adminView) adminView.style.display = 'none';
     const statsView = document.getElementById('stats-view');
     if(statsView) statsView.style.display = 'block';
-    // Kutsutaan stats.js tiedoston alustusta
     if (typeof initStats === 'function') initStats();
 };
 
-// Swipe-logiikka navigointiin
 guestbookView.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
 guestbookView.addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; handleSwipe(); });
 
@@ -192,7 +186,6 @@ function parseGPX(xmlText) {
     const lat = parseFloat(wpt.getAttribute("lat"));
     const lon = parseFloat(wpt.getAttribute("lon"));
     
-    // Kellonaika short_descriptionista
     let timeStr = "";
     const shortDesc = wpt.getElementsByTagNameNS("*", "short_description")[0]?.textContent || "";
     const timeMatch = shortDesc.match(/(\d{1,2}[:\.]\d{2})\s*-\s*(\d{1,2}[:\.]\d{2})/);
@@ -200,7 +193,6 @@ function parseGPX(xmlText) {
         timeStr = `${timeMatch[1].replace('.', ':')} - ${timeMatch[2].replace('.', ':')}`;
     }
 
-    // Attribuutit
     const attributes = [];
     const attrElements = wpt.getElementsByTagNameNS("*", "attribute");
     for (let attr of attrElements) {
@@ -209,7 +201,6 @@ function parseGPX(xmlText) {
         }
     }
 
-    // Logit (Attended)
     const attendees = [];
     const logs = wpt.getElementsByTagNameNS("*", "log");
     for (let log of logs) {
@@ -249,7 +240,7 @@ document.getElementById('import-gpx-new').onchange = async (e) => {
         document.getElementById('new-coords').value = data.coords;
         document.getElementById('new-desc').value = data.descriptionHtml;
         fetchCityFromCoords(data.coords, 'new-loc');
-        alert("GPX tiedot ladattu!");
+        alert("Tiedot ladattu!");
     }
 };
 
@@ -285,7 +276,6 @@ document.getElementById('import-gpx-sync').onchange = async (e) => {
         const city = await fetchCityFromCoords(gpxData.coords, 'gb-loc');
         if (city) updates.location = city;
     }
-    // Päivitetään koordinaatit jos ne olivat väärässä muodossa
     updates.coords = gpxData.coords;
     
     if (Object.keys(updates).length > 0) {
@@ -303,39 +293,43 @@ document.getElementById('import-gpx-sync').onchange = async (e) => {
     }
 
     if(loadingOverlay) loadingOverlay.style.display = 'none';
-    alert(`Valmis! Päivitetty tiedot ja lisätty ${addedCount} uutta osallistujaa.`);
+    alert(`Valmis! Lisätty ${addedCount} uutta osallistujaa.`);
 };
 
 function processTextImport(text, mode) {
     const prefix = mode === 'new' ? 'new-' : 'edit-';
+    const locId = prefix + 'loc';
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     
     if (lines.length > 0) {
+        const firstLine = lines[0];
         const ignorePrefixes = ["Tapahtuman tekijä", "Tapahtumapäivä", "Alkamisaika", "Loppumisaika", "Vaikeustaso", "Maasto", "Koko", "Maa:", "N ", "E ", "UTM"];
-        if (!ignorePrefixes.some(p => lines[0].startsWith(p))) {
-            document.getElementById(prefix + 'name').value = lines[0];
+        if (!ignorePrefixes.some(p => firstLine.startsWith(p))) {
+            document.getElementById(prefix + 'name').value = firstLine;
         }
     }
 
     const dateMatch = text.match(/Tapahtumapäivä:\s*(\d{1,2}\.\d{1,2}\.\d{4})/);
     if (dateMatch) {
-        const p = dateMatch[1].split('.');
-        document.getElementById(prefix + 'date').value = `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+        const parts = dateMatch[1].split('.');
+        if(parts.length === 3) {
+            document.getElementById(prefix + 'date').value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
     }
 
     const startMatch = text.match(/Alkamisaika:\s*(\d{1,2}[:\.]\d{2})/);
     const endMatch = text.match(/Loppumisaika:\s*(\d{1,2}[:\.]\d{2})/);
     if (startMatch) {
-        let s = startMatch[1].replace('.', ':'); if(s.indexOf(':') === 1) s = '0'+s;
-        let e = ""; if (endMatch) { e = endMatch[1].replace('.', ':'); if(e.indexOf(':') === 1) e = '0'+e; }
-        document.getElementById(prefix + 'time').value = e ? `${s} - ${e}` : s;
+        let start = startMatch[1].replace('.', ':'); if(start.indexOf(':') === 1) start = '0'+start;
+        let end = ""; if (endMatch) { end = endMatch[1].replace('.', ':'); if(end.indexOf(':') === 1) end = '0'+end; }
+        document.getElementById(prefix + 'time').value = end ? `${start} - ${end}` : start;
     }
 
     const coordMatch = text.match(/([NS]\s*\d+°\s*[\d\.]+\s*[EW]\s*\d+°\s*[\d\.]+)/);
     if (coordMatch) {
         const coords = coordMatch[1].trim();
         document.getElementById(prefix + 'coords').value = coords;
-        fetchCityFromCoords(coords, prefix + 'loc');
+        fetchCityFromCoords(coords, locId);
     }
 
     const gcMatch = text.match(/(GC[A-Z0-9]+)/);
@@ -455,7 +449,7 @@ document.getElementById('new-event-toggle').onclick = () => {
 };
 
 // ==========================================
-// 7. VIERASKIRJA (GUESTBOOK)
+// 7. VIERASKIRJA (GUESTBOOK) - KARTTALINKKI KORJATTU
 // ==========================================
 
 window.openGuestbook = (eventKey) => {
@@ -476,9 +470,10 @@ window.openGuestbook = (eventKey) => {
         
         const coordsEl = document.getElementById('gb-coords');
         if(evt.coords) {
-            const cleanCoords = evt.coords.replace(/[^a-zA-Z0-9.°\s]/g, "").trim();
-            const mapsUrl = `http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(cleanCoords)}`;
-            coordsEl.innerHTML = `<a href="${mapsUrl}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
+            // Poistetaan aste-merkki ja muut erikoismerkit vain hakua varten, jotta Google Maps ymmärtää sen.
+            const queryCoords = evt.coords.replace(/°/g, "").replace(/\s+/g, "+");
+            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${queryCoords}`;
+            coordsEl.innerHTML = `<a href="${mapsUrl}" target="_blank" style="color:#D2691E; font-weight:bold; text-decoration: underline;">${evt.coords}</a>`;
         } else {
             coordsEl.innerText = "-";
         }
@@ -657,7 +652,7 @@ document.getElementById('btn-parse-mass').onclick = () => {
 document.getElementById('btn-save-mass').onclick = () => {
     const nicks = document.getElementById('mass-output').value.split('\n').map(s => s.trim()).filter(s => s.length > 0);
     nicks.forEach(n => {
-        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({ nickname: n, from: "", message: "(Massa)", timestamp: firebase.database.ServerValue.TIMESTAMP });
+        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({ nickname: n, from: "", message: "(Massatuonti)", timestamp: firebase.database.ServerValue.TIMESTAMP });
     });
     if(massModal) massModal.style.display = "none";
 };
