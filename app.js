@@ -11,7 +11,7 @@ const firebaseConfig = {
     appId: "1:588536838615:web:148de0581bbd46c42c7392"
 };
 
-// Alustetaan Firebase huolellisesti
+// Alustetaan Firebase
 try { 
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig); 
@@ -52,7 +52,7 @@ auth.onAuthStateChanged((user) => {
             userDisplay.style.display = 'block';
             userDisplay.innerText = "👤 " + user.email;
         }
-        if (guestbookView.style.display !== 'block') {
+        if (guestbookView.style.display !== 'block' && document.getElementById('stats-view').style.display !== 'block') {
             showAdminView();
         }
         loadEvents();
@@ -67,6 +67,7 @@ function showLoginView() {
     if(loginView) loginView.style.display = 'flex'; 
     if(adminView) adminView.style.display = 'none'; 
     if(guestbookView) guestbookView.style.display = 'none'; 
+    if(document.getElementById('stats-view')) document.getElementById('stats-view').style.display = 'none';
 }
 
 function showAdminView() {
@@ -74,12 +75,22 @@ function showAdminView() {
     if(loginView) loginView.style.display = 'none'; 
     if(adminView) adminView.style.display = 'block'; 
     if(guestbookView) guestbookView.style.display = 'none';
+    if(document.getElementById('stats-view')) document.getElementById('stats-view').style.display = 'none';
     if(currentEventId) { 
         db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off(); 
         currentEventId = null; 
     }
 }
 window.showAdminView = showAdminView;
+
+// Tilastonäkymän avaaminen
+document.getElementById('btn-show-stats').onclick = () => {
+    if(adminView) adminView.style.display = 'none';
+    const statsView = document.getElementById('stats-view');
+    if(statsView) statsView.style.display = 'block';
+    // Kutsutaan stats.js tiedoston alustusta
+    if (typeof initStats === 'function') initStats();
+};
 
 // Swipe-logiikka navigointiin
 guestbookView.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
@@ -293,8 +304,8 @@ function processTextImport(text, mode) {
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     
     if (lines.length > 0) {
-        const ignore = ["Tapahtuman tekijä", "Tapahtumapäivä", "Alkamisaika", "Loppumisaika", "Vaikeustaso", "Maasto", "Koko", "Maa:", "N ", "E ", "UTM"];
-        if (!ignore.some(p => lines[0].startsWith(p))) {
+        const ignorePrefixes = ["Tapahtuman tekijä", "Tapahtumapäivä", "Alkamisaika", "Loppumisaika", "Vaikeustaso", "Maasto", "Koko", "Maa:", "N ", "E ", "UTM"];
+        if (!ignorePrefixes.some(p => lines[0].startsWith(p))) {
             document.getElementById(prefix + 'name').value = lines[0];
         }
     }
@@ -459,7 +470,7 @@ window.openGuestbook = (eventKey) => {
         const coordsEl = document.getElementById('gb-coords');
         if(evt.coords) {
             const cleanCoords = evt.coords.replace(/[^a-zA-Z0-9.,°\s]/g, "");
-            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanCoords)}`;
+            const mapsUrl = `http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(cleanCoords)}`;
             coordsEl.innerHTML = `<a href="${mapsUrl}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
         } else {
             coordsEl.innerText = "-";
@@ -500,6 +511,7 @@ window.openGuestbook = (eventKey) => {
     if(loginView) loginView.style.display = 'none'; 
     if(adminView) adminView.style.display = 'none'; 
     if(guestbookView) guestbookView.style.display = 'block';
+    if(document.getElementById('stats-view')) document.getElementById('stats-view').style.display = 'none';
     
     window.scrollTo(0,0);
     loadAttendees(eventKey);
@@ -531,14 +543,21 @@ function loadAttendees(eventKey) {
         logs.forEach(log => {
             const row = document.createElement('div');
             row.className = "log-item";
-            let btns = !currentEventArchived ? `<div class="log-actions"><button class="btn-blue btn-small" onclick="openLogEditModal('${log.key}')">✏️</button><button class="btn-red btn-small" onclick="deleteLog('${log.key}')">🗑</button></div>` : "";
+            let actionBtns = "";
+            if (!currentEventArchived) {
+                actionBtns = `
+                <div class="log-actions">
+                    <button class="btn-blue btn-small" onclick="openLogEditModal('${log.key}')">✏️</button>
+                    <button class="btn-red btn-small" onclick="deleteLog('${log.key}')">🗑</button>
+                </div>`;
+            }
             row.innerHTML = `
                 <div>
                     <strong style="color:#4caf50;">${log.nickname}</strong>
                     <span>${log.from ? ' / ' + log.from : ''}</span>
                     <div style="font-style:italic; color:#888; font-size:0.9em;">${log.message || ''}</div>
                 </div>
-                ${btns}
+                ${actionBtns}
             `;
             listEl.appendChild(row);
         });
@@ -548,7 +567,7 @@ function loadAttendees(eventKey) {
 }
 
 // ==========================================
-// 8. MUOKKAUS JA MASSA-TOIMINNOT
+// 8. MUOKKAUKSET JA MASSA-TOIMINNOT
 // ==========================================
 
 window.openEditModal = (key) => {
@@ -638,7 +657,7 @@ document.getElementById('btn-parse-mass').onclick = () => {
 document.getElementById('btn-save-mass').onclick = () => {
     const nicks = document.getElementById('mass-output').value.split('\n').map(s => s.trim()).filter(s => s.length > 0);
     nicks.forEach(n => {
-        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({ nickname: n, from: "", message: "(Massa)", timestamp: firebase.database.ServerValue.TIMESTAMP });
+        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({ nickname: n, from: "", message: "(Massatuonti)", timestamp: firebase.database.ServerValue.TIMESTAMP });
     });
     if(massModal) massModal.style.display = "none";
 };
