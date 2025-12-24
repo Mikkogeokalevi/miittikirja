@@ -182,7 +182,6 @@
             border-bottom: 1px dashed #D2B48C; 
             display: flex; 
             align-items: center; 
-            /* Sallitaan rivitys koordinaateille */
             word-break: break-word;
             overflow: visible;
         }
@@ -199,7 +198,18 @@
             background-color: #FFF8E7; 
             font-size: 0.85em; 
             color: #666;
-            font-style: italic;
+            padding: 10px;
+        }
+
+        .attr-tag {
+            display: inline-block;
+            background: #D2691E;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 2px;
+            font-size: 0.9em;
+            font-style: normal;
         }
 
         #gb-event-name {
@@ -274,9 +284,24 @@
             border-radius: 15px; 
             text-align: left; 
         }
+
+        /* Latausilmaisin */
+        #loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
+
+    <div id="loading-overlay">⏳ Käsitellään tietoja...</div>
 
     <img src="https://img.geocaching.com:443/d75362fa-0668-414e-adb7-20a2b35c3eed.png" class="logo-img" alt="Mikkokalevin logo">
     
@@ -314,10 +339,15 @@
             
             <div id="new-event-form" style="display: none;">
                 
+                <div style="background:#fff; border:1px dashed #4caf50; padding:10px; margin-bottom:15px; border-radius:5px;">
+                    <p style="margin:0 0 5px 0; font-size:0.9em; font-weight:bold; color:#2e7d32;">📄 Tuo kerralla GPX-tiedostosta:</p>
+                    <input type="file" id="import-gpx-new" accept=".gpx" style="font-size:0.8em; border:none; padding:5px;">
+                </div>
+
                 <div style="background:#fff; border:1px dashed #D2691E; padding:10px; margin-bottom:15px; border-radius:5px;">
-                    <p style="margin:0 0 5px 0; font-size:0.9em; font-weight:bold; color:#D2691E;">📥 Tuo tiedot tekstistä:</p>
+                    <p style="margin:0 0 5px 0; font-size:0.9em; font-weight:bold; color:#D2691E;">📥 Tai tuo tiedot tekstistä:</p>
                     <textarea id="import-text" rows="3" placeholder="Liitä Geocaching.com sivun teksti tähän..." style="font-size:0.8em; height:60px;"></textarea>
-                    <button id="btn-process-import" class="btn btn-gray btn-small" style="width:100%;">🪄 Täytä lomake automaattisesti</button>
+                    <button id="btn-process-import" class="btn btn-gray btn-small" style="width:100%;">🪄 Täytä lomake tekstistä</button>
                 </div>
                 
                 <label style="font-size:0.8em; font-weight:bold;">Tyyppi</label>
@@ -344,19 +374,19 @@
 
         <div class="category-header">☕ Miitit</div>
         <div class="sub-category-header">Tulevat</div>
-        <div id="list-miitti-future"><p style="font-size:0.8em; color:#888;">Ei tulevia.</p></div>
+        <div id="list-miitti-future"></div>
         <div class="sub-category-header">Menneet</div>
         <div id="list-miitti-past"></div>
 
         <div class="category-header">🎉 Yhteisöjuhlat</div>
         <div class="sub-category-header">Tulevat</div>
-        <div id="list-cce-future"><p style="font-size:0.8em; color:#888;">Ei tulevia.</p></div>
+        <div id="list-cce-future"></div>
         <div class="sub-category-header">Menneet</div>
         <div id="list-cce-past"></div>
 
         <div class="category-header">🗑️ CITO Tapahtumat</div>
         <div class="sub-category-header">Tulevat</div>
-        <div id="list-cito-future"><p style="font-size:0.8em; color:#888;">Ei tulevia.</p></div>
+        <div id="list-cito-future"></div>
         <div class="sub-category-header">Menneet</div>
         <div id="list-cito-past"></div>
     </div>
@@ -381,9 +411,14 @@
             <span id="gb-loc">Paikka</span>
             <span id="gb-gc">GC</span>
             <span id="gb-coords">Koordinaatit</span>
-            <span id="gb-attrs"></span>
+            <div id="gb-attrs"></div>
         </div>
         
+        <div id="gb-sync-area" style="margin-bottom: 20px;">
+            <button id="btn-sync-gpx-trigger" class="btn btn-small btn-green" style="width:100%;">🔄 Päivitä puuttuvat tiedot & osallistujat GPX-tiedostosta</button>
+            <input type="file" id="import-gpx-sync" accept=".gpx" style="display:none;">
+        </div>
+
         <div id="gb-description" class="description-container" style="display:none;"></div>
         
         <div id="gb-actions-area">
@@ -417,23 +452,15 @@
             </div>
 
             <input type="hidden" id="edit-key">
-            
             <label style="font-weight:bold;">Tyyppi</label>
-            <select id="edit-type">
-                <option value="miitti">Miitti</option>
-                <option value="cito">CITO</option>
-                <option value="cce">Yhteisöjuhla</option>
-            </select>
-            
+            <select id="edit-type"><option value="miitti">Miitti</option><option value="cito">CITO</option><option value="cce">Yhteisöjuhla</option></select>
             <label style="font-weight:bold;">GC-Koodi</label><input type="text" id="edit-gc">
             <label style="font-weight:bold;">Nimi</label><input type="text" id="edit-name">
             <label style="font-weight:bold;">Pvm</label><input type="date" id="edit-date">
             <label style="font-weight:bold;">Aika</label><input type="text" id="edit-time">
             <label style="font-weight:bold;">Koordinaatit</label><input type="text" id="edit-coords">
             <label style="font-weight:bold;">Paikka</label><input type="text" id="edit-loc">
-            
-            <label style="font-weight:bold;">Miittikuvaus (HTML)</label>
-            <textarea id="edit-desc" rows="5" placeholder="<li>Liitä HTML...</li>"></textarea>
+            <label style="font-weight:bold;">HTML Kuvaus</label><textarea id="edit-desc" rows="5"></textarea>
 
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button id="btn-save-edit" class="btn btn-green">Tallenna</button>
@@ -446,16 +473,9 @@
         <div class="modal-content">
             <h3 style="text-align:center;">✏️ Muokkaa kävijää</h3>
             <input type="hidden" id="log-edit-key">
-            
-            <label style="font-weight:bold;">Nimimerkki</label>
-            <input type="text" id="log-edit-nick">
-            
-            <label style="font-weight:bold;">Mistä tulet?</label>
-            <input type="text" id="log-edit-from">
-            
-            <label style="font-weight:bold;">Terveiset / Viesti</label>
-            <textarea id="log-edit-msg" rows="3"></textarea>
-            
+            <label>Nimimerkki</label><input type="text" id="log-edit-nick">
+            <label>Mistä tulet?</label><input type="text" id="log-edit-from">
+            <label>Viesti</label><textarea id="log-edit-msg" rows="3"></textarea>
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button id="btn-save-log-edit" class="btn btn-green">Tallenna</button>
                 <button onclick="closeModal()" class="btn btn-red">Peruuta</button>
@@ -466,22 +486,14 @@
     <div id="mass-modal" class="modal">
         <div class="modal-content">
             <h3 style="text-align:center;">📥 Tuo osallistujat</h3>
-            
             <div id="mass-step-1">
-                <p style="font-size:0.9em;">1. Liitä tähän kopioitu teksti (sis. roskat).</p>
-                <textarea id="mass-input" rows="8" placeholder="Liitä teksti tähän..." style="width:100%; border:2px solid #8B4513; margin-bottom:10px;"></textarea>
-                <button id="btn-parse-mass" class="btn btn-blue">🔍 2. Etsi ja Puhdista nimet</button>
+                <textarea id="mass-input" rows="8" placeholder="Liitä teksti tähän..."></textarea>
+                <button id="btn-parse-mass" class="btn btn-blue">Etsi nimet</button>
             </div>
-
             <div id="mass-step-2" style="display:none;">
-                <p style="font-size:0.9em; color:#4caf50; font-weight:bold;">3. Tarkista lista:</p>
-                <textarea id="mass-output" rows="10" style="width:100%; border:2px dashed #4caf50; background:#f1f8e9; margin-bottom:10px;"></textarea>
-                <div style="display:flex; gap:10px;">
-                    <button id="btn-save-mass" class="btn btn-green">💾 4. Tallenna</button>
-                    <button onclick="resetMassModal()" class="btn btn-gray">Takaisin</button>
-                </div>
+                <textarea id="mass-output" rows="10"></textarea>
+                <div style="display:flex; gap:10px;"><button id="btn-save-mass" class="btn btn-green">Tallenna</button><button onclick="resetMassModal()" class="btn btn-gray">Takaisin</button></div>
             </div>
-
             <button onclick="closeModal()" class="btn btn-red" style="margin-top:20px; width:100%;">Sulje</button>
         </div>
     </div>
