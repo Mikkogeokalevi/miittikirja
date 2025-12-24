@@ -18,7 +18,7 @@ const auth = firebase.auth();
 let currentUser = null;
 let currentEventId = null;
 let currentEventArchived = false;
-let globalEventList = [];
+let globalEventList = []; // Kaikki tapahtumat navigointia varten
 
 // UI Elementit
 const loginView = document.getElementById('login-view');
@@ -55,6 +55,7 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
+// Pyyhkäisytoiminnallisuus
 guestbookView.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
 });
@@ -66,10 +67,10 @@ guestbookView.addEventListener('touchend', e => {
 
 function handleSwipe() {
     if (touchEndX < touchStartX - 50) {
-        navigateEvent(-1); 
+        navigateEvent(-1); // Seuraava (vasemmalle)
     }
     if (touchEndX > touchStartX + 50) {
-        navigateEvent(1);
+        navigateEvent(1);  // Edellinen (oikealle)
     }
 }
 
@@ -116,6 +117,7 @@ window.navigateEvent = (direction) => {
     if (!currentEventId || globalEventList.length === 0) return;
     const currentIndex = globalEventList.findIndex(e => e.key === currentEventId);
     if (currentIndex === -1) return;
+    
     const newIndex = currentIndex - direction; 
     if (newIndex >= 0 && newIndex < globalEventList.length) {
         db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
@@ -132,31 +134,22 @@ document.getElementById('new-event-toggle').addEventListener('click', () => {
     }
 });
 
-// UUSI: Tietojen parsinta tekstistä (Automaattitäyttö)
+// Automaattinen tekstin poiminta uuden miitin lomakkeelle
 document.getElementById('btn-process-import').addEventListener('click', () => {
     const text = document.getElementById('import-text').value;
     if (!text) return;
 
-    // --- 0. Nimen (Otsikon) haku ---
-    // Pilkotaan rivit, poistetaan tyhjät
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     
     if (lines.length > 0) {
         const firstLine = lines[0];
-        // Lista sanoista, joilla tekniset rivit yleensä alkavat. Jos eka rivi ei ala näillä, se on otsikko.
-        const ignorePrefixes = [
-            "Tapahtuman tekijä", "Tapahtumapäivä", "Alkamisaika", "Loppumisaika", 
-            "Vaikeustaso", "Maasto", "Koko", "Maa:", "N ", "E ", "UTM"
-        ];
-        
+        const ignorePrefixes = ["Tapahtuman tekijä", "Tapahtumapäivä", "Alkamisaika", "Loppumisaika", "Vaikeustaso", "Maasto", "Koko", "Maa:", "N ", "E ", "UTM"];
         const isMetadata = ignorePrefixes.some(prefix => firstLine.startsWith(prefix));
-        
         if (!isMetadata) {
             document.getElementById('new-name').value = firstLine;
         }
     }
 
-    // --- 1. Päivämäärä ---
     const dateMatch = text.match(/Tapahtumapäivä:\s*(\d{1,2}\.\d{1,2}\.\d{4})/);
     if (dateMatch) {
         const parts = dateMatch[1].split('.');
@@ -168,36 +161,29 @@ document.getElementById('btn-process-import').addEventListener('click', () => {
         }
     }
 
-    // --- 2. Kellonaika ---
     const startMatch = text.match(/Alkamisaika:\s*(\d{1,2}[:\.]\d{2})/);
     const endMatch = text.match(/Loppumisaika:\s*(\d{1,2}[:\.]\d{2})/);
-    
     if (startMatch) {
         let start = startMatch[1].replace('.', ':');
         if(start.indexOf(':') === 1) start = '0' + start;
-        
         let end = "";
         if (endMatch) {
             end = endMatch[1].replace('.', ':');
             if(end.indexOf(':') === 1) end = '0' + end;
         }
-        
         document.getElementById('new-time').value = end ? `${start} - ${end}` : start;
     }
 
-    // --- 3. Koordinaatit ---
     const coordMatch = text.match(/([NS]\s*\d+°\s*[\d\.]+\s*[EW]\s*\d+°\s*[\d\.]+)/);
     if (coordMatch) {
         document.getElementById('new-coords').value = coordMatch[1].trim();
     }
 
-    // --- 4. GC Koodi ---
     const gcMatch = text.match(/(GC[A-Z0-9]+)/);
     if (gcMatch) {
         document.getElementById('new-gc').value = gcMatch[1];
     }
-
-    alert("Tiedot haettu! Tarkista kentät.");
+    alert("Tiedot haettu tekstistä!");
 });
 
 document.getElementById('btn-add-event').addEventListener('click', () => {
@@ -223,20 +209,25 @@ document.getElementById('btn-add-event').addEventListener('click', () => {
 
 function loadEvents() {
     if (!currentUser) return;
-    const listCce = document.getElementById('list-cce');
-    const listCito = document.getElementById('list-cito');
-    const listMiitti = document.getElementById('list-miitti');
     
-    db.ref('miitit/' + currentUser.uid + '/events').on('value', (snapshot) => {
-        listCce.innerHTML = ""; listCito.innerHTML = ""; listMiitti.innerHTML = "";
-        const events = [];
-        let count = 0;
-        
-        snapshot.forEach(child => { events.push({key: child.key, ...child.val()}); count++; });
-        if(eventStatsEl) eventStatsEl.innerText = `Löytyi ${count} tapahtumaa.`;
+    const lists = {
+        miitti: { past: document.getElementById('list-miitti-past'), future: document.getElementById('list-miitti-future') },
+        cito: { past: document.getElementById('list-cito-past'), future: document.getElementById('list-cito-future') },
+        cce: { past: document.getElementById('list-cce-past'), future: document.getElementById('list-cce-future') }
+    };
 
+    db.ref('miitit/' + currentUser.uid + '/events').on('value', (snapshot) => {
+        Object.values(lists).forEach(l => { l.past.innerHTML = ""; l.future.innerHTML = ""; });
+        
+        const events = [];
+        snapshot.forEach(child => { events.push({key: child.key, ...child.val()}); });
+        
         events.sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0));
         globalEventList = events;
+        
+        if(eventStatsEl) eventStatsEl.innerText = `Löytyi ${events.length} tapahtumaa.`;
+
+        const today = new Date().toISOString().split('T')[0];
 
         events.forEach(evt => {
             const div = document.createElement('div');
@@ -251,9 +242,6 @@ function loadEvents() {
             if(evt.type === 'cce') icon = "🎉";
             if(isArchived) icon = "🔒 " + icon;
 
-            const archiveBtnText = isArchived ? "♻️ Palauta" : "📁 Arkistoi";
-            const archiveBtnClass = isArchived ? "btn-blue" : "btn-gray";
-
             const gcLink = `<a href="https://coord.info/${evt.gc}" target="_blank" style="font-weight:bold; color:#A0522D; text-decoration:none;">${evt.gc}</a>`;
             const countId = `count-${evt.key}`;
 
@@ -262,6 +250,7 @@ function loadEvents() {
                     <strong>${icon} ${evt.name}</strong>
                     <span>${dateStr}</span>
                 </div>
+                <div style="font-size:0.8em; color:#666; margin-bottom:5px;">🕓 ${evt.time || '-'}</div>
                 <div style="font-size:0.9em; color:#A0522D; display:flex; justify-content:space-between;">
                     <span>${gcLink} ${evt.location ? '• ' + evt.location : ''}</span>
                     <span id="${countId}" style="font-weight:bold; color:#333;">👤 0</span>
@@ -269,7 +258,7 @@ function loadEvents() {
                 <div style="margin-top:10px; display:flex; gap:5px;">
                     <button class="btn btn-green btn-small" onclick="openGuestbook('${evt.key}')">📖 Avaa</button>
                     <button class="btn btn-blue btn-small" onclick="openEditModal('${evt.key}')">✏️</button>
-                    <button class="btn ${archiveBtnClass} btn-small" onclick="toggleArchiveEvent('${evt.key}', ${!isArchived})">${archiveBtnText}</button>
+                    <button class="btn ${isArchived ? 'btn-blue' : 'btn-gray'} btn-small" onclick="toggleArchiveEvent('${evt.key}', ${!isArchived})">${isArchived ? '♻️ Palauta' : '📁 Arkistoi'}</button>
                     <button class="btn btn-red btn-small" onclick="deleteEvent('${evt.key}')">🗑</button>
                 </div>
             `;
@@ -280,15 +269,25 @@ function loadEvents() {
                 if (el) el.innerText = "👤 " + num;
             });
             
-            if (evt.type === 'cce') listCce.appendChild(div);
-            else if (evt.type === 'cito') listCito.appendChild(div);
-            else listMiitti.appendChild(div); 
+            const targetList = (evt.date >= today) ? lists[evt.type].future : lists[evt.type].past;
+            if (targetList) targetList.appendChild(div);
+        });
+        
+        ['miitti', 'cito', 'cce'].forEach(type => {
+            const fList = lists[type].future;
+            if(fList.children.length > 1) {
+                const p = fList.querySelector('p');
+                if(p) p.remove();
+            }
         });
     });
 }
 
+// ==========================================
+// 4. MIITTIKIRJA (GUESTBOOK)
+// ==========================================
 window.toggleArchiveEvent = (key, newState) => {
-    const msg = newState ? "Haluatko arkistoida miitin? (Piilottaa muokkauksen)" : "Palautetaanko miitti aktiiviseksi?";
+    const msg = newState ? "Haluatko arkistoida miitin?" : "Palautetaanko miitti aktiiviseksi?";
     if(confirm(msg)) {
         db.ref('miitit/' + currentUser.uid + '/events/' + key).update({ isArchived: newState });
     }
@@ -307,13 +306,6 @@ window.openGuestbook = (eventKey) => {
         document.getElementById('gb-date').innerText = `📅 ${evt.date}`;
         document.getElementById('gb-gc').innerText = `🆔 ${evt.gc}`;
         document.getElementById('gb-loc').innerText = `🏠 ${evt.location || '-'}`;
-        
-        const attrEl = document.getElementById('gb-attrs');
-        if (evt.attributes && Array.isArray(evt.attributes)) {
-            attrEl.innerText = "⭐ " + evt.attributes.join(", ");
-        } else {
-            attrEl.innerText = "";
-        }
         
         const coordsEl = document.getElementById('gb-coords');
         if(evt.coords) coordsEl.innerHTML = `📍 <a href="http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(evt.coords)}" target="_blank" style="color:#D2691E; font-weight:bold;">${evt.coords}</a>`;
@@ -348,7 +340,6 @@ window.openGuestbook = (eventKey) => {
     guestbookView.style.display = 'block';
     
     window.scrollTo(0,0);
-    
     loadAttendees(eventKey);
 };
 
@@ -365,6 +356,9 @@ document.getElementById('btn-sign-log').addEventListener('click', () => {
     });
 });
 
+// ==========================================
+// 5. APUFUNKTIOT & MUOKKAUS
+// ==========================================
 window.openMassImport = () => {
     document.getElementById('mass-input').value = ""; 
     document.getElementById('mass-output').value = ""; 
@@ -372,6 +366,7 @@ window.openMassImport = () => {
     document.getElementById('mass-step-2').style.display = 'none';
     massModal.style.display = "block";
 };
+
 window.resetMassModal = () => {
     document.getElementById('mass-step-1').style.display = 'block';
     document.getElementById('mass-step-2').style.display = 'none';
@@ -382,22 +377,16 @@ document.getElementById('btn-parse-mass').addEventListener('click', () => {
     if(!text) return;
     
     let names = [];
-    
     const blocks = text.split(/Näytä\s+loki|View\s+Log|Näytä\s+\/\s+Muokkaa|View\s+\/\s+Edit/i);
     
     blocks.forEach(block => {
         const cleanBlock = block.replace(/\s+/g, ' ').trim();
-        const isAttended = /Osallistui|Attended/i.test(cleanBlock);
-        
-        if (isAttended) {
+        if (/Osallistui|Attended/i.test(cleanBlock)) {
             const nameMatch = cleanBlock.match(/^(.*?)\s+(?:Premium\s+Member|Member|Reviewer)/i);
-            
             if (nameMatch && nameMatch[1]) {
                 let name = nameMatch[1].trim();
                 name = name.replace(/lokia\s*\/\s*Kuvia/gi, "").trim();
                 name = name.replace(/Log\s*\/\s*Images/gi, "").trim();
-                name = name.replace(/Näytä\s+loki/gi, "").trim();
-
                 if(!name.includes("Aion osallistua") && name.length > 0 && name.length < 50) {
                     names.push(name);
                 }
@@ -406,8 +395,7 @@ document.getElementById('btn-parse-mass').addEventListener('click', () => {
     });
 
     names = [...new Set(names)];
-    if (names.length === 0) { alert("Ei löydettyjä osallistujia. Tarkista että kopioit oikein."); return; }
-    
+    if (names.length === 0) { alert("Ei osallistujia."); return; }
     document.getElementById('mass-output').value = names.join('\n');
     document.getElementById('mass-step-1').style.display = 'none';
     document.getElementById('mass-step-2').style.display = 'block';
@@ -416,13 +404,11 @@ document.getElementById('btn-parse-mass').addEventListener('click', () => {
 document.getElementById('btn-save-mass').addEventListener('click', () => {
     const cleanText = document.getElementById('mass-output').value;
     const finalNames = cleanText.split('\n').map(s => s.trim()).filter(s => s.length > 0);
-    if (finalNames.length === 0) return;
     finalNames.forEach(name => {
         db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({
             nickname: name, from: "", message: "(Massatuonti)", timestamp: firebase.database.ServerValue.TIMESTAMP
         });
     });
-    alert(`Tallennettu!`);
     massModal.style.display = "none";
 });
 
@@ -431,21 +417,13 @@ function loadAttendees(eventKey) {
         const listEl = document.getElementById('attendee-list');
         listEl.innerHTML = ""; 
         const logs = [];
+        snapshot.forEach(child => { logs.push({key: child.key, ...child.val()}); });
         
-        snapshot.forEach(child => { 
-            logs.push({key: child.key, ...child.val()}); 
-        });
-        
-        logs.sort((a,b) => {
-            const timeA = a.timestamp || 0;
-            const timeB = b.timestamp || 0;
-            return timeB - timeA;
-        });
+        logs.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
 
         logs.forEach(log => {
             const row = document.createElement('div');
             row.className = "log-item";
-            
             let actionBtns = "";
             if (!currentEventArchived) {
                 actionBtns = `
@@ -454,11 +432,10 @@ function loadAttendees(eventKey) {
                     <button class="btn-red btn-small" onclick="deleteLog('${log.key}')">🗑</button>
                 </div>`;
             }
-
             row.innerHTML = `
                 <div>
-                    <strong style="color:#4caf50; font-size:1.1em;">${log.nickname}</strong>
-                    <span style="color:#A0522D;">${log.from ? ' / ' + log.from : ''}</span>
+                    <strong style="color:#4caf50;">${log.nickname}</strong>
+                    <span>${log.from ? ' / ' + log.from : ''}</span>
                     <div style="font-style:italic; color:#888; font-size:0.9em;">${log.message || ''}</div>
                 </div>
                 ${actionBtns}
@@ -525,21 +502,6 @@ document.getElementById('btn-save-log-edit').addEventListener('click', () => {
     });
 });
 
-window.closeModal = () => { 
-    editModal.style.display = "none"; 
-    massModal.style.display = "none"; 
-    logEditModal.style.display = "none"; 
-};
-
-window.deleteEvent = (key) => {
-    if(confirm("Poistetaanko miitti ja kaikki sen tiedot?")) {
-        db.ref('miitit/' + currentUser.uid + '/events/' + key).remove();
-        db.ref('miitit/' + currentUser.uid + '/logs/' + key).remove();
-    }
-};
-
-window.deleteLog = (logKey) => {
-    if(confirm("Poista osallistuja listalta?")) {
-        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + logKey).remove();
-    }
-};
+window.closeModal = () => { editModal.style.display = "none"; massModal.style.display = "none"; logEditModal.style.display = "none"; };
+window.deleteEvent = (key) => { if(confirm("Poistetaanko miitti?")) { db.ref('miitit/' + currentUser.uid + '/events/' + key).remove(); db.ref('miitit/' + currentUser.uid + '/logs/' + key).remove(); } };
+window.deleteLog = (logKey) => { if(confirm("Poista?")) db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + logKey).remove(); };
