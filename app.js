@@ -251,7 +251,7 @@ document.getElementById('btn-sign-log').addEventListener('click', () => {
     });
 });
 
-// MASSALISÄYS LOGIIKKA (PÄIVITETTY KORJAAMAAN OMISTAJAN LOKIN ONGELMA)
+// MASSALISÄYS LOGIIKKA (PÄIVITETTY)
 window.openMassImport = () => {
     document.getElementById('mass-input').value = ""; 
     document.getElementById('mass-output').value = ""; 
@@ -270,24 +270,27 @@ document.getElementById('btn-parse-mass').addEventListener('click', () => {
     
     let names = [];
     
-    // --- KORJAUS TÄSSÄ ---
-    // Lisätty katkaisuun myös "Näytä / Muokkaa" ja "View / Edit" -variaatiot
-    // Tämä estää omistajan lokia sulautumasta seuraavaan lokiin.
+    // Pilkotaan teksti
     const blocks = text.split(/Näytä\s+loki|View\s+Log|Näytä\s+\/\s+Muokkaa|View\s+\/\s+Edit/i);
     
     blocks.forEach(block => {
-        // Siivotaan ylimääräiset rivinvaihdot ja välilyönnit
         const cleanBlock = block.replace(/\s+/g, ' ').trim();
         
-        // 2. Tarkistetaan onko lokityyppi "Osallistui" tai "Attended"
+        // Tarkistetaan onko lokityyppi "Osallistui" tai "Attended"
         const isAttended = /Osallistui|Attended/i.test(cleanBlock);
         
         if (isAttended) {
-            // 3. Etsitään nimi.
             const nameMatch = cleanBlock.match(/^(.*?)\s+(?:Premium\s+Member|Member|Reviewer)/i);
             
             if (nameMatch && nameMatch[1]) {
                 let name = nameMatch[1].trim();
+
+                // --- SIIVOUS ---
+                // Poistetaan "lokia / Kuvia" ja muut vastaavat roskat nimimerkin alusta
+                name = name.replace(/lokia\s*\/\s*Kuvia/gi, "").trim();
+                name = name.replace(/Log\s*\/\s*Images/gi, "").trim();
+                name = name.replace(/Näytä\s+loki/gi, "").trim();
+
                 // Lisätarkistus, ettei sekoitu Arkistointi-lokeihin joissa mainitaan osallistuminen tekstissä
                 if(!name.includes("Aion osallistua") && name.length > 0 && name.length < 50) {
                     names.push(name);
