@@ -1,19 +1,19 @@
 {
-  "name": "MK:n Miittikirja",
+  "name": "MK Miittikirja",
   "short_name": "Miittikirja",
-  "start_url": "./index.html",
+  "description": "Mikkokalevin sähköinen miittivieraskirja",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#FDF5E6",
   "theme_color": "#8B4513",
-  "orientation": "portrait",
   "icons": [
     {
-      "src": "icon.png",
+      "src": "https://img.geocaching.com:443/d75362fa-0668-414e-adb7-20a2b35c3eed.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icon.png",
+      "src": "https://img.geocaching.com:443/d75362fa-0668-414e-adb7-20a2b35c3eed.png",
       "sizes": "512x512",
       "type": "image/png"
     }
