@@ -1,6 +1,7 @@
 // ==========================================
 // 1. ASETUKSET JA MUUTTUJAT
 // ==========================================
+
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
     authDomain: "perhekalenteri-projekti.firebaseapp.com",
@@ -11,7 +12,7 @@ const firebaseConfig = {
     appId: "1:588536838615:web:148de0581bbd46c42c7392"
 };
 
-// Alustetaan Firebase huolellisesti
+// Alustetaan Firebase
 try { 
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig); 
@@ -28,7 +29,7 @@ let currentEventId = null;
 let currentEventArchived = false;
 let globalEventList = []; 
 
-// UI Elementit
+// Käyttöliittymän elementit
 const loginView = document.getElementById('login-view');
 const adminView = document.getElementById('admin-view');
 const guestbookView = document.getElementById('guestbook-view');
@@ -42,8 +43,9 @@ const loadingOverlay = document.getElementById('loading-overlay');
 let touchStartX = 0;
 let touchEndX = 0;
 
+
 // ==========================================
-// 2. KIRJAUTUMINEN JA NAVIGOINTI
+// 2. KIRJAUTUMINEN JA TILAN SEURANTA
 // ==========================================
 
 auth.onAuthStateChanged((user) => {
@@ -54,7 +56,7 @@ auth.onAuthStateChanged((user) => {
             userDisplay.innerText = "👤 " + user.email;
         }
         
-        // Pysytään nykyisessä näkymässä jos sellainen on auki, muuten adminiin
+        // Ohjataan oikeaan näkymään
         if (guestbookView.style.display !== 'block' && 
             document.getElementById('stats-view').style.display !== 'block') {
             showAdminView();
@@ -96,25 +98,27 @@ function showAdminView() {
     }
 }
 
-// Tehdään tästä globaali, jotta HTML:n onclick toimii
+// Globaali funktio navigointiin
 window.showAdminView = showAdminView;
 
-// Tilastonäkymän avaaminen nappulasta
+
+// ==========================================
+// 3. TILASTOJEN JA ELEIDEN HALLINTA
+// ==========================================
+
+// Tilastonäkymän avaaminen
 document.getElementById('btn-show-stats').onclick = () => {
     if(adminView) adminView.style.display = 'none';
     const statsView = document.getElementById('stats-view');
     if(statsView) statsView.style.display = 'block';
     
-    // Alustetaan tilastot stats.js tiedostosta
+    // Alustetaan tilastodata stats.js tiedostosta
     if (typeof initStats === 'function') {
         initStats();
     }
 };
 
-// ==========================================
-// 3. ELEET JA NAVIGOINTI
-// ==========================================
-
+// Pyyhkäisyeleet (Swipe)
 guestbookView.addEventListener('touchstart', e => { 
     touchStartX = e.changedTouches[0].screenX; 
 });
@@ -127,10 +131,10 @@ guestbookView.addEventListener('touchend', e => {
 function handleSwipe() {
     const swipeThreshold = 50;
     if (touchEndX < touchStartX - swipeThreshold) {
-        navigateEvent(-1); // Seuraava
+        navigateEvent(-1); // Seuraava tapahtuma
     }
     if (touchEndX > touchStartX + swipeThreshold) {
-        navigateEvent(1); // Edellinen
+        navigateEvent(1); // Edellinen tapahtuma
     }
 }
 
@@ -147,10 +151,12 @@ window.navigateEvent = (direction) => {
     }
 };
 
+
 // ==========================================
-// 4. APUFUNKTIOT (KOORDINAATIT JA SIJAINTI)
+// 4. KOORDINAATTIMUUNNOKSET JA SIJAINTI
 // ==========================================
 
+// Muunnetaan desimaalit muotoon N 61° 03.950
 function decimalToDMS(lat, lon) {
     const convert = (val, pos, neg) => {
         const abs = Math.abs(val);
@@ -158,7 +164,6 @@ function decimalToDMS(lat, lon) {
         const minutes = ((abs - degrees) * 60).toFixed(3);
         const direction = val >= 0 ? pos : neg;
         
-        // Pituuspiiri (E/W) vaatii usein 3 numeroa asteisiin geokätköilyssä
         const degStr = degrees.toString().padStart(pos === 'E' ? 3 : 2, '0');
         return `${direction} ${degStr}° ${minutes.padStart(6, '0')}`;
     };
@@ -166,10 +171,10 @@ function decimalToDMS(lat, lon) {
     return `${convert(lat, 'N', 'S')} ${convert(lon, 'E', 'W')}`;
 }
 
+// Haetaan paikkakunta koordinaattien perusteella
 async function fetchCityFromCoords(coords, targetId) {
     let lat, lon;
     
-    // Tarkistetaan onko muoto N 61° 03.950 E 025° 52.500
     const dmsMatch = coords.match(/([NS])\s*(\d+)°\s*([\d\.]+)\s*([EW])\s*(\d+)°\s*([\d\.]+)/);
     
     if (dmsMatch) {
@@ -178,7 +183,6 @@ async function fetchCityFromCoords(coords, targetId) {
         lon = parseInt(dmsMatch[5]) + parseFloat(dmsMatch[6]) / 60;
         if (dmsMatch[4] === 'W') lon = -lon;
     } else {
-        // Jos on desimaalimuodossa
         const parts = coords.replace(/[NE]/g, '').split(/[,\sE]/).filter(s => s.trim().length > 0);
         if (parts.length >= 2) { 
             lat = parseFloat(parts[0]); 
@@ -207,6 +211,7 @@ async function fetchCityFromCoords(coords, targetId) {
     return "";
 }
 
+// Avattavien osioiden logiikka
 window.toggleDetails = (id) => {
     const content = document.getElementById(id);
     const arrow = document.getElementById('arrow-' + id);
@@ -220,8 +225,9 @@ window.toggleDetails = (id) => {
     }
 };
 
+
 // ==========================================
-// 5. GPX-PARSERI (KORJATTU ATTRIBUUTIT)
+// 5. GPX-PROSESSOINTI (ATTRIBUUTIT JA LOKIT)
 // ==========================================
 
 function parseGPX(xmlText) {
@@ -234,7 +240,7 @@ function parseGPX(xmlText) {
     const lat = parseFloat(wpt.getAttribute("lat"));
     const lon = parseFloat(wpt.getAttribute("lon"));
     
-    // Etsitään kellonaika kuvauksesta
+    // Etsitään aikaväli lyhyestä kuvauksesta
     let timeStr = "";
     const shortDesc = wpt.getElementsByTagNameNS("*", "short_description")[0]?.textContent || "";
     const timeMatch = shortDesc.match(/(\d{1,2}[:\.]\d{2})\s*-\s*(\d{1,2}[:\.]\d{2})/);
@@ -242,7 +248,7 @@ function parseGPX(xmlText) {
         timeStr = `${timeMatch[1].replace('.', ':')} - ${timeMatch[2].replace('.', ':')}`;
     }
 
-    // Luetaan kaikki attribuutit (inc=1 on Kyllä, inc=0 on Ei)
+    // Luetaan attribuutit (mukaanlukien inc="0")
     const attributes = [];
     const attrElements = wpt.getElementsByTagNameNS("*", "attribute");
     
@@ -254,7 +260,7 @@ function parseGPX(xmlText) {
         });
     }
 
-    // Poimitaan Attended-logit (Osallistujat)
+    // Luetaan "Attended" tyyppiset lokit
     const attendees = [];
     const logs = wpt.getElementsByTagNameNS("*", "log");
     
@@ -276,12 +282,13 @@ function parseGPX(xmlText) {
         coords: decimalToDMS(lat, lon),
         descriptionHtml: wpt.getElementsByTagNameNS("*", "long_description")[0]?.textContent || "",
         attributes: attributes,
-        attendees: [...new Set(attendees)] // Uniikit nimet
+        attendees: [...new Set(attendees)]
     };
 }
 
+
 // ==========================================
-// 6. TUONTI JA LOMAKKEIDEN HALLINTA
+// 6. TUONTI JA LOMAKETOIMINNOT
 // ==========================================
 
 document.getElementById('import-gpx-new').onchange = async (e) => {
@@ -300,7 +307,7 @@ document.getElementById('import-gpx-new').onchange = async (e) => {
         document.getElementById('new-desc').value = data.descriptionHtml;
         
         fetchCityFromCoords(data.coords, 'new-loc');
-        alert("GPX tiedot ladattu onnistuneesti!");
+        alert("GPX tiedot haettu!");
     }
 };
 
@@ -323,7 +330,6 @@ document.getElementById('import-gpx-sync').onchange = async (e) => {
         return;
     }
 
-    // Haetaan nykyiset osallistujat duplikaattien estämiseksi
     const currentLogsSnap = await db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).once('value');
     const existingNicks = [];
     currentLogsSnap.forEach(child => { 
@@ -334,10 +340,10 @@ document.getElementById('import-gpx-sync').onchange = async (e) => {
     const currentEvtSnap = await db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).once('value');
     const currentEvt = currentEvtSnap.val();
 
-    // Päivitetään puuttuvat tiedot
+    // Päivitetään puuttuvat kentät
     if (!currentEvt.descriptionHtml) updates.descriptionHtml = gpxData.descriptionHtml;
     
-    // Päivitetään aina attribuutit, jotta inc="0" (EI-attribuutit) saadaan mukaan
+    // Attribuutit päivitetään aina jotta inc="0" tulee mukaan
     updates.attributes = gpxData.attributes;
     
     if (!currentEvt.location) {
@@ -345,14 +351,13 @@ document.getElementById('import-gpx-sync').onchange = async (e) => {
         if (city) updates.location = city;
     }
     
-    // Korjataan koordinaatit jos tarpeen
     updates.coords = gpxData.coords;
     
     if (Object.keys(updates).length > 0) { 
         await db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update(updates); 
     }
 
-    // Lisätään uudet osallistujat
+    // Lisätään uudet nimet
     let addedCount = 0;
     for (const nick of gpxData.attendees) {
         if (!existingNicks.includes(nick.toLowerCase())) {
@@ -367,11 +372,12 @@ document.getElementById('import-gpx-sync').onchange = async (e) => {
     }
 
     if(loadingOverlay) loadingOverlay.style.display = 'none';
-    alert(`Valmis! Päivitetty tiedot ja lisätty ${addedCount} uutta osallistujaa.`);
+    alert(`Päivitetty! Lisätty ${addedCount} uutta osallistujaa.`);
 };
 
+
 // ==========================================
-// 7. TEKSTINTUONTI JA MIITTIEN LISTAUS
+// 7. TEKSTINTUONTI JA LISTAN LATAUS
 // ==========================================
 
 function processTextImport(text, mode) {
@@ -444,7 +450,6 @@ function loadEvents() {
             events.push({key: child.key, ...child.val()}); 
         });
         
-        // Järjestetään pvm mukaan
         events.sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0));
         globalEventList = events;
         
@@ -461,6 +466,11 @@ function loadEvents() {
             
             const countId = `count-${evt.key}`;
             
+            // Arkistointinapin dynaaminen vaihto
+            const archiveBtn = isArchived 
+                ? `<button class="btn btn-blue btn-small" onclick="toggleArchive('${evt.key}', false)">♻️ Palauta</button>`
+                : `<button class="btn btn-red btn-small" onclick="toggleArchive('${evt.key}', true)">📦 Arkistoi</button>`;
+
             div.innerHTML = `
                 <div style="display:flex; justify-content:space-between;">
                     <strong>${evt.name}</strong>
@@ -471,10 +481,11 @@ function loadEvents() {
                     <span><a href="https://coord.info/${evt.gc}" target="_blank" style="color:#A0522D; font-weight:bold; text-decoration:none;">${evt.gc}</a> • ${evt.location || ''}</span>
                     <span id="${countId}" style="font-weight:bold; color:#333;">👤 0</span>
                 </div>
-                <div style="margin-top:10px; display:flex; gap:5px;">
+                <div style="margin-top:10px; display:flex; gap:5px; flex-wrap: wrap;">
                     <button class="btn btn-green btn-small" onclick="openGuestbook('${evt.key}')">📖 Avaa</button>
-                    <button class="btn btn-blue btn-small" onclick="openEditModal('${evt.key}')">✏️</button>
-                    <button class="btn btn-red btn-small" onclick="deleteEvent('${evt.key}')">🗑</button>
+                    <button class="btn btn-blue btn-small" onclick="openEditModal('${evt.key}')">✏️ Muokkaa</button>
+                    ${archiveBtn}
+                    <button class="btn btn-red btn-small" onclick="deleteEvent('${evt.key}')">🗑 Poista</button>
                 </div>
             `;
             
@@ -488,6 +499,21 @@ function loadEvents() {
         });
     });
 }
+
+// Arkistointitoiminto
+window.toggleArchive = (key, status) => {
+    const msg = status ? "Haluatko varmasti arkistoida?" : "Haluatko palauttaa aktiiviseksi?";
+    if (confirm(msg)) {
+        db.ref('miitit/' + currentUser.uid + '/events/' + key).update({
+            isArchived: status
+        });
+    }
+};
+
+
+// ==========================================
+// 8. TALLENNUS JA MUOKKAUS
+// ==========================================
 
 document.getElementById('btn-add-event').onclick = () => {
     const data = {
@@ -510,8 +536,7 @@ document.getElementById('btn-add-event').onclick = () => {
     
     db.ref('miitit/' + currentUser.uid + '/events').push(data).then(() => {
         ['new-gc','new-name','new-time','new-coords','new-loc', 'new-desc', 'import-text', 'import-gpx-new'].forEach(id => {
-            const el = document.getElementById(id); 
-            if(el) el.value = "";
+            const el = document.getElementById(id); if(el) el.value = "";
         });
         document.getElementById('new-event-form').style.display = 'none';
     });
@@ -528,8 +553,9 @@ document.getElementById('new-event-toggle').onclick = () => {
     if(f) f.style.display = (f.style.display === 'none') ? 'block' : 'none';
 };
 
+
 // ==========================================
-// 8. VIERASKIRJA (OSALLISTUJAT & ATTRIBUUTIT)
+// 9. VIERASKIRJA (GUESTBOOK)
 // ==========================================
 
 window.openGuestbook = (eventKey) => {
@@ -550,7 +576,6 @@ window.openGuestbook = (eventKey) => {
         
         const coordsEl = document.getElementById('gb-coords');
         if(evt.coords) {
-            // Poistetaan aste-merkki vain hakua varten
             const qCoords = evt.coords.replace(/°/g, "").replace(/\s+/g, "+");
             const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${qCoords}`;
             coordsEl.innerHTML = `<a href="${mapsUrl}" target="_blank" style="color:#D2691E; font-weight:bold; text-decoration: underline;">${evt.coords}</a>`;
@@ -564,7 +589,6 @@ window.openGuestbook = (eventKey) => {
             if (evt.attributes && Array.isArray(evt.attributes)) {
                 evt.attributes.forEach(a => {
                     const span = document.createElement('span');
-                    // Tarkistetaan inc-tieto (0 tai 1)
                     const isNeg = (a.inc === 0);
                     span.className = "attr-tag" + (isNeg ? " neg" : "");
                     span.innerText = a.name || a; 
@@ -596,14 +620,16 @@ window.openGuestbook = (eventKey) => {
     if(loginView) loginView.style.display = 'none'; 
     if(adminView) adminView.style.display = 'none'; 
     if(guestbookView) guestbookView.style.display = 'block';
-    
-    if(document.getElementById('stats-view')) {
-        document.getElementById('stats-view').style.display = 'none';
-    }
+    if(document.getElementById('stats-view')) document.getElementById('stats-view').style.display = 'none';
     
     window.scrollTo(0,0);
     loadAttendees(eventKey);
 };
+
+
+// ==========================================
+// 10. LOKIEN HALLINTA JA MASSA-TOIMINNOT
+// ==========================================
 
 document.getElementById('btn-sign-log').onclick = () => {
     const nick = document.getElementById('log-nickname').value.trim();
@@ -629,7 +655,7 @@ function loadAttendees(eventKey) {
         snapshot.forEach(child => { logs.push({key: child.key, ...child.val()}); });
         
         logs.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
-        
+
         logs.forEach(log => {
             const row = document.createElement('div');
             row.className = "log-item";
@@ -650,15 +676,10 @@ function loadAttendees(eventKey) {
             `;
             listEl.appendChild(row);
         });
-        
         const countEl = document.getElementById('attendee-count'); 
         if(countEl) countEl.innerText = logs.length;
     });
 }
-
-// ==========================================
-// 9. MUOKKAUS, MASSA JA POISTO
-// ==========================================
 
 window.openEditModal = (key) => {
     db.ref('miitit/' + currentUser.uid + '/events/' + key).once('value').then(snap => {
@@ -696,31 +717,6 @@ document.getElementById('btn-save-edit').onclick = () => {
     });
 };
 
-window.openLogEditModal = (logKey) => {
-    db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + logKey).once('value').then(snap => {
-        const log = snap.val();
-        document.getElementById('log-edit-key').value = logKey;
-        document.getElementById('log-edit-nick').value = log.nickname || "";
-        document.getElementById('log-edit-from').value = log.from || "";
-        document.getElementById('log-edit-msg').value = log.message || "";
-        
-        if(logEditModal) logEditModal.style.display = "block";
-    });
-};
-
-document.getElementById('btn-save-log-edit').onclick = () => {
-    const key = document.getElementById('log-edit-key').value;
-    const u = { 
-        nickname: document.getElementById('log-edit-nick').value, 
-        from: document.getElementById('log-edit-from').value, 
-        message: document.getElementById('log-edit-msg').value 
-    };
-    
-    db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + key).update(u).then(() => { 
-        if(logEditModal) logEditModal.style.display = "none"; 
-    });
-};
-
 window.openMassImport = () => {
     document.getElementById('mass-input').value = ""; 
     document.getElementById('mass-output').value = ""; 
@@ -748,7 +744,7 @@ document.getElementById('btn-parse-mass').onclick = () => {
     });
     
     names = [...new Set(names)]; 
-    if (names.length === 0) return alert("Ei nimiä!");
+    if (names.length === 0) return alert("Ei nimiä löytynyt!");
     
     document.getElementById('mass-output').value = names.join('\n');
     document.getElementById('mass-step-1').style.display = 'none'; 
@@ -766,6 +762,35 @@ document.getElementById('btn-save-mass').onclick = () => {
     if(massModal) massModal.style.display = "none";
 };
 
+
+// ==========================================
+// 11. MUOKKAUS, POISTO JA KIRJAUTUMINEN
+// ==========================================
+
+window.openLogEditModal = (logKey) => {
+    db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + logKey).once('value').then(snap => {
+        const log = snap.val();
+        document.getElementById('log-edit-key').value = logKey;
+        document.getElementById('log-edit-nick').value = log.nickname || "";
+        document.getElementById('log-edit-from').value = log.from || "";
+        document.getElementById('log-edit-msg').value = log.message || "";
+        if(logEditModal) logEditModal.style.display = "block";
+    });
+};
+
+document.getElementById('btn-save-log-edit').onclick = () => {
+    const key = document.getElementById('log-edit-key').value;
+    const u = { 
+        nickname: document.getElementById('log-edit-nick').value, 
+        from: document.getElementById('log-edit-from').value, 
+        message: document.getElementById('log-edit-msg').value 
+    };
+    
+    db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + key).update(u).then(() => { 
+        if(logEditModal) logEditModal.style.display = "none"; 
+    });
+};
+
 window.closeModal = () => { 
     if(editModal) editModal.style.display = "none"; 
     if(massModal) massModal.style.display = "none"; 
@@ -773,14 +798,14 @@ window.closeModal = () => {
 };
 
 window.deleteEvent = (k) => { 
-    if(confirm("Poista miitti?")) { 
+    if(confirm("Poista miitti lopullisesti?")) { 
         db.ref('miitit/'+currentUser.uid+'/events/'+k).remove(); 
         db.ref('miitit/'+currentUser.uid+'/logs/'+k).remove(); 
     } 
 };
 
 window.deleteLog = (lk) => { 
-    if(confirm("Poista?")) db.ref('miitit/'+currentUser.uid+'/logs/'+currentEventId+'/'+lk).remove(); 
+    if(confirm("Poista kirjaus?")) db.ref('miitit/'+currentUser.uid+'/logs/'+currentEventId+'/'+lk).remove(); 
 };
 
 window.resetMassModal = () => { 
@@ -788,10 +813,7 @@ window.resetMassModal = () => {
     document.getElementById('mass-step-2').style.display = 'none'; 
 };
 
-// ==========================================
-// 10. KIRJAUTUMISNAPPULAT
-// ==========================================
-
+// Kirjautumisnappien kuuntelijat
 document.getElementById('btn-login-google').onclick = () => { 
     auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert(e.message)); 
 };
