@@ -195,6 +195,22 @@
             letter-spacing: 0.5px;
             line-height: 1.3;
         }
+
+        /* UUSI: Kuvauslaatikko (HTML Renderöinti) */
+        .description-container {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #D2B48C;
+            margin-bottom: 20px;
+            text-align: left;
+            overflow-x: auto; /* Jos sisältö on liian leveää */
+        }
+        /* Varmistetaan että kuvat eivät leviä käsiin mobiilissa */
+        .description-container img {
+            max-width: 100% !important;
+            height: auto !important;
+        }
         
         .log-list { 
             max-height: 55vh; 
@@ -297,6 +313,10 @@
                 </div>
                 <input type="text" id="new-coords" placeholder="Koordinaatit">
                 <input type="text" id="new-loc" placeholder="Paikka / Osoite">
+                
+                <label style="font-size:0.8em; font-weight:bold;">Miittikuvaus (HTML)</label>
+                <textarea id="new-desc" rows="4" placeholder="Liitä Geocaching.com HTML-koodi tähän..."></textarea>
+                
                 <button id="btn-add-event" class="btn btn-blue">Tallenna Tapahtuma</button>
             </div>
         </div>
@@ -329,6 +349,8 @@
             <span id="gb-coords">📍 Koordinaatit</span>
             <span id="gb-attrs"></span>
         </div>
+        
+        <div id="gb-description" class="description-container" style="display:none;"></div>
         
         <div id="gb-actions-area">
             <div class="card-form">
@@ -369,6 +391,9 @@
             <label style="font-weight:bold;">Koordinaatit</label><input type="text" id="edit-coords">
             <label style="font-weight:bold;">Paikka</label><input type="text" id="edit-loc">
             
+            <label style="font-weight:bold;">Miittikuvaus (HTML)</label>
+            <textarea id="edit-desc" rows="5" placeholder="<li>Liitä HTML...</li>"></textarea>
+
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button id="btn-save-edit" class="btn btn-green">Tallenna</button>
                 <button onclick="closeModal()" class="btn btn-red">Peruuta</button>
