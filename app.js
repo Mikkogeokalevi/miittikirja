@@ -12,7 +12,7 @@ const firebaseConfig = {
     appId: "1:588536838615:web:148de0581bbd46c42c7392"
 };
 
-// Alustetaan Firebase
+// Alustetaan Firebase huolellisesti
 try { 
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig); 
@@ -106,7 +106,7 @@ window.showAdminView = showAdminView;
 // 3. TILASTOJEN JA ELEIDEN HALLINTA
 // ==========================================
 
-// Tilastonäkymän avaaminen
+// Tilastonäkymän avaaminen nappulasta
 document.getElementById('btn-show-stats').onclick = () => {
     if(adminView) adminView.style.display = 'none';
     const statsView = document.getElementById('stats-view');
@@ -153,7 +153,7 @@ window.navigateEvent = (direction) => {
 
 
 // ==========================================
-// 4. KOORDINAATTIMUUNNOKSET JA SIJAINTI
+// 4. APUFUNKTIOT (KOORDINAATIT JA SIJAINTI)
 // ==========================================
 
 // Muunnetaan desimaalit muotoon N 61° 03.950
@@ -240,7 +240,7 @@ function parseGPX(xmlText) {
     const lat = parseFloat(wpt.getAttribute("lat"));
     const lon = parseFloat(wpt.getAttribute("lon"));
     
-    // Etsitään aikaväli lyhyestä kuvauksesta
+    // Etsitään kellonaika kuvauksesta
     let timeStr = "";
     const shortDesc = wpt.getElementsByTagNameNS("*", "short_description")[0]?.textContent || "";
     const timeMatch = shortDesc.match(/(\d{1,2}[:\.]\d{2})\s*-\s*(\d{1,2}[:\.]\d{2})/);
@@ -288,7 +288,7 @@ function parseGPX(xmlText) {
 
 
 // ==========================================
-// 6. TUONTI JA LOMAKETOIMINNOT
+// 6. TUONTI JA LOMAKETOIMINNOT (MUKANA GC-TARKISTUS)
 // ==========================================
 
 document.getElementById('import-gpx-new').onchange = async (e) => {
@@ -330,6 +330,18 @@ document.getElementById('import-gpx-sync').onchange = async (e) => {
         return;
     }
 
+    const currentEvtSnap = await db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).once('value');
+    const currentEvt = currentEvtSnap.val();
+
+    // --- UUSI GC-KOODI TARKISTUS ---
+    if (currentEvt.gc && gpxData.gc && currentEvt.gc.trim().toUpperCase() !== gpxData.gc.trim().toUpperCase()) {
+        if(loadingOverlay) loadingOverlay.style.display = 'none';
+        alert(`⚠️ VIRHE: Tiedosto ei täsmää!\n\nMiitin koodi: ${currentEvt.gc}\nGPX tiedoston koodi: ${gpxData.gc}\n\nValitse oikea tiedosto.`);
+        e.target.value = ""; // Tyhjennetään valinta
+        return;
+    }
+    // -------------------------------
+
     const currentLogsSnap = await db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).once('value');
     const existingNicks = [];
     currentLogsSnap.forEach(child => { 
@@ -337,8 +349,6 @@ document.getElementById('import-gpx-sync').onchange = async (e) => {
     });
 
     const updates = {};
-    const currentEvtSnap = await db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).once('value');
-    const currentEvt = currentEvtSnap.val();
 
     // Päivitetään puuttuvat kentät
     if (!currentEvt.descriptionHtml) updates.descriptionHtml = gpxData.descriptionHtml;
@@ -373,6 +383,7 @@ document.getElementById('import-gpx-sync').onchange = async (e) => {
 
     if(loadingOverlay) loadingOverlay.style.display = 'none';
     alert(`Päivitetty! Lisätty ${addedCount} uutta osallistujaa.`);
+    e.target.value = ""; // Tyhjennetään valinta päivityksen jälkeen
 };
 
 
@@ -813,7 +824,6 @@ window.resetMassModal = () => {
     document.getElementById('mass-step-2').style.display = 'none'; 
 };
 
-// Kirjautumisnappien kuuntelijat
 document.getElementById('btn-login-google').onclick = () => { 
     auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert(e.message)); 
 };
