@@ -57,7 +57,6 @@ auth.onAuthStateChanged((user) => {
             userDisplay.innerText = "👤 " + user.email;
         }
         
-        // Ohjataan oikeaan näkymään
         if (guestbookView.style.display !== 'block' && 
             document.getElementById('stats-view').style.display !== 'block') {
             showAdminView();
@@ -451,7 +450,6 @@ function loadEvents() {
     });
 }
 
-// Päivitetty arkistointitoiminto Custom Confirmillä
 window.toggleArchive = async (key, status) => {
     const title = status ? "Arkistoi miitti" : "Palauta miitti";
     const msg = status ? "Haluatko varmasti arkistoida tämän miitin?" : "Haluatko palauttaa miitin aktiiviseksi?";
@@ -463,7 +461,57 @@ window.toggleArchive = async (key, status) => {
 
 
 // ==========================================
-// 9. LOKIT, VIERASKIRJA JA MUOKKAUS
+// 9. TALLENNUS, MUOKKAUS JA UUSI MIITTI LOMAKE
+// ==========================================
+
+// TÄMÄ ON SE TÄRKEÄ KOHTA JOKA AVAA LOMAKKEEN
+document.getElementById('new-event-toggle').onclick = () => {
+    const f = document.getElementById('new-event-form');
+    if(f) {
+        if(f.style.display === 'none') {
+            f.style.display = 'block';
+        } else {
+            f.style.display = 'none';
+        }
+    }
+};
+
+document.getElementById('btn-add-event').onclick = () => {
+    const data = {
+        type: document.getElementById('new-type').value,
+        gc: document.getElementById('new-gc').value.trim().toUpperCase(),
+        name: document.getElementById('new-name').value.trim(),
+        date: document.getElementById('new-date').value,
+        time: document.getElementById('new-time').value.trim(),
+        coords: document.getElementById('new-coords').value.trim(),
+        location: document.getElementById('new-loc').value.trim(),
+        descriptionHtml: document.getElementById('new-desc').value.trim(),
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+        isArchived: false
+    };
+    
+    if(!data.gc || !data.name || !data.date) { 
+        alert("Täytä GC, Nimi ja Pvm!"); 
+        return; 
+    }
+    
+    db.ref('miitit/' + currentUser.uid + '/events').push(data).then(() => {
+        ['new-gc','new-name','new-time','new-coords','new-loc', 'new-desc', 'import-text', 'import-gpx-new'].forEach(id => {
+            const el = document.getElementById(id); if(el) el.value = "";
+        });
+        document.getElementById('new-event-form').style.display = 'none';
+    });
+};
+
+document.getElementById('btn-find-today').onclick = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const todayEvent = globalEventList.find(e => e.date === today);
+    if (todayEvent) openGuestbook(todayEvent.key); else alert("Ei miittejä tänään.");
+};
+
+
+// ==========================================
+// 10. VIERASKIRJA (GUESTBOOK)
 // ==========================================
 
 window.openGuestbook = (eventKey) => {
@@ -540,7 +588,7 @@ function loadAttendees(eventKey) {
 
 
 // ==========================================
-// 10. MUOKKAUS, POISTO JA KIRJAUTUMINEN
+// 11. MUOKKAUS, POISTO JA KIRJAUTUMINEN
 // ==========================================
 
 window.openEditModal = (key) => {
