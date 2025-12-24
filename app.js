@@ -165,9 +165,7 @@ function loadEvents() {
                 </div>
             `;
             
-            // --- KORJAUS ---
             // Käytetään .once() -komentoa, jotta haku tehdään varmasti vain kerran per päivitys.
-            // Tämä estää 0-ongelman, kun lista päivittyy.
             db.ref('miitit/' + currentUser.uid + '/logs/' + evt.key).once('value').then((snap) => {
                 const num = snap.numChildren();
                 const el = document.getElementById(countId);
@@ -253,7 +251,7 @@ document.getElementById('btn-sign-log').addEventListener('click', () => {
     });
 });
 
-// MASSALISÄYS LOGIIKKA (PÄIVITETTY)
+// MASSALISÄYS LOGIIKKA (PÄIVITETTY KORJAAMAAN OMISTAJAN LOKIN ONGELMA)
 window.openMassImport = () => {
     document.getElementById('mass-input').value = ""; 
     document.getElementById('mass-output').value = ""; 
@@ -272,8 +270,10 @@ document.getElementById('btn-parse-mass').addEventListener('click', () => {
     
     let names = [];
     
-    // 1. Pilkotaan teksti osiin "Näytä loki" -tekstin perusteella
-    const blocks = text.split(/Näytä loki|View Log/i);
+    // --- KORJAUS TÄSSÄ ---
+    // Lisätty katkaisuun myös "Näytä / Muokkaa" ja "View / Edit" -variaatiot
+    // Tämä estää omistajan lokia sulautumasta seuraavaan lokiin.
+    const blocks = text.split(/Näytä\s+loki|View\s+Log|Näytä\s+\/\s+Muokkaa|View\s+\/\s+Edit/i);
     
     blocks.forEach(block => {
         // Siivotaan ylimääräiset rivinvaihdot ja välilyönnit
@@ -288,7 +288,8 @@ document.getElementById('btn-parse-mass').addEventListener('click', () => {
             
             if (nameMatch && nameMatch[1]) {
                 let name = nameMatch[1].trim();
-                if(!name.includes("Aion osallistua") && name.length > 0) {
+                // Lisätarkistus, ettei sekoitu Arkistointi-lokeihin joissa mainitaan osallistuminen tekstissä
+                if(!name.includes("Aion osallistua") && name.length > 0 && name.length < 50) {
                     names.push(name);
                 }
             }
