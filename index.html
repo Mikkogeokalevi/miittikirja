@@ -182,7 +182,7 @@
             border-bottom: 1px dashed #D2B48C; 
             display: flex; 
             align-items: center; 
-            /* Korjattu mobiilia varten: sallitaan rivitys koordinaateille */
+            /* Sallitaan rivitys koordinaateille */
             word-break: break-word;
             overflow: visible;
         }
@@ -366,9 +366,9 @@
         <div style="clear:both;"></div>
         
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <button id="nav-prev" class="nav-arrow" onclick="navigateEvent(1)">&#10094;</button>
+            <button id="nav-prev" class="nav-arrow" onclick="navigateEvent(1)">❮</button>
             <h2 id="gb-event-name" style="flex:1;">Miitin Nimi</h2>
-            <button id="nav-next" class="nav-arrow" onclick="navigateEvent(-1)">&#10095;</button>
+            <button id="nav-next" class="nav-arrow" onclick="navigateEvent(-1)">❯</button>
         </div>
         
         <div id="archived-notice" style="display:none; background:#ccc; color:#333; padding:10px; border-radius:5px; margin-bottom:15px; font-weight:bold; border:2px solid #999;">
@@ -409,6 +409,13 @@
     <div id="edit-modal" class="modal">
         <div class="modal-content">
             <h3 style="text-align:center;">✏️ Muokkaa Miittiä</h3>
+            
+            <div style="background:#fff; border:1px dashed #D2691E; padding:10px; margin-bottom:15px; border-radius:5px;">
+                <p style="margin:0 0 5px 0; font-size:0.8em; font-weight:bold; color:#D2691E;">🪄 Päivitä tiedot tekstistä:</p>
+                <textarea id="edit-import-text" rows="2" placeholder="Liitä Geocaching.com teksti tähän..." style="font-size:0.8em;"></textarea>
+                <button id="btn-process-edit-import" class="btn btn-gray btn-small" style="width:100%;">Täytä automaattisesti</button>
+            </div>
+
             <input type="hidden" id="edit-key">
             
             <label style="font-weight:bold;">Tyyppi</label>
