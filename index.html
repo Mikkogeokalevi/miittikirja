@@ -77,6 +77,8 @@
             cursor: pointer;
             user-select: none;
             transition: color 0.2s;
+            display: block; /* Varmistetaan että se on klikattava alue */
+            width: 100%;
         }
         #new-event-toggle:hover {
             color: #D2691E;
@@ -300,7 +302,6 @@
             text-align: left; 
         }
 
-        /* VARMISTUSMODAL TYYLIT */
         .confirm-modal-content {
             text-align: center;
             background-color: #FFF8E7;
