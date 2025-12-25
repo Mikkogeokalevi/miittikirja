@@ -16,12 +16,14 @@ async function initStats() {
     if(overlay) overlay.style.display = 'flex';
     
     try {
+        // Haetaan kaikki tapahtumat
         const eventsSnap = await db.ref('miitit/' + currentUser.uid + '/events').once('value');
         const events = [];
         eventsSnap.forEach(child => {
             events.push({ key: child.key, ...child.val() });
         });
 
+        // Haetaan kaikki lokit kerralla laskentaa varten
         const logsSnap = await db.ref('miitit/' + currentUser.uid + '/logs').once('value');
         const logsData = logsSnap.val() || {};
 
@@ -33,12 +35,15 @@ async function initStats() {
         });
 
         allStatsData.events = events;
+        
+        // Alustetaan suodattimet ja näkymä
         populateYearFilter(events);
         updateStatsView(events);
 
     } catch (e) {
         console.error("Tilastojen lataus epäonnistui:", e);
     } finally {
+        // TÄRKEÄÄ: Piilotetaan latausilmoitus aina, onnistui tai ei
         if(overlay) overlay.style.display = 'none';
     }
 }
@@ -74,7 +79,7 @@ document.getElementById('btn-apply-filters').onclick = function() {
 };
 
 function updateStatsView(data) {
-    // Tallennetaan suodatettu data globaalisti välilehden vaihtoa varten (renderCharts käyttää tätä)
+    // Tallennetaan suodatettu data globaalisti välilehden vaihtoa varten
     window.currentFilteredData = data;
 
     // 1. Yhteenveto
@@ -110,6 +115,7 @@ function updateStatsView(data) {
     renderAlphabetStats(data);
     renderTopUsersList(data);
     
+    // Suodatetaan pois perutut listauksia varten
     const filteredForLists = data.filter(e => !e.name.includes("/ PERUTTU /"));
     const sortedByCount = [...filteredForLists].sort((a, b) => b.attendeeCount - a.attendeeCount);
     
@@ -125,7 +131,7 @@ function updateStatsView(data) {
     renderLocationsTable(data);
     renderAttributesList(data);
 
-    // Piirretään graafit heti jos välilehti on auki
+    // Piirretään graafit heti jos välilehti on jo auki
     const graphsTab = document.getElementById('tab-graphs');
     if(graphsTab && graphsTab.classList.contains('active')) {
         renderCharts(data);
@@ -155,7 +161,7 @@ function renderCharts(data) {
     const commonOptions = {
         responsive: true,
         plugins: {
-            legend: { display: true, labels: { color: '#4E342E' } }
+            legend: { display: true, labels: { color: '#4E342E', font: { family: 'Verdana' } } }
         }
     };
 
@@ -169,7 +175,8 @@ function renderCharts(data) {
         data: {
             labels: dayLabels,
             datasets: [{ label: 'Miitit per viikonpäivä', data: dayData, backgroundColor: colors.primary }]
-        }
+        },
+        options: commonOptions
     });
 
     // --- 2. MIITTITYYPIT ---
@@ -181,10 +188,11 @@ function renderCharts(data) {
         data: {
             labels: ["Miitti", "CITO", "CCE"],
             datasets: [{ data: [typeCounts.miitti, typeCounts.cito, typeCounts.cce], backgroundColor: [colors.primary, colors.accent, colors.secondary] }]
-        }
+        },
+        options: commonOptions
     });
 
-    // --- 3. KÄVIJÄMÄÄRÄN KEHITYS (15 viimeisintä) ---
+    // --- 3. TRENDI (15 viimeisintä) ---
     clearChart('timeline');
     const timelineData = [...data].sort((a,b) => new Date(a.date) - new Date(b.date)).slice(-15);
     chartInstances['timeline'] = new Chart(document.getElementById('chart-timeline-canvas'), {
@@ -196,7 +204,8 @@ function renderCharts(data) {
                 data: timelineData.map(e => e.attendeeCount),
                 borderColor: colors.primary, backgroundColor: 'rgba(139, 69, 19, 0.2)', fill: true, tension: 0.4
             }]
-        }
+        },
+        options: commonOptions
     });
 
     // --- 4. KELLONAJAT ---
@@ -213,7 +222,8 @@ function renderCharts(data) {
         data: {
             labels: Array.from({length: 24}, (_, i) => i + ":00"),
             datasets: [{ label: 'Miitit per kellonaika', data: hoursData, backgroundColor: colors.secondary }]
-        }
+        },
+        options: commonOptions
     });
 
     // --- 5. KUUKAUDET ---
@@ -231,7 +241,8 @@ function renderCharts(data) {
         data: {
             labels: monthNames,
             datasets: [{ label: 'Kävijät yhteensä kuukaudessa', data: monthsData, backgroundColor: colors.grey }]
-        }
+        },
+        options: commonOptions
     });
 
     // --- 6. PAIKKAKUNNAT (Top 10) ---
@@ -245,7 +256,7 @@ function renderCharts(data) {
             labels: sortedLocs.map(x => x[0]),
             datasets: [{ label: 'Miittien määrä', data: sortedLocs.map(x => x[1]), backgroundColor: colors.primary }]
         },
-        options: { indexAxis: 'y' }
+        options: { ...commonOptions, indexAxis: 'y' }
     });
 
     // --- 7. TOP 10 KÄVIJÄT ---
@@ -259,7 +270,7 @@ function renderCharts(data) {
             labels: topUsers.map(x => x[0]),
             datasets: [{ label: 'Osallistumiskerrat', data: topUsers.map(x => x[1]), backgroundColor: colors.secondary }]
         },
-        options: { indexAxis: 'y' }
+        options: { ...commonOptions, indexAxis: 'y' }
     });
 
     // --- 8. TOP 10 MIITIT ---
@@ -270,7 +281,8 @@ function renderCharts(data) {
         data: {
             labels: topEvents.map(x => x.name.substring(0, 20) + "..."),
             datasets: [{ label: 'Kävijämäärä', data: topEvents.map(x => x.attendeeCount), backgroundColor: colors.accent }]
-        }
+        },
+        options: commonOptions
     });
 
     // --- 9. ATTRIBUUTIT ---
@@ -278,7 +290,7 @@ function renderCharts(data) {
     const attrMap = {};
     data.forEach(e => {
         if(e.attributes) e.attributes.forEach(a => {
-            if(a.inc === 1) { // Lasketaan vain positiiviset attribuutit
+            if(a.inc === 1) { // Lasketaan vain positiiviset
                 const name = a.name || a;
                 attrMap[name] = (attrMap[name] || 0) + 1;
             }
@@ -291,7 +303,7 @@ function renderCharts(data) {
             labels: topAttrs.map(x => x[0]),
             datasets: [{ label: 'Esiintymiskerrat', data: topAttrs.map(x => x[1]), backgroundColor: colors.grey }]
         },
-        options: { indexAxis: 'y' }
+        options: { ...commonOptions, indexAxis: 'y' }
     });
 }
 
@@ -359,27 +371,7 @@ function renderAttributesList(data) {
     });
 }
 
-// Autocomplete haku
-const userSearchInput = document.getElementById('search-user-name');
-const userAutoList = document.getElementById('user-autocomplete');
-if(userSearchInput) {
-    userSearchInput.oninput = () => {
-        const val = userSearchInput.value.toLowerCase();
-        if (val.length < 1) { if(userAutoList) userAutoList.style.display = 'none'; return; }
-        const allNames = [...new Set(allStatsData.events.flatMap(e => e.attendeeNames || []))];
-        const matches = allNames.filter(n => n && n.toLowerCase().startsWith(val)).sort().slice(0, 10);
-        if (userAutoList) {
-            if (matches.length > 0) {
-                userAutoList.innerHTML = matches.map(m => `<div class="autocomplete-item" onclick="selectUser('${m}')">${m}</div>`).join('');
-                userAutoList.style.display = 'block';
-            } else userAutoList.style.display = 'none';
-        }
-    };
-}
-
-window.selectUser = (name) => {
-    if(userSearchInput) userSearchInput.value = name;
-    if(userAutoList) userAutoList.style.display = 'none';
-    const filterBtn = document.getElementById('btn-apply-filters');
-    if(filterBtn) filterBtn.click();
+// Globaali funktio välilehden vaihtoon (kutsutaan index.html:stä)
+window.renderCharts = (data) => {
+    renderCharts(data || window.currentFilteredData);
 };
