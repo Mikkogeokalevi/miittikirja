@@ -381,14 +381,6 @@
         }
         .result-item:hover { background: #FFF8E7; }
 
-        /* UUSI: Näkymän vaihto napin tyyli */
-        .mode-toggle-area {
-            margin-top: 10px;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-        }
-
     </style>
 </head>
 <body>
@@ -490,6 +482,10 @@
     <div id="user-view" class="view-section">
         <div style="display:flex; justify-content:center; align-items:center; margin-bottom: 20px;">
             <h2 style="margin:0;">📖 Miittikirjat</h2>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <button id="btn-show-stats-user" class="btn btn-blue">📊 KATSO TILASTOT</button>
         </div>
         
         <div id="user-lists-container">
