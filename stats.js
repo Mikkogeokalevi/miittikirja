@@ -105,14 +105,15 @@ function updateStatsView(data) {
         }
     }
 
+    // 3. Aakkoset ja erikoismerkit
     renderAlphabetStats(data);
+
+    // 4. Viikonpäivät (Teksti + Kaavio)
     renderWeekdayStats(data);
 
-    // --- 4. TOP 10 & BOTTOM 10 (Suodatettu pois / PERUTTU /) ---
-    // Luodaan datajoukko josta perutut on poistettu vain listauksia varten
-    const filteredData = data.filter(e => !e.name.includes("/ PERUTTU /"));
-
-    const sortedByCount = [...filteredData].sort((a, b) => b.attendeeCount - a.attendeeCount);
+    // 5. TOP/BOTTOM 10 (Ei peruttuja)
+    const filteredForLists = data.filter(e => !e.name.includes("/ PERUTTU /"));
+    const sortedByCount = [...filteredForLists].sort((a, b) => b.attendeeCount - a.attendeeCount);
     
     const renderList = (list, elementId) => {
         const el = document.getElementById(elementId);
@@ -129,41 +130,10 @@ function updateStatsView(data) {
     renderList(sortedByCount.slice(0, 10), 'stats-top-10');
     renderList([...sortedByCount].reverse().slice(0, 10), 'stats-bottom-10');
 
-    // --- 5. TOP 10 KÄVIJÄT (UUSI) ---
-    const userAttendanceMap = {};
-    data.forEach(e => {
-        if(e.attendeeNames) {
-            e.attendeeNames.forEach(name => {
-                userAttendanceMap[name] = (userAttendanceMap[name] || 0) + 1;
-            });
-        }
-    });
+    // 6. TOP 10 Kävijät
+    renderTopUsers(data);
 
-    const sortedUsers = Object.entries(userAttendanceMap).sort((a, b) => b[1] - a[1]);
-    
-    // Etsitään tai luodaan paikka TOP-kävijöille dynaamisesti jos puuttuu HTML:stä
-    let userStatsEl = document.getElementById('stats-top-users');
-    if(!userStatsEl) {
-        // Jos HTML:stä puuttuu paikka, laitetaan se TOP-10 listan jälkeen
-        const top10Box = document.getElementById('stats-top-10')?.parentElement;
-        if(top10Box) {
-            const newCard = document.createElement('div');
-            newCard.className = "card";
-            newCard.innerHTML = `<h3>🏆 TOP 10 Kävijät</h3><div id="stats-top-users"></div>`;
-            top10Box.parentNode.insertBefore(newCard, top10Box.nextSibling);
-            userStatsEl = document.getElementById('stats-top-users');
-        }
-    }
-
-    if(userStatsEl) {
-        userStatsEl.innerHTML = sortedUsers.slice(0, 10).map(([name, count], i) => `
-            <div class="stats-row" style="cursor:pointer" onclick="document.getElementById('search-user-name').value='${name}'; document.getElementById('btn-apply-filters').click();">
-                <span>${i+1}. ${name}</span> <strong>${count} miittiä</strong>
-            </div>
-        `).join('');
-    }
-
-    // 5. Paikkakunnat
+    // 7. Paikkakunnat
     const locMap = {};
     data.forEach(e => { if (e.location) locMap[e.location] = (locMap[e.location] || 0) + 1; });
     const sortedLocs = Object.entries(locMap).sort((a, b) => b[1] - a[1]);
@@ -174,7 +144,7 @@ function updateStatsView(data) {
         `).join('');
     }
 
-    // 6. Attribuutit
+    // 8. Attribuutit
     const attrMap = {};
     data.forEach(e => {
         if (e.attributes && Array.isArray(e.attributes)) {
@@ -212,33 +182,96 @@ function updateStatsView(data) {
 function renderAlphabetStats(data) {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZÅÄÖ0123456789".split("");
     const counts = {};
+    const specialChars = {};
+
     data.forEach(e => {
         if(e.name) {
             const firstChar = e.name.trim().charAt(0).toUpperCase();
-            counts[firstChar] = (counts[firstChar] || 0) + 1;
+            if (chars.includes(firstChar)) {
+                counts[firstChar] = (counts[firstChar] || 0) + 1;
+            } else {
+                specialChars[firstChar] = (specialChars[firstChar] || 0) + 1;
+            }
         }
     });
+
+    // Tavalliset aakkoset ruudukkoon
     const grid = document.getElementById('stats-alphabet');
-    if(!grid) return;
-    grid.innerHTML = "";
-    chars.forEach(c => {
-        const box = document.createElement('div');
-        const count = counts[c] || 0;
-        box.className = "char-box" + (count === 0 ? " empty" : "");
-        box.innerHTML = `${c}<br><small>${count}</small>`;
-        grid.appendChild(box);
-    });
+    if(grid) {
+        grid.innerHTML = "";
+        chars.forEach(c => {
+            const box = document.createElement('div');
+            const count = counts[c] || 0;
+            box.className = "char-box" + (count === 0 ? " empty" : "");
+            box.innerHTML = `${c}<br><small>${count}</small>`;
+            grid.appendChild(box);
+        });
+    }
+
+    // Erikoismerkit listaksi alle
+    const specialEl = document.getElementById('stats-special-chars');
+    if(specialEl) {
+        const specialEntries = Object.entries(specialChars);
+        if (specialEntries.length > 0) {
+            specialEl.innerHTML = "<strong>Muut merkit:</strong><br>" + 
+                specialEntries.map(([char, count]) => `${char} (${count} kpl)`).join(', ');
+        } else {
+            specialEl.innerHTML = "";
+        }
+    }
 }
 
 function renderWeekdayStats(data) {
     const days = ["Su", "Ma", "Ti", "Ke", "To", "Pe", "La"];
     const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+    
     data.forEach(e => { if(e.date) { const d = new Date(e.date).getDay(); dayCounts[d]++; } });
+
+    // Teksti-tilasto
     const el = document.getElementById('stats-weekdays');
-    if(!el) return;
-    el.innerHTML = dayCounts.map((count, i) => `
-        <div class="stats-row"><span>${days[i]}</span> <strong>${count}</strong></div>
-    `).join('');
+    if(el) {
+        el.innerHTML = dayCounts.map((count, i) => `
+            <div class="stats-row"><span>${days[i]}</span> <strong>${count}</strong></div>
+        `).join('');
+    }
+
+    // Visuaalinen pylväskaavio
+    const chartEl = document.getElementById('chart-weekdays');
+    if(chartEl) {
+        const max = Math.max(...dayCounts, 1);
+        chartEl.innerHTML = dayCounts.map((count, i) => {
+            const height = (count / max) * 100;
+            return `
+                <div style="display:flex; flex-direction:column; align-items:center; width:12%;">
+                    <div class="bar" style="height:${height}%; width:100%;">
+                        <span class="bar-value">${count}</span>
+                    </div>
+                    <span class="bar-label">${days[i]}</span>
+                </div>
+            `;
+        }).join('');
+    }
+}
+
+function renderTopUsers(data) {
+    const userAttendanceMap = {};
+    data.forEach(e => {
+        if(e.attendeeNames) {
+            e.attendeeNames.forEach(name => {
+                userAttendanceMap[name] = (userAttendanceMap[name] || 0) + 1;
+            });
+        }
+    });
+
+    const sortedUsers = Object.entries(userAttendanceMap).sort((a, b) => b[1] - a[1]);
+    const userStatsEl = document.getElementById('stats-top-users');
+    if(userStatsEl) {
+        userStatsEl.innerHTML = sortedUsers.slice(0, 10).map(([name, count], i) => `
+            <div class="stats-row" style="cursor:pointer" onclick="document.getElementById('search-user-name').value='${name}'; document.getElementById('btn-apply-filters').click();">
+                <span>${i+1}. ${name}</span> <strong>${count} miittiä</strong>
+            </div>
+        `).join('');
+    }
 }
 
 const userSearchInput = document.getElementById('search-user-name');
