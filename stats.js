@@ -1,5 +1,5 @@
 // ==========================================
-// STATS.JS - Tilastojen laskenta ja graafit
+// STATS.JS - Tilastojen laskenta ja hienot graafit
 // ==========================================
 
 let allStatsData = {
@@ -7,7 +7,7 @@ let allStatsData = {
     attendees: {}
 };
 
-// Säilytetään kaikki kaavio-oliot tässä listassa
+// Säilytetään kaavio-oliot tässä, jotta ne voidaan tuhota päivitettäessä
 let chartInstances = {};
 
 async function initStats() {
@@ -72,7 +72,6 @@ document.getElementById('btn-apply-filters').onclick = () => {
 };
 
 function updateStatsView(data) {
-    // Tallennetaan suodatettu data globaalisti välilehden vaihtoa varten
     window.currentFilteredData = data;
 
     // 1. Yhteenveto
@@ -105,7 +104,7 @@ function updateStatsView(data) {
 
     // 3. Tekstilistat
     renderAlphabetStats(data);
-    renderTopUsers(data);
+    renderTopUsersList(data);
     
     const filteredForLists = data.filter(e => !e.name.includes("/ PERUTTU /"));
     const sortedByCount = [...filteredForLists].sort((a, b) => b.attendeeCount - a.attendeeCount);
@@ -118,36 +117,35 @@ function updateStatsView(data) {
     renderList(sortedByCount.slice(0, 10), 'stats-top-10');
     renderList([...sortedByCount].reverse().slice(0, 10), 'stats-bottom-10');
 
-    // Sijainnit ja attribuutit
+    // Sijainnit ja attribuutit tekstinä
     renderLocationsTable(data);
     renderAttributesList(data);
 
-    // Jos graafit-välilehti on jo auki, päivitetään graafit heti
+    // Päivitetään graafit heti jos välilehti on auki
     if(document.getElementById('tab-graphs').classList.contains('active')) {
         renderCharts(data);
     }
 }
 
 // ==========================================
-// GRAAFIEN PIIRTÄMINEN (CHART.JS)
+// GRAAFIEN PIIRTÄMINEN (CHART.JS V4)
 // ==========================================
 
 function renderCharts(data) {
-    if (!window.Chart || !data) return;
+    if (!window.Chart || !data || data.length === 0) return;
 
-    // Apu-funktio kaavion tuhoamiseen jos se on jo olemassa
     const clearChart = (id) => {
-        if (chartInstances[id]) {
-            chartInstances[id].destroy();
-        }
+        if (chartInstances[id]) { chartInstances[id].destroy(); }
     };
 
-    const commonOptions = {
-        responsive: true,
-        plugins: { legend: { labels: { color: '#4E342E', font: { family: 'Verdana' } } } }
+    const colors = {
+        primary: '#8B4513', // Ruskea
+        secondary: '#D2691E', // Oranssi
+        accent: '#4caf50', // Vihreä
+        text: '#4E342E'
     };
 
-    // 1. VIIKONPÄIVÄT
+    // --- 1. VIIKONPÄIVÄT ---
     clearChart('weekdays');
     const dayLabels = ["Su", "Ma", "Ti", "Ke", "To", "Pe", "La"];
     const dayData = [0,0,0,0,0,0,0];
@@ -157,12 +155,11 @@ function renderCharts(data) {
         type: 'bar',
         data: {
             labels: dayLabels,
-            datasets: [{ label: 'Miitit', data: dayData, backgroundColor: '#8B4513' }]
-        },
-        options: commonOptions
+            datasets: [{ label: 'Miitit', data: dayData, backgroundColor: colors.primary }]
+        }
     });
 
-    // 2. MIITTITYYPIT
+    // --- 2. MIITTITYYPIT ---
     clearChart('types');
     const typeCounts = { miitti: 0, cito: 0, cce: 0 };
     data.forEach(e => { if(typeCounts[e.type] !== undefined) typeCounts[e.type]++; });
@@ -171,12 +168,11 @@ function renderCharts(data) {
         type: 'doughnut',
         data: {
             labels: ["Miitti", "CITO", "CCE"],
-            datasets: [{ data: Object.values(typeCounts), backgroundColor: ['#8B4513', '#4caf50', '#D2691E'] }]
-        },
-        options: commonOptions
+            datasets: [{ data: Object.values(typeCounts), backgroundColor: [colors.primary, colors.accent, colors.secondary] }]
+        }
     });
 
-    // 3. AIKAJANA (Trendi)
+    // --- 3. TRENDI (Viimeisimmät 15) ---
     clearChart('timeline');
     const timelineData = [...data].sort((a,b) => new Date(a.date) - new Date(b.date)).slice(-15);
     chartInstances['timeline'] = new Chart(document.getElementById('chart-timeline-canvas'), {
@@ -186,13 +182,12 @@ function renderCharts(data) {
             datasets: [{ 
                 label: 'Kävijät', 
                 data: timelineData.map(e => e.attendeeCount),
-                borderColor: '#8B4513', backgroundColor: 'rgba(139, 69, 19, 0.2)', fill: true, tension: 0.4
+                borderColor: colors.primary, backgroundColor: 'rgba(139, 69, 19, 0.2)', fill: true, tension: 0.4
             }]
-        },
-        options: commonOptions
+        }
     });
 
-    // 4. KELLONAJAT
+    // --- 4. KELLONAJAT ---
     clearChart('hours');
     const hoursData = Array(24).fill(0);
     data.forEach(e => {
@@ -205,12 +200,11 @@ function renderCharts(data) {
         type: 'bar',
         data: {
             labels: Array.from({length: 24}, (_, i) => i + ":00"),
-            datasets: [{ label: 'Miitit', data: hoursData, backgroundColor: '#D2691E' }]
-        },
-        options: commonOptions
+            datasets: [{ label: 'Miitit', data: hoursData, backgroundColor: colors.secondary }]
+        }
     });
 
-    // 5. KUUKAUDET (Osallistujamäärät)
+    // --- 5. KUUKAUDET ---
     clearChart('months');
     const monthsData = Array(12).fill(0);
     const monthNames = ["Tam", "Hel", "Maa", "Huh", "Tou", "Kes", "Hei", "Elo", "Syy", "Lok", "Mar", "Jou"];
@@ -224,26 +218,70 @@ function renderCharts(data) {
         type: 'bar',
         data: {
             labels: monthNames,
-            datasets: [{ label: 'Osallistujat yht.', data: monthsData, backgroundColor: '#A0522D' }]
-        },
-        options: commonOptions
+            datasets: [{ label: 'Kävijämäärä yhteensä', data: monthsData, backgroundColor: '#A0522D' }]
+        }
     });
 
-    // 6. PAIKKAKUNNAT (Top 10 Graafinen)
+    // --- 6. PAIKKAKUNNAT (Top 10) ---
     clearChart('locations');
     const locMap = {};
     data.forEach(e => { if (e.location) locMap[e.location] = (locMap[e.location] || 0) + 1; });
     const sortedLocs = Object.entries(locMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
     
     chartInstances['locations'] = new Chart(document.getElementById('chart-locations-canvas'), {
-        type: 'horizontalBar', // Huom: Chart.js 2.x käyttää horizontalBar, 3.x 'bar' ja indexAxis: 'y'
+        type: 'bar',
         data: {
             labels: sortedLocs.map(x => x[0]),
-            datasets: [{ label: 'Miitit', data: sortedLocs.map(x => x[1]), backgroundColor: '#8B4513' }]
+            datasets: [{ label: 'Miitit', data: sortedLocs.map(x => x[1]), backgroundColor: colors.primary }]
         },
-        options: {
-            scales: { xAxes: [{ ticks: { beginAtZero: true } }] }
+        options: { indexAxis: 'y' }
+    });
+
+    // --- 7. TOP 10 KÄVIJÄT ---
+    clearChart('topAttendees');
+    const userMap = {};
+    data.forEach(e => e.attendeeNames.forEach(n => userMap[n] = (userMap[n] || 0) + 1));
+    const topUsers = Object.entries(userMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
+
+    chartInstances['topAttendees'] = new Chart(document.getElementById('chart-top-attendees-canvas'), {
+        type: 'bar',
+        data: {
+            labels: topUsers.map(x => x[0]),
+            datasets: [{ label: 'Käynnit', data: topUsers.map(x => x[1]), backgroundColor: colors.secondary }]
+        },
+        options: { indexAxis: 'y' }
+    });
+
+    // --- 8. TOP 10 MIITIT ---
+    clearChart('topEvents');
+    const topEvents = [...data].sort((a,b) => b.attendeeCount - a.attendeeCount).slice(0, 10);
+    chartInstances['topEvents'] = new Chart(document.getElementById('chart-top-events-canvas'), {
+        type: 'bar',
+        data: {
+            labels: topEvents.map(x => x.name.substring(0, 15) + "..."),
+            datasets: [{ label: 'Osallistujat', data: topEvents.map(x => x.attendeeCount), backgroundColor: colors.accent }]
         }
+    });
+
+    // --- 9. ATTRIBUUTIT ---
+    clearChart('attrs');
+    const attrMap = {};
+    data.forEach(e => {
+        if(e.attributes) e.attributes.forEach(a => {
+            if(a.inc === 1) { // Vain positiiviset
+                const name = a.name || a;
+                attrMap[name] = (attrMap[name] || 0) + 1;
+            }
+        });
+    });
+    const topAttrs = Object.entries(attrMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
+    chartInstances['attrs'] = new Chart(document.getElementById('chart-attributes-canvas'), {
+        type: 'bar',
+        data: {
+            labels: topAttrs.map(x => x[0]),
+            datasets: [{ label: 'Esiintyvyys', data: topAttrs.map(x => x[1]), backgroundColor: '#A0522D' }]
+        },
+        options: { indexAxis: 'y' }
     });
 }
 
@@ -271,13 +309,13 @@ function renderAlphabetStats(data) {
     }
 }
 
-function renderTopUsers(data) {
+function renderTopUsersList(data) {
     const map = {};
     data.forEach(e => { if(e.attendeeNames) e.attendeeNames.forEach(n => map[n] = (map[n] || 0) + 1); });
     const sorted = Object.entries(map).sort((a,b) => b[1] - a[1]).slice(0, 10);
     const el = document.getElementById('stats-top-users');
     if(el) el.innerHTML = sorted.map(([name, count], i) => `
-        <div class="stats-row" style="cursor:pointer" onclick="document.getElementById('search-user-name').value='${name}'; document.getElementById('btn-apply-filters').click(); switchStatsTab('tab-lists');">
+        <div class="stats-row" style="cursor:pointer" onclick="document.getElementById('search-user-name').value='${name}'; document.getElementById('btn-apply-filters').click(); switchStatsTab('tab-lists', document.querySelector('.tab-btn:first-child'));">
             <span>${i+1}. ${name}</span> <strong>${count} miittiä</strong>
         </div>`).join('');
 }
@@ -311,6 +349,7 @@ function renderAttributesList(data) {
     });
 }
 
+// Autocomplete ja muut haut
 const userSearchInput = document.getElementById('search-user-name');
 const userAutoList = document.getElementById('user-autocomplete');
 if(userSearchInput) {
