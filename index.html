@@ -12,9 +12,10 @@
     <link rel="apple-touch-icon" href="icon.png"> 
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
-        /* --- MIKKOKALEVI THEME --- */
+        /* --- MIKKOKALEVI THEME (TÄYSI CSS) --- */
         body { 
             background-color: #FDF5E6; 
             color: #4E342E; 
@@ -58,6 +59,18 @@
             position: relative; 
         }
 
+        /* Tänään tapahtuu korostus */
+        .card.today-highlight {
+            border: 4px solid #4caf50;
+            background: #f1f8e9;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(76, 175, 80, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+        }
+
         .card.archived {
             opacity: 0.7;
             background: #e0e0e0;
@@ -82,9 +95,7 @@
             display: block;
             width: 100%;
         }
-        #new-event-toggle:hover {
-            color: #D2691E;
-        }
+        #new-event-toggle:hover { color: #D2691E; }
 
         .category-header { 
             text-align: center; 
@@ -136,8 +147,6 @@
             transition: transform 0.1s;
             box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
         }
-        .btn:active { transform: scale(0.98); }
-
         .btn-blue { background-color: #8B4513; color: white; } 
         .btn-green { background-color: #4caf50; color: white; border: 1px solid #2e7d32; } 
         .btn-red { background-color: #B22222; color: white; } 
@@ -148,7 +157,6 @@
             background: none; border: none; font-size: 2em; cursor: pointer; color: #8B4513; padding: 0 15px;
             user-select: none;
         }
-        .nav-arrow:active { transform: scale(0.8); }
 
         .back-btn { 
             background: none; 
@@ -165,11 +173,7 @@
         .event-meta { 
             display: grid;
             grid-template-columns: 1fr 1fr;
-            grid-template-areas: 
-                "time date"
-                "loc loc"
-                "gc coords";
-            
+            grid-template-areas: "time date" "loc loc" "gc coords";
             background: #fff;
             border: 2px solid #8B4513;
             border-radius: 8px;
@@ -186,13 +190,11 @@
             display: flex; 
             align-items: center; 
             word-break: break-word;
-            overflow: visible;
         }
 
         #gb-time { grid-area: time; border-right: 1px dashed #D2B48C; }
-        #gb-date { grid-area: date; }
-        #gb-loc  { grid-area: loc; }
-        #gb-gc   { grid-area: gc; border-right: 1px dashed #D2B48C; border-bottom: none; }
+        #gb-loc { grid-area: loc; }
+        #gb-gc { grid-area: gc; border-right: 1px dashed #D2B48C; border-bottom: none; }
         #gb-coords { grid-area: coords; border-bottom: none; }
 
         .details-box {
@@ -211,14 +213,8 @@
             cursor: pointer;
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #eee;
         }
-        .details-content {
-            padding: 15px;
-            display: none; 
-            font-size: 0.9em;
-        }
+        .details-content { padding: 15px; display: none; font-size: 0.9em; }
 
         .attr-tag {
             display: inline-block;
@@ -228,33 +224,16 @@
             border-radius: 20px;
             margin: 3px;
             font-size: 0.85em;
-            font-style: normal;
-            border: 1px solid transparent;
         }
-
         .attr-tag.neg {
             background: #f8d7da;
             color: #721c24;
             text-decoration: line-through;
             border: 1px solid #f5c6cb;
-            opacity: 0.8;
         }
 
-        #gb-event-name {
-            font-size: 1.3em; 
-            margin: 10px 0;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            line-height: 1.3;
-        }
-
-        .description-container img {
-            max-width: 100% !important;
-            height: auto !important;
-        }
-        
         .log-list { 
-            max-height: 55vh; 
+            max-height: 50vh; 
             overflow-y: auto; 
             text-align: left; 
             margin-top: 20px; 
@@ -263,29 +242,15 @@
             border-radius: 8px; 
             border: 1px solid #D2B48C;
         }
-        .log-item { 
-            border-bottom: 1px dashed #D2B48C; 
-            padding: 10px 0; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: flex-start; 
-        }
+        .log-item { border-bottom: 1px dashed #D2B48C; padding: 10px 0; display: flex; justify-content: space-between; align-items: flex-start; }
         .log-actions { min-width: 80px; text-align: right; }
         
-        .logo-img {
-            width: 100px; height: 100px; 
-            object-fit: cover; 
-            border: 3px solid #D2B48C; 
-            border-radius: 50%; 
-            background-color: #000;
-            margin-bottom: 10px;
-        }
+        .logo-img { width: 100px; height: 100px; border-radius: 50%; margin-bottom: 10px; border: 3px solid #D2B48C; object-fit: cover; }
 
         .user-info-bar {
             font-size: 0.8em;
             color: #8B4513;
             margin-bottom: 10px;
-            font-weight: bold;
             background: rgba(255,255,255,0.5);
             padding: 5px;
             border-radius: 10px;
@@ -295,123 +260,36 @@
         }
 
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(78, 52, 46, 0.9); overflow-y: auto; }
-        .modal-content { 
-            background-color: #FDF5E6; 
-            margin: 5% auto; 
-            padding: 20px; 
-            border: 4px double #8B4513; 
-            width: 90%; 
-            max-width: 500px; 
-            border-radius: 15px; 
-            text-align: left; 
-        }
+        .modal-content { background-color: #FDF5E6; margin: 5% auto; padding: 20px; border: 4px double #8B4513; width: 90%; max-width: 500px; border-radius: 15px; text-align: left; }
+        .confirm-modal-content { text-align: center; background-color: #FFF8E7; border: 4px solid #8B4513; padding: 30px; margin: 20% auto; }
 
-        .confirm-modal-content {
-            text-align: center;
-            background-color: #FFF8E7;
-            border: 4px solid #8B4513;
-            padding: 30px;
-            margin: 20% auto;
-        }
+        /* VÄLILEHDET */
+        .tab-container { display: flex; gap: 5px; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 12px 10px; background: #FAEBD7; border: 1px solid #8B4513; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: bold; color: #8B4513; }
+        .tab-btn.active { background: #8B4513; color: #fff; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
 
-        #loading-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 200;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-weight: bold;
-        }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 5px; margin: 15px 0; }
+        .char-box { background: #fff; border: 1px solid #8B4513; border-radius: 4px; padding: 5px 0; font-size: 0.8em; font-weight: bold; }
+        .char-box.empty { background: #eee; color: #999; }
+        .stats-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dotted #ccc; font-size: 0.9em; }
 
-        /* --- VÄLILEHDET --- */
-        .tab-container {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 15px;
-        }
-        .tab-btn {
-            flex: 1;
-            padding: 12px 10px;
-            background: #FAEBD7;
-            border: 2px solid #8B4513;
-            border-radius: 8px 8px 0 0;
-            cursor: pointer;
-            font-weight: bold;
-            color: #8B4513;
-            transition: all 0.2s;
-        }
-        .tab-btn.active {
-            background: #8B4513;
-            color: #fff;
-            box-shadow: 0px -4px 10px rgba(0,0,0,0.1);
-        }
-
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-
-        /* TILASTOJEN TYYLIT */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
-            gap: 5px;
-            margin: 15px 0;
-        }
-        .char-box {
-            background: #fff;
-            border: 1px solid #8B4513;
-            border-radius: 4px;
-            padding: 5px 0;
-            font-size: 0.8em;
-            font-weight: bold;
-        }
-        .char-box.empty {
-            background: #eee;
-            color: #999;
-            border-color: #ccc;
-        }
-        .stats-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 0;
-            border-bottom: 1px dotted #ccc;
-            font-size: 0.9em;
-        }
         .autocomplete-list {
             position: absolute;
             background: #fff;
             border: 1px solid #8B4513;
-            width: calc(100% - 40px);
+            width: calc(100% - 30px);
             z-index: 50;
-            max-height: 200px;
+            max-height: 150px;
             overflow-y: auto;
             text-align: left;
         }
-        .autocomplete-item {
-            padding: 10px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-        }
+        .autocomplete-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
         .autocomplete-item:hover { background: #FFF8E7; }
 
-        .result-item {
-            background: #fff;
-            padding: 10px;
-            margin-bottom: 8px;
-            border-radius: 6px;
-            border-left: 5px solid #8B4513;
-            text-align: left;
-            font-size: 0.85em;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .result-item:hover { background: #FFF8E7; }
+        #qr-display-area { text-align: center; margin: 20px 0; padding: 15px; background: #fff; border-radius: 10px; display: none; border: 2px solid #8B4513; }
+        #qrcode-container { display: inline-block; padding: 10px; background: #fff; }
 
     </style>
 </head>
@@ -428,67 +306,60 @@
 
     <div id="login-view" class="view-section" style="display:flex; flex-direction:column; align-items:center;">
         <h2>Sähköinen Miittikirja</h2>
-        <p style="font-style:italic;">Kirjaudu sisään hallinnoidaksesi.</p>
-        
         <input type="email" id="email-input" placeholder="Sähköposti">
         <input type="password" id="password-input" placeholder="Salasana">
-        
         <div style="display:flex; gap:10px; width:100%;">
             <button id="btn-email-login" class="btn btn-blue">Kirjaudu</button>
             <button id="btn-email-register" class="btn btn-gray">Luo tunnus</button>
         </div>
-        
         <p style="margin: 10px 0; font-size:0.8em; color:#888;">— TAI —</p>
-        
         <button id="btn-login-google" class="btn btn-green">Kirjaudu Googlella</button>
     </div>
 
+    <div id="visitor-view" class="view-section">
+        <h2 id="vv-event-name">Miitti</h2>
+        <div class="card"><p id="vv-event-info" style="text-align:center; font-weight:bold;"></p></div>
+        <div class="card-form">
+            <h3 style="text-align:center; color:#B22222;">✍️ Kirjaa käyntisi</h3>
+            <div style="position:relative;">
+                <input type="text" id="vv-nickname" placeholder="Nimimerkkisi" style="font-size: 1.2em; border: 2px solid #8B4513;">
+                <div id="vv-autocomplete" class="autocomplete-list" style="display:none;"></div>
+            </div>
+            <input type="text" id="vv-from" placeholder="Mistä tulet?">
+            <input type="text" id="vv-message" placeholder="Terveiset">
+            <button id="btn-visitor-sign" class="btn btn-green" style="font-size: 1.2em; box-shadow: 4px 4px 0px #2e7d32;">TALLENNA KÄYNTI ✅</button>
+        </div>
+    </div>
+
     <div id="admin-view" class="view-section">
+        <div id="today-notice-admin"></div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
             <h3 style="margin:0;">🛠️ Hallinta</h3>
             <button id="btn-logout" class="btn btn-red btn-small">Ulos</button>
         </div>
-        
         <div style="display:flex; gap:10px; margin-bottom: 20px;">
             <button id="btn-find-today" class="btn btn-green" style="flex:2;">📅 AVAA TÄMÄ PÄIVÄ</button>
             <button id="btn-show-stats" class="btn btn-blue" style="flex:1;">📊 TILASTOT</button>
         </div>
         
-        <p id="event-stats" style="font-size:0.8em; color:#666; text-align:center;">Ladataan tietoja...</p>
-
         <div class="card-form">
             <h3 id="new-event-toggle" style="margin-top:0; color:#B22222; text-align:center;">➕ Lisää uusi (Klikkaa tästä)</h3>
-            
             <div id="new-event-form" style="display: none;">
-                <div style="background:#fff; border:1px dashed #4caf50; padding:10px; margin-bottom:15px; border-radius:5px;">
-                    <p style="margin:0 0 5px 0; font-size:0.9em; font-weight:bold; color:#2e7d32;">📄 Tuo kerralla GPX-tiedostosta:</p>
-                    <input type="file" id="import-gpx-new" accept=".gpx" style="font-size:0.8em; border:none; padding:5px;">
-                </div>
-
-                <div style="background:#fff; border:1px dashed #D2691E; padding:10px; margin-bottom:15px; border-radius:5px;">
-                    <p style="margin:0 0 5px 0; font-size:0.9em; font-weight:bold; color:#D2691E;">📥 Tai tuo tiedot tekstistä:</p>
-                    <textarea id="import-text" rows="3" placeholder="Liitä Geocaching.com sivun teksti tähän..." style="font-size:0.8em; height:60px;"></textarea>
-                    <button id="btn-process-import" class="btn btn-gray btn-small" style="width:100%;">🪄 Täytä lomake tekstistä</button>
-                </div>
-                
-                <label style="font-size:0.8em; font-weight:bold;">Tyyppi</label>
+                <input type="file" id="import-gpx-new" accept=".gpx">
+                <textarea id="import-text" rows="3" placeholder="Tai liitä teksti tähän..."></textarea>
+                <button id="btn-process-import" class="btn btn-gray btn-small">🪄 Täytä tekstistä</button>
                 <select id="new-type">
-                    <option value="miitti">☕ Tavallinen Miitti</option>
-                    <option value="cito">🗑️ CITO (Siivous)</option>
-                    <option value="cce">🎉 Yhteisöjuhla (CCE)</option>
+                    <option value="miitti">☕ Miitti</option>
+                    <option value="cito">🗑️ CITO</option>
+                    <option value="cce">🎉 Yhteisöjuhla</option>
                 </select>
-                <input type="text" id="new-gc" placeholder="GC-koodi (esim. GC12345)">
-                <input type="text" id="new-name" placeholder="Nimi (esim. MK:n tammikuu)">
-                <div style="display:flex; gap:10px;">
-                    <input type="date" id="new-date">
-                    <input type="text" id="new-time" placeholder="Klo (esim. 18:00-19:00)">
-                </div>
+                <input type="text" id="new-gc" placeholder="GC-koodi">
+                <input type="text" id="new-name" placeholder="Nimi">
+                <input type="date" id="new-date">
+                <input type="text" id="new-time" placeholder="Klo (esim. 18:00-19:00)">
                 <input type="text" id="new-coords" placeholder="Koordinaatit">
-                <input type="text" id="new-loc" placeholder="Paikka / Osoite">
-                
-                <label style="font-size:0.8em; font-weight:bold;">Miittikuvaus (HTML)</label>
-                <textarea id="new-desc" rows="4" placeholder="Liitä Geocaching.com HTML-koodi tähän..."></textarea>
-                
+                <input type="text" id="new-loc" placeholder="Paikka">
+                <textarea id="new-desc" rows="4" placeholder="HTML kuvaus..."></textarea>
                 <button id="btn-add-event" class="btn btn-blue">Tallenna Tapahtuma</button>
             </div>
         </div>
@@ -512,23 +383,13 @@
     </div>
 
     <div id="user-view" class="view-section">
-        <div style="display:flex; justify-content:center; align-items:center; margin-bottom: 20px;">
-            <h2 style="margin:0;">📖 Miittikirjat</h2>
-        </div>
-
-        <div style="margin-bottom: 20px;">
-            <button id="btn-show-stats-user" class="btn btn-blue">📊 KATSO TILASTOT</button>
-        </div>
-        
+        <div id="today-notice-user"></div>
+        <h2>📖 Miittikirjat</h2>
+        <button id="btn-show-stats-user" class="btn btn-blue">📊 KATSO TILASTOT</button>
         <div id="user-lists-container">
-            <div class="category-header">☕ Miitit</div>
-            <div id="user-list-miitti"></div>
-
-            <div class="category-header">🎉 Yhteisöjuhlat</div>
-            <div id="user-list-cce"></div>
-
-            <div class="category-header">🗑️ CITO Tapahtumat</div>
-            <div id="user-list-cito"></div>
+            <div class="category-header">☕ Miitit</div><div id="user-list-miitti"></div>
+            <div class="category-header">🎉 Yhteisöjuhlat</div><div id="user-list-cce"></div>
+            <div class="category-header">🗑️ CITO Tapahtumat</div><div id="user-list-cito"></div>
         </div>
     </div>
 
@@ -538,8 +399,7 @@
         <h2>📊 Tilastot & Graafit</h2>
 
         <div class="card-form">
-            <h3 style="margin-top:0;">🔍 Suodatus</h3>
-            <input type="text" id="search-miitti-name" placeholder="Miitin nimi...">
+            <input type="text" id="search-miitti-name" placeholder="Hae miittiä...">
             <div style="position:relative;">
                 <input type="text" id="search-user-name" placeholder="Etsi kätköilijää...">
                 <div id="user-autocomplete" class="autocomplete-list" style="display:none;"></div>
@@ -563,29 +423,18 @@
         </div>
 
         <div id="tab-lists" class="tab-content active">
-            <div class="card">
-                <h3>📈 Yhteenveto</h3>
-                <div id="stats-summary-text">Ladataan...</div>
-            </div>
-
-            <div class="card">
-                <h3>🔎 Haun tulokset</h3>
-                <div id="stats-results-list" style="max-height: 250px; overflow-y: auto;"></div>
-            </div>
-
+            <div class="card"><h3>📈 Yhteenveto</h3><div id="stats-summary-text"></div></div>
+            <div class="card"><h3>🔎 Haun tulokset</h3><div id="stats-results-list"></div></div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                 <div class="card"><h3>🏆 TOP 10</h3><div id="stats-top-10" style="font-size:0.8em;"></div></div>
                 <div class="card"><h3>🧊 BOTTOM 10</h3><div id="stats-bottom-10" style="font-size:0.8em;"></div></div>
             </div>
-
             <div class="card"><h3>👥 TOP 10 Kävijät</h3><div id="stats-top-users"></div></div>
-
             <div class="card">
                 <h3>🔤 Alkukirjaimet</h3>
                 <div id="stats-alphabet" class="stats-grid"></div>
                 <div id="stats-special-chars" style="margin-top:10px; font-size:0.8em; text-align:left; border-top:1px solid #eee; padding-top:10px;"></div>
             </div>
-
             <div class="card"><h3>🏘️ Paikkakunnat</h3><div id="stats-locations" style="max-height: 200px; overflow-y: auto;"></div></div>
             <div class="card"><h3>⭐ Attribuutit</h3><div id="stats-attributes"></div></div>
         </div>
@@ -595,80 +444,73 @@
             <div class="card"><h3>🍩 Miittityypit</h3><canvas id="chart-types-canvas"></canvas></div>
             <div class="card"><h3>📈 Kävijämäärän kehitys</h3><canvas id="chart-timeline-canvas"></canvas></div>
             <div class="card"><h3>🕒 Suosituimmat kellonajat</h3><canvas id="chart-hours-canvas"></canvas></div>
-            <div class="card"><h3>📅 Kävijät kuukausittain (Yht)</h3><canvas id="chart-months-canvas"></canvas></div>
+            <div class="card"><h3>📅 Kävijät kuukausittain</h3><canvas id="chart-months-canvas"></canvas></div>
             <div class="card"><h3>🏘️ Suosituimmat paikkakunnat</h3><canvas id="chart-locations-canvas"></canvas></div>
-            <div class="card"><h3>👥 TOP 10 Kävijät (Graafinen)</h3><canvas id="chart-top-attendees-canvas"></canvas></div>
-            <div class="card"><h3>🏆 TOP 10 Suurimmat miitit</h3><canvas id="chart-top-events-canvas"></canvas></div>
-            <div class="card"><h3>⭐ Yleisimmät attribuutit</h3><canvas id="chart-attributes-canvas"></canvas></div>
+            <div class="card"><h3>👥 TOP 10 Kävijät</h3><canvas id="chart-top-attendees-canvas"></canvas></div>
+            <div class="card"><h3>🏆 TOP 10 Miitit</h3><canvas id="chart-top-events-canvas"></canvas></div>
+            <div class="card"><h3>⭐ Suosituimmat attribuutit</h3><canvas id="chart-attributes-canvas"></canvas></div>
         </div>
     </div>
 
     <div id="guestbook-view" class="view-section">
         <button onclick="showMainView()" class="back-btn">< Takaisin listaan</button>
         <div style="clear:both;"></div>
-        
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <button id="nav-prev" class="nav-arrow" onclick="navigateEvent(1)">❮</button>
-            <h2 id="gb-event-name" style="flex:1;">Miitin Nimi</h2>
-            <button id="nav-next" class="nav-arrow" onclick="navigateEvent(-1)">❯</button>
+            <button onclick="navigateEvent(1)" class="nav-arrow">❮</button>
+            <h2 id="gb-event-name" style="flex:1;"></h2>
+            <button onclick="navigateEvent(-1)" class="nav-arrow">❯</button>
         </div>
+        <div id="archived-notice" style="display:none; background:#ccc; color:#333; padding:10px; border-radius:5px; margin-bottom:15px; font-weight:bold;">🔒 ARKISTOITU</div>
         
-        <div id="archived-notice" style="display:none; background:#ccc; color:#333; padding:10px; border-radius:5px; margin-bottom:15px; font-weight:bold; border:2px solid #999;">
-            🔒 TÄMÄ MIITTI ON ARKISTOITU (Vain luku)
+        <div class="event-meta">
+            <span id="gb-time"></span><span id="gb-date"></span><span id="gb-loc"></span><span id="gb-gc"></span><span id="gb-coords"></span>
         </div>
 
-        <div class="event-meta">
-            <span id="gb-time">Aika</span>
-            <span id="gb-date">Pvm</span>
-            <span id="gb-loc">Paikka</span>
-            <span id="gb-gc">GC</span>
-            <span id="gb-coords">Koordinaatit</span>
+        <div id="gb-admin-tools" style="display:none;">
+            <div style="display:flex; gap:5px; margin-bottom:10px;">
+                <button id="btn-sync-gpx-trigger" class="btn btn-small btn-green" style="flex:1;">🔄 GPX Sync</button>
+                <button onclick="openMassImport()" class="btn btn-small btn-gray" style="flex:1;">📥 Massa</button>
+            </div>
+            <button id="btn-toggle-qr" class="btn btn-small btn-blue" style="width:100%;">📱 NÄYTÄ QR-KOODI VIERAILLE</button>
+            <div id="qr-display-area">
+                <p style="font-weight:bold; margin-bottom:5px;">Skannaa ja kirjaa!</p>
+                <div id="qrcode-container"></div>
+                <p id="qr-link-text" style="font-size:0.6em; color:#888; margin-top:5px;"></p>
+            </div>
+            <input type="file" id="import-gpx-sync" accept=".gpx" style="display:none;">
         </div>
 
         <div id="box-attrs" class="details-box" style="display:none;">
-            <div class="details-header" onclick="toggleDetails('gb-attrs')">
-                <span>⭐ Miitin ominaisuudet (Attribuutit)</span>
-                <span id="arrow-gb-attrs">▼</span>
-            </div>
+            <div class="details-header" onclick="toggleDetails('gb-attrs')"><span>⭐ Attribuutit</span><span>▼</span></div>
             <div id="gb-attrs" class="details-content"></div>
         </div>
-
         <div id="box-desc" class="details-box" style="display:none;">
-            <div class="details-header" onclick="toggleDetails('gb-description')">
-                <span>📖 Miittikuvaus</span>
-                <span id="arrow-gb-description">▼</span>
-            </div>
+            <div class="details-header" onclick="toggleDetails('gb-description')"><span>📖 Kuvaus</span><span>▼</span></div>
             <div id="gb-description" class="details-content description-container"></div>
-        </div>
-        
-        <div id="gb-admin-tools" style="margin-bottom: 20px; display:none;">
-            <button id="btn-sync-gpx-trigger" class="btn btn-small btn-green" style="width:100%;">🔄 Päivitä tiedot & osallistujat GPX:stä</button>
-            <input type="file" id="import-gpx-sync" accept=".gpx" style="display:none;">
-            <button id="btn-mass-open" onclick="openMassImport()" class="btn btn-small btn-gray" style="width:100%; margin-top:5px;">📥 Massa-tuonti</button>
         </div>
         
         <div id="gb-actions-area">
             <div class="card-form">
-                <h3 style="text-align:center; margin-top:0; color:#B22222;">✍️ Kirjaa käynti</h3>
-                <input type="text" id="log-nickname" placeholder="Nimimerkkisi" style="font-size: 1.2em; border: 2px solid #8B4513;">
-                <input type="text" id="log-from" placeholder="Mistä tulet? (Paikkakunta)">
-                <input type="text" id="log-message" placeholder="Terveiset (vapaaehtoinen)">
-                <button id="btn-sign-log" class="btn btn-green" style="font-size: 1.2em; box-shadow: 4px 4px 0px #2e7d32;">KIRJAA KÄYNTI ✅</button>
+                <h3 style="text-align:center; color:#B22222;">✍️ Kirjaa käynti</h3>
+                <div style="position:relative;">
+                    <input type="text" id="log-nickname" placeholder="Nimimerkki" style="font-size:1.2em; border:2px solid #8B4513;">
+                    <div id="log-autocomplete" class="autocomplete-list" style="display:none;"></div>
+                </div>
+                <input type="text" id="log-from" placeholder="Mistä tulet?">
+                <input type="text" id="log-message" placeholder="Terveiset">
+                <button id="btn-sign-log" class="btn btn-green" style="font-size:1.2em; box-shadow:4px 4px 0px #2e7d32;">KIRJAA ✅</button>
             </div>
         </div>
-
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
-            <h3 style="color:#D2691E;">Osallistujat</h3>
-            <span style="background:#8B4513; color:#fff; padding:2px 10px; border-radius:15px; font-weight:bold;" id="attendee-count">0</span>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>Osallistujat</h3>
+            <span id="attendee-count" style="background:#8B4513; color:#fff; padding:2px 10px; border-radius:15px;">0</span>
         </div>
-        
         <div id="attendee-list" class="log-list"></div>
     </div>
 
     <div id="confirm-modal" class="modal">
         <div class="modal-content confirm-modal-content">
-            <h3 id="confirm-title" style="margin-top:0;">Vahvista</h3>
-            <p id="confirm-message">Oletko varma?</p>
+            <h3 id="confirm-title"></h3><p id="confirm-message"></p>
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button id="btn-confirm-yes" class="btn btn-green">Kyllä</button>
                 <button id="btn-confirm-no" class="btn btn-red">Ei</button>
@@ -678,83 +520,54 @@
 
     <div id="edit-modal" class="modal">
         <div class="modal-content">
-            <h3 style="text-align:center;">✏️ Muokkaa Miittiä</h3>
-            <div style="background:#fff; border:1px dashed #D2691E; padding:10px; margin-bottom:15px; border-radius:5px;">
-                <p style="margin:0 0 5px 0; font-size:0.8em; font-weight:bold; color:#D2691E;">🪄 Päivitä tiedot tekstistä:</p>
-                <textarea id="edit-import-text" rows="2" placeholder="Liitä Geocaching.com teksti tähän..." style="font-size:0.8em;"></textarea>
-                <button id="btn-process-edit-import" class="btn btn-gray btn-small" style="width:100%;">Täytä automaattisesti</button>
-            </div>
+            <h3>✏️ Muokkaa</h3>
             <input type="hidden" id="edit-key">
-            <label style="font-weight:bold;">Tyyppi</label>
-            <select id="edit-type"><option value="miitti">Miitti</option><option value="cito">CITO</option><option value="cce">Yhteisöjuhla</option></select>
-            <label style="font-weight:bold;">GC-Koodi</label><input type="text" id="edit-gc">
-            <label style="font-weight:bold;">Nimi</label><input type="text" id="edit-name">
-            <label style="font-weight:bold;">Pvm</label><input type="date" id="edit-date">
-            <label style="font-weight:bold;">Aika</label><input type="text" id="edit-time">
-            <label style="font-weight:bold;">Koordinaatit</label><input type="text" id="edit-coords">
-            <label style="font-weight:bold;">Paikka</label><input type="text" id="edit-loc">
-            <label style="font-weight:bold;">HTML Kuvaus</label><textarea id="edit-desc" rows="5"></textarea>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button id="btn-save-edit" class="btn btn-green">Tallenna</button>
-                <button onclick="closeModal()" class="btn btn-red">Peruuta</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="log-edit-modal" class="modal">
-        <div class="modal-content">
-            <h3 style="text-align:center;">✏️ Muokkaa kävijää</h3>
-            <input type="hidden" id="log-edit-key">
-            <label>Nimimerkki</label><input type="text" id="log-edit-nick">
-            <label>Mistä tulet?</label><input type="text" id="log-edit-from">
-            <label>Viesti</label><textarea id="log-edit-msg" rows="3"></textarea>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button id="btn-save-log-edit" class="btn btn-green">Tallenna</button>
-                <button onclick="closeModal()" class="btn btn-red">Peruuta</button>
-            </div>
+            <label>Nimi</label><input type="text" id="edit-name">
+            <label>Tyyppi</label><select id="edit-type"><option value="miitti">Miitti</option><option value="cito">CITO</option><option value="cce">Yhteisöjuhla</option></select>
+            <label>GC</label><input type="text" id="edit-gc">
+            <label>Pvm</label><input type="date" id="edit-date">
+            <label>Aika</label><input type="text" id="edit-time">
+            <label>Koordinaatit</label><input type="text" id="edit-coords">
+            <label>Paikka</label><input type="text" id="edit-loc">
+            <label>HTML Kuvaus</label><textarea id="edit-desc" rows="5"></textarea>
+            <div style="display:flex; gap:10px;"><button id="btn-save-edit" class="btn btn-green">Tallenna</button><button onclick="closeModal()" class="btn btn-red">Peruuta</button></div>
         </div>
     </div>
 
     <div id="mass-modal" class="modal">
         <div class="modal-content">
-            <h3 style="text-align:center;">📥 Tuo osallistujat</h3>
-            <div id="mass-step-1">
-                <textarea id="mass-input" rows="8" placeholder="Liitä teksti tähän..."></textarea>
-                <button id="btn-parse-mass" class="btn btn-blue">Etsi nimet</button>
-            </div>
-            <div id="mass-step-2" style="display:none;">
-                <textarea id="mass-output" rows="10"></textarea>
-                <div style="display:flex; gap:10px;"><button id="btn-save-mass" class="btn btn-green">Tallenna</button><button onclick="resetMassModal()" class="btn btn-gray">Takaisin</button></div>
-            </div>
+            <h3>📥 Massa-tuonti</h3>
+            <div id="mass-step-1"><textarea id="mass-input" rows="8" placeholder="Liitä teksti..."></textarea><button id="btn-parse-mass" class="btn btn-blue">Etsi nimet</button></div>
+            <div id="mass-step-2" style="display:none;"><textarea id="mass-output" rows="10"></textarea><div style="display:flex; gap:10px;"><button id="btn-save-mass" class="btn btn-green">Tallenna</button><button onclick="resetMassModal()" class="btn btn-gray">Takaisin</button></div></div>
             <button onclick="closeModal()" class="btn btn-red" style="margin-top:20px; width:100%;">Sulje</button>
+        </div>
+    </div>
+
+    <div id="log-edit-modal" class="modal">
+        <div class="modal-content">
+            <h3>✏️ Muokkaa kävijää</h3>
+            <input type="hidden" id="log-edit-key">
+            <label>Nimimerkki</label><input type="text" id="log-edit-nick">
+            <label>Kotoisin</label><input type="text" id="log-edit-from">
+            <label>Viesti</label><textarea id="log-edit-msg" rows="3"></textarea>
+            <div style="display:flex; gap:10px; margin-top:20px;"><button id="btn-save-log-edit" class="btn btn-green">Tallenna</button><button onclick="closeModal()" class="btn btn-red">Peruuta</button></div>
         </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    
     <script src="app.js"></script>
     <script src="stats.js"></script>
-
+    
     <script>
-        // Paranneltu välilehtien vaihto
         function switchStatsTab(tabId, btn) {
-            // Kaikki sisältö piiloon
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            // Kaikki napit pois päältä
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            
-            // Aktiivinen sisältö ja nappi
             document.getElementById(tabId).classList.add('active');
             btn.classList.add('active');
-            
-            // Piirretään graafit uudelleen jos graafi-välilehti
             if(tabId === 'tab-graphs' && typeof renderCharts === 'function') {
-                // Pieni viive varmistaa, että Canvas-elementit ovat oikeasti näkyvissä ennen piirtoa
-                setTimeout(() => {
-                    renderCharts(window.currentFilteredData);
-                }, 100);
+                setTimeout(() => { renderCharts(window.currentFilteredData); }, 100);
             }
         }
     </script>
