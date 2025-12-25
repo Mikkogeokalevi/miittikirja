@@ -86,7 +86,6 @@ function updateStatsView(data) {
         if (data.length === 0) {
             resultsEl.innerHTML = "Ei hakua vastaavia miittejä.";
         } else {
-            // Järjestetään tulokset uusimmasta vanhimpaan
             const sortedResults = [...data].sort((a,b) => new Date(b.date) - new Date(a.date));
             sortedResults.forEach(evt => {
                 const item = document.createElement('div');
@@ -109,8 +108,12 @@ function updateStatsView(data) {
     renderAlphabetStats(data);
     renderWeekdayStats(data);
 
-    // 4. TOP 10 & BOTTOM 10
-    const sortedByCount = [...data].sort((a, b) => b.attendeeCount - a.attendeeCount);
+    // --- 4. TOP 10 & BOTTOM 10 (Suodatettu pois / PERUTTU /) ---
+    // Luodaan datajoukko josta perutut on poistettu vain listauksia varten
+    const filteredData = data.filter(e => !e.name.includes("/ PERUTTU /"));
+
+    const sortedByCount = [...filteredData].sort((a, b) => b.attendeeCount - a.attendeeCount);
+    
     const renderList = (list, elementId) => {
         const el = document.getElementById(elementId);
         if(!el) return;
@@ -122,8 +125,43 @@ function updateStatsView(data) {
             el.appendChild(row);
         });
     };
+
     renderList(sortedByCount.slice(0, 10), 'stats-top-10');
     renderList([...sortedByCount].reverse().slice(0, 10), 'stats-bottom-10');
+
+    // --- 5. TOP 10 KÄVIJÄT (UUSI) ---
+    const userAttendanceMap = {};
+    data.forEach(e => {
+        if(e.attendeeNames) {
+            e.attendeeNames.forEach(name => {
+                userAttendanceMap[name] = (userAttendanceMap[name] || 0) + 1;
+            });
+        }
+    });
+
+    const sortedUsers = Object.entries(userAttendanceMap).sort((a, b) => b[1] - a[1]);
+    
+    // Etsitään tai luodaan paikka TOP-kävijöille dynaamisesti jos puuttuu HTML:stä
+    let userStatsEl = document.getElementById('stats-top-users');
+    if(!userStatsEl) {
+        // Jos HTML:stä puuttuu paikka, laitetaan se TOP-10 listan jälkeen
+        const top10Box = document.getElementById('stats-top-10')?.parentElement;
+        if(top10Box) {
+            const newCard = document.createElement('div');
+            newCard.className = "card";
+            newCard.innerHTML = `<h3>🏆 TOP 10 Kävijät</h3><div id="stats-top-users"></div>`;
+            top10Box.parentNode.insertBefore(newCard, top10Box.nextSibling);
+            userStatsEl = document.getElementById('stats-top-users');
+        }
+    }
+
+    if(userStatsEl) {
+        userStatsEl.innerHTML = sortedUsers.slice(0, 10).map(([name, count], i) => `
+            <div class="stats-row" style="cursor:pointer" onclick="document.getElementById('search-user-name').value='${name}'; document.getElementById('btn-apply-filters').click();">
+                <span>${i+1}. ${name}</span> <strong>${count} miittiä</strong>
+            </div>
+        `).join('');
+    }
 
     // 5. Paikkakunnat
     const locMap = {};
