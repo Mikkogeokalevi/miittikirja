@@ -30,6 +30,7 @@ let currentEventId = null;
 let currentEventArchived = false;
 let globalEventList = []; 
 let isAdminMode = true; // Oletuksena hallintatila päällä
+let wakeLock = null; // Näytön päälläpito-objekti
 
 // Käyttöliittymän pääelementit
 const loginView = document.getElementById('login-view');
@@ -51,7 +52,44 @@ let touchEndX = 0;
 
 
 // ==========================================
-// 2. KIRJAUTUMINEN JA NÄKYMIEN HALLINTA
+// 2. NÄYTÖN PÄÄLLÄPITO (WAKE LOCK)
+// ==========================================
+
+// Funktio, joka estää näytön sammumisen
+const requestWakeLock = async () => {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Näytön päälläpito (Wake Lock) aktivoitu ✅');
+            
+            // Jos yhteys katkeaa (esim. sovellus menee taustalle)
+            wakeLock.addEventListener('release', () => {
+                console.log('Wake Lock vapautettu.');
+            });
+        }
+    } catch (err) {
+        console.error(`Wake Lock virhe: ${err.name}, ${err.message}`);
+    }
+};
+
+// Yritetään aktivoida näytön päälläpito heti kun käyttäjä on kirjautunut
+// Selain vaatii usein jonkin klikkauksen ennen kuin tämä sallitaan
+document.addEventListener('click', () => {
+    if (!wakeLock && currentUser) {
+        requestWakeLock();
+    }
+}, { once: true });
+
+// Jos käyttäjä palaa takaisin sovellukseen välilehdeltä, aktivoidaan lock uudelleen
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        await requestWakeLock();
+    }
+});
+
+
+// ==========================================
+// 3. KIRJAUTUMINEN JA NÄKYMIEN HALLINTA
 // ==========================================
 
 auth.onAuthStateChanged((user) => {
@@ -65,7 +103,6 @@ auth.onAuthStateChanged((user) => {
         }
         
         // Ohjataan käyttäjä oikeaan aloitusnäkymään
-        // Pidetään nykyinen näkymä auki jos se on jo vieraskirja tai tilastot
         const statsView = document.getElementById('stats-view');
         if (guestbookView.style.display !== 'block' && 
             (!statsView || statsView.style.display !== 'block')) {
@@ -74,10 +111,19 @@ auth.onAuthStateChanged((user) => {
         
         // Ladataan tapahtumat tietokannasta
         loadEvents();
+        
+        // Aktivoidaan näytön päälläpito
+        requestWakeLock();
     } else {
         currentUser = null;
         if(userDisplay) userDisplay.style.display = 'none';
         showLoginView();
+        
+        // Vapautetaan lock jos käyttäjä kirjautuu ulos
+        if (wakeLock) {
+            wakeLock.release();
+            wakeLock = null;
+        }
     }
 });
 
@@ -103,7 +149,6 @@ function showMainView() {
     const statsView = document.getElementById('stats-view');
     if(statsView) statsView.style.display = 'none';
 
-    // Näytetään joko hallinta- tai käyttäjänäkymä valinnan mukaan
     if (isAdminMode) {
         if(adminView) adminView.style.display = 'block';
         if(userView) userView.style.display = 'none';
@@ -112,17 +157,14 @@ function showMainView() {
         if(userView) userView.style.display = 'block';
     }
     
-    // Nollataan nykyinen tapahtuma kun palataan listaukseen
     if(currentEventId) { 
         db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off(); 
         currentEventId = null; 
     }
 }
 
-// Tehdään tästä globaali HTML-kutsuja varten
 window.showMainView = showMainView;
 
-// Näkymän vaihto (Hallinta <-> Miittikirja)
 document.getElementById('btn-toggle-mode').onclick = function() {
     isAdminMode = !isAdminMode;
     
@@ -134,12 +176,12 @@ document.getElementById('btn-toggle-mode').onclick = function() {
     }
     
     showMainView();
-    loadEvents(); // Päivitetään listojen tyyli vastaamaan moodia
+    loadEvents(); 
 };
 
 
 // ==========================================
-// 3. OMA VARMISTUSKYSELY (CUSTOM CONFIRM)
+// 4. OMA VARMISTUSKYSELY (CUSTOM CONFIRM)
 // ==========================================
 
 function customConfirm(title, message) {
@@ -155,7 +197,6 @@ function customConfirm(title, message) {
 
         const handleResponse = (response) => {
             if(confirmModal) confirmModal.style.display = 'none';
-            // Puhdistetaan kuuntelijat
             yesBtn.onclick = null;
             noBtn.onclick = null;
             resolve(response);
@@ -168,7 +209,7 @@ function customConfirm(title, message) {
 
 
 // ==========================================
-// 4. APUFUNKTIOT (KOORDINAATIT JA SIJAINTI)
+// 5. APUFUNKTIOT (KOORDINAATIT JA SIJAINTI)
 // ==========================================
 
 function decimalToDMS(lat, lon) {
@@ -187,8 +228,6 @@ function decimalToDMS(lat, lon) {
 
 async function fetchCityFromCoords(coords, targetId) {
     let lat, lon;
-    
-    // Tarkistetaan onko koordinaatit DMS-muodossa
     const dmsMatch = coords.match(/([NS])\s*(\d+)°\s*([\d\.]+)\s*([EW])\s*(\d+)°\s*([\d\.]+)/);
     
     if (dmsMatch) {
@@ -197,7 +236,6 @@ async function fetchCityFromCoords(coords, targetId) {
         lon = parseInt(dmsMatch[5]) + parseFloat(dmsMatch[6]) / 60;
         if (dmsMatch[4] === 'W') lon = -lon;
     } else {
-        // Oletetaan desimaalimuoto
         const parts = coords.replace(/[NE]/g, '').split(/[,\sE]/).filter(s => s.trim().length > 0);
         if (parts.length >= 2) { 
             lat = parseFloat(parts[0]); 
@@ -241,7 +279,7 @@ window.toggleDetails = function(id) {
 
 
 // ==========================================
-// 5. GPX-PARSERI (LUKEE TIEDOSTON SISÄLLÖN)
+// 6. GPX-PARSERI (LUKEE TIEDOSTON SISÄLLÖN)
 // ==========================================
 
 function parseGPX(xmlText) {
@@ -254,7 +292,6 @@ function parseGPX(xmlText) {
     const lat = parseFloat(wpt.getAttribute("lat"));
     const lon = parseFloat(wpt.getAttribute("lon"));
     
-    // Etsitään kellonaika kuvauksesta
     let timeStr = "";
     const shortDesc = wpt.getElementsByTagNameNS("*", "short_description")[0]?.textContent || "";
     const timeMatch = shortDesc.match(/(\d{1,2}[:\.]\d{2})\s*-\s*(\d{1,2}[:\.]\d{2})/);
@@ -262,7 +299,6 @@ function parseGPX(xmlText) {
         timeStr = `${timeMatch[1].replace('.', ':')} - ${timeMatch[2].replace('.', ':')}`;
     }
 
-    // Luetaan attribuutit (inc=1 Kyllä, inc=0 Ei)
     const attributes = [];
     const attrElements = wpt.getElementsByTagNameNS("*", "attribute");
     
@@ -274,7 +310,6 @@ function parseGPX(xmlText) {
         });
     }
 
-    // Poimitaan osallistuneet (Attended-logit)
     const attendees = [];
     const logs = wpt.getElementsByTagNameNS("*", "log");
     
@@ -302,10 +337,9 @@ function parseGPX(xmlText) {
 
 
 // ==========================================
-// 6. UUDEN TAPAHTUMAN TUONTI (GPX TAI TEKSTI)
+// 7. UUDEN TAPAHTUMAN TUONTI (GPX & TEKSTI)
 // ==========================================
 
-// --- GPX-TIEDOSTON VALINTA UUDELLE MIITILLE ---
 document.getElementById('import-gpx-new').onchange = async function(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -314,7 +348,6 @@ document.getElementById('import-gpx-new').onchange = async function(e) {
     const data = parseGPX(text);
     
     if (data) {
-        // Täytetään lomakkeen kentät GPX-datalla
         const gcInput = document.getElementById('new-gc');
         const nameInput = document.getElementById('new-name');
         const dateInput = document.getElementById('new-date');
@@ -329,7 +362,6 @@ document.getElementById('import-gpx-new').onchange = async function(e) {
         if(coordsInput) coordsInput.value = data.coords;
         if(descInput) descInput.value = data.descriptionHtml;
         
-        // Haetaan paikkakunta koordinaattien perusteella
         fetchCityFromCoords(data.coords, 'new-loc');
         alert("Miitin tiedot ladattu GPX-tiedostosta!");
     } else {
@@ -376,7 +408,7 @@ function processTextImport(text, mode) {
 
 
 // ==========================================
-// 7. TALLENNUS JA LISTOJEN GENERONTII
+// 8. TALLENNUS JA LISTOJEN GENERONTII
 // ==========================================
 
 document.getElementById('btn-add-event').onclick = function() {
@@ -399,7 +431,6 @@ document.getElementById('btn-add-event').onclick = function() {
     }
     
     db.ref('miitit/' + currentUser.uid + '/events').push(data).then(() => {
-        // Nollataan lomake onnistumisen jälkeen
         const fields = ['new-gc','new-name','new-date','new-time','new-coords','new-loc','new-desc','import-text','import-gpx-new'];
         fields.forEach(id => {
             const el = document.getElementById(id); if(el) el.value = "";
@@ -413,7 +444,6 @@ function loadEvents() {
     const today = new Date().toISOString().split('T')[0];
     
     db.ref('miitit/' + currentUser.uid + '/events').on('value', (snapshot) => {
-        // Puhdistetaan kaikki mahdolliset listakontit
         const allIds = [
             'list-miitti-future','list-miitti-past',
             'list-cito-future','list-cito-past',
@@ -429,7 +459,6 @@ function loadEvents() {
             events.push({key: child.key, ...child.val()}); 
         });
         
-        // Järjestetään pvm mukaan (uusin ensin)
         events.sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0));
         globalEventList = events;
         
@@ -437,11 +466,9 @@ function loadEvents() {
 
         events.forEach(evt => {
             const isArchived = evt.isArchived === true;
-            // Uniikki ID laskurille riippuen moodista
             const countId = `count-${isAdminMode ? 'adm' : 'usr'}-${evt.key}`;
             
             if (isAdminMode) {
-                // --- ADMIN-NÄKYMÄN KORTTI ---
                 const div = document.createElement('div');
                 div.className = "card" + (isArchived ? " archived" : "");
                 
@@ -471,7 +498,6 @@ function loadEvents() {
                 if (target) target.appendChild(div);
 
             } else {
-                // --- KÄYTTÄJÄNÄKYMÄN KORTTI (MIITTIKIRJA) ---
                 const div = document.createElement('div');
                 div.className = "card" + (isArchived ? " archived" : "");
                 
@@ -490,7 +516,6 @@ function loadEvents() {
                 if (target) target.appendChild(div);
             }
 
-            // Haetaan ja päivitetään osallistujamäärä dynaamisesti
             db.ref('miitit/' + currentUser.uid + '/logs/' + evt.key).once('value').then((snap) => {
                 const el = document.getElementById(countId); 
                 if (el) {
@@ -508,7 +533,7 @@ function loadEvents() {
 
 
 // ==========================================
-// 8. VIERASKIRJA (GUESTBOOK) JA LOKIT
+// 9. VIERASKIRJA (GUESTBOOK) JA LOKIT
 // ==========================================
 
 window.openGuestbook = function(eventKey) {
@@ -524,14 +549,12 @@ window.openGuestbook = function(eventKey) {
         
         currentEventArchived = (evt.isArchived === true);
 
-        // Perustiedot
         document.getElementById('gb-event-name').innerText = evt.name;
         document.getElementById('gb-time').innerText = evt.time || '-';
         document.getElementById('gb-date').innerText = evt.date;
         document.getElementById('gb-gc').innerText = evt.gc;
         document.getElementById('gb-loc').innerText = evt.location || '-';
         
-        // Karttalinkki
         const coordsEl = document.getElementById('gb-coords');
         if(evt.coords) {
             const qCoords = evt.coords.replace(/°/g, "").replace(/\s+/g, "+");
@@ -541,7 +564,6 @@ window.openGuestbook = function(eventKey) {
             coordsEl.innerText = "-"; 
         }
 
-        // Attribuutit
         const attrDiv = document.getElementById('gb-attrs');
         if(attrDiv) {
             attrDiv.innerHTML = "";
@@ -559,7 +581,6 @@ window.openGuestbook = function(eventKey) {
             }
         }
 
-        // Miittikuvaus HTML
         const descEl = document.getElementById('gb-description');
         if (descEl) {
             if (evt.descriptionHtml) {
@@ -570,28 +591,22 @@ window.openGuestbook = function(eventKey) {
             }
         }
 
-        // --- NÄKYMÄN RAJOITUKSET ---
-        
-        // Admin-työkalut (Sync/Massa) vain Admin-tilassa
         const adminTools = document.getElementById('gb-admin-tools');
         if(adminTools) {
             adminTools.style.display = isAdminMode ? 'block' : 'none';
         }
 
-        // Kirjaa käynti -lomake piiloon jos arkistoitu
         const actionsArea = document.getElementById('gb-actions-area');
         if(actionsArea) {
             actionsArea.style.display = currentEventArchived ? 'none' : 'block';
         }
         
-        // Arkistoitu-ilmoitus
         const notice = document.getElementById('archived-notice');
         if(notice) {
             notice.style.display = currentEventArchived ? 'block' : 'none';
         }
     });
     
-    // Näytetään vieraskirja-osio
     if(adminView) adminView.style.display = 'none'; 
     if(userView) userView.style.display = 'none'; 
     if(guestbookView) guestbookView.style.display = 'block';
@@ -636,14 +651,12 @@ function loadAttendees(eventKey) {
             logs.push({key: child.key, ...child.val()}); 
         });
         
-        // Järjestetään uusin ensin
         logs.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
         
         logs.forEach(log => {
             const row = document.createElement('div');
             row.className = "log-item";
             
-            // Editointi-napit vain adminille ja jos miitti ei ole arkistoitu
             let btns = (isAdminMode && !currentEventArchived) ? `
                 <div class="log-actions">
                     <button class="btn-blue btn-small" onclick="openLogEditModal('${log.key}')">✏️</button>
@@ -667,7 +680,7 @@ function loadAttendees(eventKey) {
 
 
 // ==========================================
-// 9. MUOKKAUS, ARKISTOINTI JA POISTO
+// 10. MUOKKAUS, ARKISTOINTI JA POISTO
 // ==========================================
 
 window.openEditModal = function(key) {
@@ -736,7 +749,7 @@ window.deleteLog = async function(logKey) {
 
 
 // ==========================================
-// 10. GPX-SYNCHRONOINTI JA MASSA-TOIMINNOT
+// 11. GPX-SYNCHRONOINTI JA MASSA-TOIMINNOT
 // ==========================================
 
 document.getElementById('btn-sync-gpx-trigger').onclick = function() { 
@@ -760,7 +773,6 @@ document.getElementById('import-gpx-sync').onchange = async function(e) {
     const currentEvtSnap = await db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).once('value');
     const currentEvt = currentEvtSnap.val();
 
-    // Tarkistus: onko kyseessä sama miitti?
     if (currentEvt.gc && gpxData.gc && currentEvt.gc.trim().toUpperCase() !== gpxData.gc.trim().toUpperCase()) {
         if(loadingOverlay) loadingOverlay.style.display = 'none';
         alert(`⚠️ VIRHE: Tiedosto ei täsmää!\n\nLaitteen miitti: ${currentEvt.gc}\nGPX tiedosto: ${gpxData.gc}`);
@@ -772,7 +784,6 @@ document.getElementById('import-gpx-sync').onchange = async function(e) {
         coords: gpxData.coords
     };
     
-    // Päivitetään kuvaus vain jos se puuttuu tai on tyhjä
     if (!currentEvt.descriptionHtml) {
         updates.descriptionHtml = gpxData.descriptionHtml;
     }
@@ -798,7 +809,6 @@ document.getElementById('btn-parse-mass').onclick = function() {
     if(!text) return;
     
     let names = []; 
-    // Erotetaan osallistujat tekstistä (Geocaching.com osallistujalistan perusteella)
     const blocks = text.split(/Näytä\s+loki|View\s+Log|Näytä\s+\/\s+Muokkaa|View\s+\/\s+Edit/i);
     
     blocks.forEach(b => {
@@ -814,7 +824,7 @@ document.getElementById('btn-parse-mass').onclick = function() {
         }
     });
     
-    names = [...new Set(names)]; // Vain uniikit nimet
+    names = [...new Set(names)]; 
     if (names.length === 0) {
         alert("Nimiä ei löytynyt. Varmista että kopioit koko listan.");
         return;
@@ -840,7 +850,7 @@ document.getElementById('btn-save-mass').onclick = function() {
 
 
 // ==========================================
-// 11. TILASTOT JA NAVIGOINTI
+// 12. TILASTOT JA NAVIGOINTI
 // ==========================================
 
 const openStats = function() {
@@ -870,7 +880,7 @@ window.navigateEvent = function(direction) {
 
 
 // ==========================================
-// 12. KIRJAUTUMINEN JA MUUT LOPUT FUNKTIOT
+// 13. KIRJAUTUMINEN JA MUUT LOPUT FUNKTIOT
 // ==========================================
 
 window.closeModal = function() { 
