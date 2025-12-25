@@ -613,12 +613,25 @@
                 <canvas id="chart-weekdays-canvas"></canvas>
             </div>
             <div class="card">
-                <h3>☕ Miittityyppien jakautuma</h3>
+                <h3>🍩 Miittityyppien jakautuma</h3>
                 <canvas id="chart-types-canvas"></canvas>
             </div>
             <div class="card">
-                <h3>📈 Osallistujamäärien kehitys</h3>
+                <h3>📈 Osallistujamäärien kehitys (15 viimeisintä)</h3>
                 <canvas id="chart-timeline-canvas"></canvas>
+            </div>
+            <div class="card">
+                <h3>🕒 Miittien kellonajat</h3>
+                <p style="font-size:0.7em; color:#666;">Alkamisajat tunnin tarkkuudella</p>
+                <canvas id="chart-hours-canvas"></canvas>
+            </div>
+            <div class="card">
+                <h3>📅 Osallistujat kuukausittain</h3>
+                <canvas id="chart-months-canvas"></canvas>
+            </div>
+            <div class="card">
+                <h3>🏘️ Suosituimmat paikkakunnat</h3>
+                <canvas id="chart-locations-canvas"></canvas>
             </div>
         </div>
     </div>
@@ -758,17 +771,19 @@
     <script src="stats.js"></script>
 
     <script>
-        // Välilehtien vaihto
         function switchStatsTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             
             document.getElementById(tabId).classList.add('active');
-            event.target.classList.add('active');
             
-            // Piirretään graafit uudelleen jos vaihdetaan graafit-välilehdelle
+            const btn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+            if(btn) btn.classList.add('active');
+            
             if(tabId === 'tab-graphs' && typeof renderCharts === 'function') {
-                renderCharts();
+                setTimeout(() => {
+                    renderCharts(window.currentFilteredData);
+                }, 50);
             }
         }
     </script>
