@@ -85,7 +85,6 @@ async function openVisitorGuestbook(uid, eventId) {
         
         if(!evt) {
             // DIAGNOSTIIKKA: Näytetään käyttäjälle mitä yritettiin hakea
-            // Tämä auttaa selvittämään onko vika ID:ssä vai UID:ssa
             alert(`Miittiä ei löytynyt!\n\nEtsintätiedot:\nEventID: ${eventId}\nOmistaja-UID: ${uid}\n\nTarkista onko miitti poistettu tai onko QR-koodi vanhentunut.`);
             
             if(loadingOverlay) loadingOverlay.style.display = 'none';
@@ -459,6 +458,7 @@ function loadEvents() {
             div.className = "card" + (isArchived ? " archived" : "") + (isToday ? " today-highlight" : "");
             
             if (isAdminMode) {
+                // LISTAKORTTI (Alhaalla listoissa)
                 const archiveBtn = isArchived 
                     ? `<button class="btn btn-blue btn-small" onclick="toggleArchive('${evt.key}', false)">♻️ Palauta</button>`
                     : `<button class="btn btn-red btn-small" onclick="toggleArchive('${evt.key}', true)">📦 Arkistoi</button>`;
@@ -477,15 +477,32 @@ function loadEvents() {
                         <button class="btn btn-red btn-small" onclick="deleteEvent('${evt.key}')">🗑 Poista</button>
                     </div>`;
                 
+                // TÄNÄÄN TAPAHTUU -HERO KORTTI (Ylhäällä)
                 if (isToday && noticeAdmin) {
-                    const notice = div.cloneNode(true);
-                    notice.prepend(document.createRange().createContextualFragment('<h3 style="color:#4caf50; margin-top:0;">🌟 TÄNÄÄN TAPAHTUU!</h3>'));
-                    noticeAdmin.appendChild(notice);
+                    const hero = document.createElement('div');
+                    hero.className = "card today-highlight";
+                    hero.style.textAlign = "center";
+                    hero.style.padding = "20px";
+                    hero.style.border = "4px solid #D2691E"; // Vahvempi reunus
+                    hero.style.backgroundColor = "#FFF8DC";  // Hieman erottuva tausta
+
+                    hero.innerHTML = `
+                        <h2 style="color:#D2691E; margin:0 0 10px 0; text-transform:uppercase; letter-spacing:1px;">🌟 Tänään tapahtuu! 🌟</h2>
+                        <h3 style="margin:5px 0; font-size:1.4em;">${evt.name}</h3>
+                        <p style="font-size:1.2em; color:#555; margin:5px 0 15px 0;">⏰ klo ${evt.time || '??:??'}</p>
+                        <button class="btn btn-green" style="font-size:1.3em; padding:15px; width:100%; font-weight:bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);" onclick="openGuestbook('${evt.key}')">
+                            📖 AVAA MIITTIKIRJA NYT
+                        </button>
+                    `;
+                    noticeAdmin.appendChild(hero);
                 }
+
+                // Lisätään myös normaaliin listaan
                 const target = document.getElementById(evt.date >= todayStr ? `list-${evt.type}-future` : `list-${evt.type}-past`);
                 if (target) target.appendChild(div);
 
             } else {
+                // USER MODE (Katselija)
                 div.innerHTML = `
                     <div style="display:flex; justify-content:space-between;"><strong>${evt.name}</strong><span>${evt.date}</span></div>
                     <div style="font-size:0.8em; color:#666; margin-bottom:5px;">🕓 ${evt.time || '-'} • ${evt.location || ''}</div>
@@ -495,9 +512,11 @@ function loadEvents() {
                     </div>`;
                 
                 if (isToday && noticeUser) {
-                    const notice = div.cloneNode(true);
-                    notice.prepend(document.createRange().createContextualFragment('<h3 style="color:#4caf50; margin-top:0; text-align:center;">🌟 TÄNÄÄN!</h3>'));
-                    noticeUser.appendChild(notice);
+                    // Myös käyttäjälle kiva ilmoitus, mutta simppelimpi
+                    const heroUser = div.cloneNode(true);
+                    heroUser.style.border = "4px solid #4caf50";
+                    heroUser.prepend(document.createRange().createContextualFragment('<h3 style="color:#4caf50; margin-top:0; text-align:center;">🌟 TÄNÄÄN!</h3>'));
+                    noticeUser.appendChild(heroUser);
                 }
                 const target = document.getElementById(`user-list-${evt.type}`);
                 if (target) target.appendChild(div);
