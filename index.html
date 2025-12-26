@@ -6,6 +6,8 @@
     <title>MK:n Sähköinen Miittikirja</title>
     
     <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    
     <meta name="theme-color" content="#8B4513">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -13,311 +15,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-    <style>
-        /* --- MIKKOKALEVI THEME (TÄYSI CSS) --- */
-        body { 
-            background-color: #FDF5E6; 
-            color: #4E342E; 
-            font-family: 'Verdana', sans-serif; 
-            margin: 0; 
-            padding: 10px; 
-            text-align: center; 
-            line-height: 1.6;
-            -webkit-user-select: none;
-            user-select: none;
-            overflow-x: hidden; 
-        }
-
-        h1, h2, h3 { 
-            color: #8B4513; 
-            text-shadow: 1px 1px 1px rgba(0,0,0,0.1);
-            margin-bottom: 15px; 
-        }
-
-        .view-section { 
-            display: none; 
-            max-width: 600px; 
-            margin: 0 auto; 
-            background-color: #FDF5E6;
-            border: 4px double #8B4513;
-            border-radius: 15px;
-            box-shadow: 0px 0px 20px rgba(139,69,19,0.25);
-            padding: 20px;
-            padding-bottom: 80px; 
-            min-height: 80vh; 
-        }
-        
-        .card { 
-            background: #FFFFFF; 
-            padding: 15px; 
-            margin-bottom: 15px; 
-            border-radius: 10px; 
-            text-align: left; 
-            border: 2px dashed #8B4513; 
-            box-shadow: 4px 4px 0px #FAEBD7;
-            position: relative; 
-        }
-
-        /* Tänään tapahtuu korostus */
-        .card.today-highlight {
-            border: 4px solid #4caf50;
-            background: #f1f8e9;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
-            70% { box-shadow: 0 0 0 15px rgba(76, 175, 80, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
-        }
-
-        .card.archived {
-            opacity: 0.7;
-            background: #e0e0e0;
-            border-color: #aaa;
-            border-style: dotted;
-            box-shadow: none;
-        }
-
-        .card-form {
-            background-color: #FFF8E7;
-            border: 2px solid #CD5C5C;
-            border-radius: 8px;
-            padding: 15px;
-            text-align: left;
-            margin-bottom: 15px;
-        }
-
-        #new-event-toggle {
-            cursor: pointer;
-            user-select: none;
-            transition: color 0.2s;
-            display: block;
-            width: 100%;
-        }
-        #new-event-toggle:hover { color: #D2691E; }
-
-        .category-header { 
-            text-align: center; 
-            color: #D2691E; 
-            font-weight: bold;
-            font-size: 1.1em; 
-            margin-top: 30px; 
-            margin-bottom: 10px;
-            border-bottom: 2px dotted #8B4513; 
-            padding-bottom: 5px; 
-            letter-spacing: 1px;
-        }
-
-        .sub-category-header {
-            font-size: 0.8em;
-            text-transform: uppercase;
-            color: #8B4513;
-            margin: 10px 0;
-            text-align: left;
-            border-left: 4px solid #D2691E;
-            padding-left: 10px;
-            opacity: 0.8;
-        }
-        
-        input, select, textarea { 
-            width: 100%; 
-            padding: 12px; 
-            margin-bottom: 10px; 
-            background: #FFFFFF; 
-            border: 1px solid #8B4513; 
-            color: #4E342E; 
-            border-radius: 4px; 
-            box-sizing: border-box; 
-            font-family: 'Verdana', sans-serif;
-            font-size: 16px; 
-        }
-        
-        input::placeholder, textarea::placeholder { color: #A0522D; opacity: 0.6; }
-
-        .btn { 
-            padding: 12px 20px; 
-            cursor: pointer; 
-            border: none; 
-            border-radius: 6px; 
-            font-size: 16px; 
-            font-weight: bold; 
-            margin: 5px 0; 
-            width: 100%; 
-            transition: transform 0.1s;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-        }
-        .btn-blue { background-color: #8B4513; color: white; } 
-        .btn-green { background-color: #4caf50; color: white; border: 1px solid #2e7d32; } 
-        .btn-red { background-color: #B22222; color: white; } 
-        .btn-gray { background-color: #A0522D; color: white; }
-        .btn-small { width: auto; padding: 8px 12px; font-size: 14px; margin-right: 5px; }
-        
-        .nav-arrow {
-            background: none; border: none; font-size: 2em; cursor: pointer; color: #8B4513; padding: 0 15px;
-            user-select: none;
-        }
-
-        .back-btn { 
-            background: none; 
-            border: none; 
-            color: #8B4513; 
-            cursor: pointer; 
-            float: left; 
-            font-size: 14px; 
-            margin-bottom: 10px; 
-            font-weight: bold;
-            padding: 10px; 
-        }
-
-        .event-meta { 
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-areas: "time date" "loc loc" "gc coords";
-            background: #fff;
-            border: 2px solid #8B4513;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            box-shadow: 4px 4px 0px rgba(139,69,19,0.15);
-            font-size: 0.95em;
-            text-align: left;
-            overflow: hidden;
-        }
-
-        .event-meta span { 
-            padding: 8px 12px; 
-            border-bottom: 1px dashed #D2B48C; 
-            display: flex; 
-            align-items: center; 
-            word-break: break-word;
-        }
-
-        #gb-time { grid-area: time; border-right: 1px dashed #D2B48C; }
-        #gb-loc { grid-area: loc; }
-        #gb-gc { grid-area: gc; border-right: 1px dashed #D2B48C; border-bottom: none; }
-        #gb-coords { grid-area: coords; border-bottom: none; }
-
-        .details-box {
-            margin-bottom: 10px;
-            border: 1px solid #D2B48C;
-            border-radius: 8px;
-            background: #fff;
-            overflow: hidden;
-            text-align: left;
-        }
-        .details-header {
-            background: #FFF8E7;
-            padding: 10px 15px;
-            font-weight: bold;
-            font-size: 0.9em;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-        }
-        .details-content { padding: 15px; display: none; font-size: 0.9em; }
-
-        .attr-tag {
-            display: inline-block;
-            background: #D2691E;
-            color: white;
-            padding: 4px 10px;
-            border-radius: 20px;
-            margin: 3px;
-            font-size: 0.85em;
-        }
-        .attr-tag.neg {
-            background: #f8d7da;
-            color: #721c24;
-            text-decoration: line-through;
-            border: 1px solid #f5c6cb;
-        }
-
-        .log-list { 
-            max-height: 50vh; 
-            overflow-y: auto; 
-            text-align: left; 
-            margin-top: 20px; 
-            background: #FFFFFF; 
-            padding: 10px; 
-            border-radius: 8px; 
-            border: 1px solid #D2B48C;
-        }
-        .log-item { border-bottom: 1px dashed #D2B48C; padding: 10px 0; display: flex; justify-content: space-between; align-items: flex-start; }
-        .log-actions { min-width: 80px; text-align: right; }
-        
-        .logo-img { width: 100px; height: 100px; border-radius: 50%; margin-bottom: 10px; border: 3px solid #D2B48C; object-fit: cover; }
-
-        .user-info-bar {
-            font-size: 0.8em;
-            color: #8B4513;
-            margin-bottom: 10px;
-            background: rgba(255,255,255,0.5);
-            padding: 10px 15px;
-            border-radius: 10px;
-            display: none; 
-            /* MUUTETTU: Flex-suunta sarakkeeksi jotta versio mahtuu alle */
-            flex-direction: column;
-            gap: 5px;
-        }
-        
-        /* UUSI: Rivielementti käyttäjätiedoille sisällä */
-        .user-info-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-        }
-
-        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(78, 52, 46, 0.9); overflow-y: auto; }
-        .modal-content { background-color: #FDF5E6; margin: 5% auto; padding: 20px; border: 4px double #8B4513; width: 90%; max-width: 500px; border-radius: 15px; text-align: left; }
-        .confirm-modal-content { text-align: center; background-color: #FFF8E7; border: 4px solid #8B4513; padding: 30px; margin: 20% auto; }
-
-        /* VÄLILEHDET */
-        .tab-container { display: flex; gap: 5px; margin-bottom: 15px; }
-        .tab-btn { flex: 1; padding: 12px 10px; background: #FAEBD7; border: 1px solid #8B4513; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: bold; color: #8B4513; }
-        .tab-btn.active { background: #8B4513; color: #fff; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 5px; margin: 15px 0; }
-        .char-box { background: #fff; border: 1px solid #8B4513; border-radius: 4px; padding: 5px 0; font-size: 0.8em; font-weight: bold; }
-        .char-box.empty { background: #eee; color: #999; }
-        .stats-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dotted #ccc; font-size: 0.9em; }
-
-        .autocomplete-list {
-            position: absolute;
-            background: #fff;
-            border: 1px solid #8B4513;
-            width: calc(100% - 30px);
-            z-index: 50;
-            max-height: 150px;
-            overflow-y: auto;
-            text-align: left;
-        }
-        .autocomplete-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
-        .autocomplete-item:hover { background: #FFF8E7; }
-
-        #qr-display-area { text-align: center; margin: 20px 0; padding: 15px; background: #fff; border-radius: 10px; display: none; border: 2px solid #8B4513; }
-        #qrcode-container { display: inline-block; padding: 10px; background: #fff; }
-
-        /* Versionumero login-ruudussa */
-        #version-display-login {
-            font-size: 0.7em;
-            color: #A0522D;
-            margin-top: 15px;
-            opacity: 0.7;
-        }
-
-        /* UUSI: Vieritettävä lista (n. 15 riviä) */
-        .scroll-box {
-            max-height: 350px; 
-            overflow-y: auto;
-            border: 1px solid #eee;
-            padding: 5px;
-            background-color: #fff;
-        }
-
-    </style>
 </head>
 <body>
 
@@ -328,9 +25,12 @@
     <div id="user-display" class="user-info-bar">
         <div class="user-info-row">
             <span id="user-email-text"></span>
-            <button id="btn-toggle-mode" class="btn btn-small btn-gray" style="margin:0;">🔄 Vaihda näkymää</button>
+            <div style="display:flex; gap:5px;">
+                <button id="btn-theme-toggle" class="btn btn-small btn-gray" style="margin:0; width:40px;" onclick="toggleTheme()">🌙</button>
+                <button id="btn-toggle-mode" class="btn btn-small btn-gray" style="margin:0;">🔄 Vaihda näkymää</button>
+            </div>
         </div>
-        <div id="version-display-user" style="font-size: 0.7em; color: #A0522D; text-align: right; width: 100%; opacity: 0.8;"></div>
+        <div id="version-display-user"></div>
     </div>
 
     <div id="login-view" class="view-section" style="display:flex; flex-direction:column; align-items:center;">
@@ -610,6 +310,16 @@
             btn.classList.add('active');
             if(tabId === 'tab-graphs' && typeof renderCharts === 'function') {
                 setTimeout(() => { renderCharts(window.currentFilteredData); }, 100);
+            }
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-theme');
+            const btn = document.getElementById('btn-theme-toggle');
+            if(document.body.classList.contains('dark-theme')) {
+                btn.innerText = "☀️";
+            } else {
+                btn.innerText = "🌙";
             }
         }
     </script>
