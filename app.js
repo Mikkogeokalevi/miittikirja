@@ -1,11 +1,9 @@
 // ==========================================
-// APP.JS - Päälogiikka
-// Versio: 7.2.1 (QR Code Fix)
+// MK MIITTIKIRJA - APP.JS
+// Versio: 7.1.0
 // ==========================================
 
-// ==========================================
-// 1. FIREBASE ASETUKSET JA MUUTTUJAT
-// ==========================================
+const APP_VERSION = "7.1.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -32,12 +30,16 @@ const auth = firebase.auth();
 // Sovelluksen globaali tila
 let currentUser = null;
 let currentEventId = null;
+let currentEventGcCode = null; // UUSI: Tallennetaan GC-koodi ohjausta varten
 let currentEventArchived = false;
 let globalEventList = []; 
 let isAdminMode = true; 
 let wakeLock = null; 
 
-// OLETUS HOST UID (Käytetään jos linkissä ei ole uid-parametria)
+// Tilamuuttuja live-päivityksille
+let lastAttendeeCount = null;
+
+// OLETUS HOST_UID (Varmuuskopio)
 const HOST_UID = "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
 
 // Käyttöliittymän elementit
@@ -60,65 +62,81 @@ const loadingOverlay = document.getElementById('loading-overlay');
 // ==========================================
 
 window.addEventListener('load', function() {
+    // Asetetaan versionumero molempiin paikkoihin (Login & User Bar)
+    const verLogin = document.getElementById('version-display-login');
+    if(verLogin) verLogin.innerText = "v" + APP_VERSION;
+
+    const verUser = document.getElementById('version-display-user');
+    if(verUser) verUser.innerText = "Versio " + APP_VERSION;
+
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('event');
-    const hostId = urlParams.get('uid'); // Lue UID linkistä
+    // Trimmataan välilyönnit pois varmuuden vuoksi
+    const paramUid = urlParams.get('uid');
+    const targetUid = paramUid ? paramUid.trim() : HOST_UID;
 
     if (eventId) {
-        console.log("Vierastila aktivoitu miitille:", eventId);
-        // Käytä linkin UID:ta tai fallbäkkää oletukseen
-        const targetUid = hostId || HOST_UID;
-        openVisitorGuestbook(targetUid, eventId);
+        console.log("Vierastila aktivoitu. Event:", eventId, "UID:", targetUid);
+        
+        // Pakotetaan heti vierasnäkymä päälle, jotta auth ei sekoita pakkaa
+        if(visitorView) visitorView.style.display = 'block';
+        if(loginView) loginView.style.display = 'none';
+        if(adminView) adminView.style.display = 'none';
+
+        openVisitorGuestbook(targetUid, eventId.trim());
     }
 });
 
 async function openVisitorGuestbook(uid, eventId) {
     if(loadingOverlay) loadingOverlay.style.display = 'flex';
     
-    // Tallennetaan ID talteen vieraskirjausta varten
     currentEventId = eventId;
+    window.currentVisitorTargetUid = uid; 
     
-    // Haetaan VAIN tapahtuman tiedot
+    // Nollataan live-laskuri aina kun kirja avataan
+    lastAttendeeCount = null;
+    
+    // Yritetään hakea tapahtuma
     db.ref('miitit/' + uid + '/events/' + eventId).once('value', snap => {
         const evt = snap.val();
         
         if(!evt) {
-            alert("Miittiä ei löytynyt tai virheellinen linkki!\nTarkista onko tapahtuma poistettu.");
+            // DIAGNOSTIIKKA: Näytetään käyttäjälle mitä yritettiin hakea
+            alert(`Miittiä ei löytynyt!\n\nEtsintätiedot:\nEventID: ${eventId}\nOmistaja-UID: ${uid}\n\nTarkista onko miitti poistettu tai onko QR-koodi vanhentunut.`);
+            
             if(loadingOverlay) loadingOverlay.style.display = 'none';
             return;
         }
         
-        // Täytetään vierasnäkymän tiedot
+        // Tallennetaan GC-koodi talteen ohjausta varten
+        currentEventGcCode = evt.gc || null;
+
+        // Täytetään tiedot
         const nameEl = document.getElementById('vv-event-name');
         const infoEl = document.getElementById('vv-event-info');
         
         if(nameEl) nameEl.innerText = evt.name;
         if(infoEl) infoEl.innerText = `${evt.date} klo ${evt.time || '-'}`;
         
-        // PAKOTETAAN OIKEA NÄKYMÄ PÄÄLLE JA MUUT POIS
+        // Varmistetaan näkymät vielä kerran
         if(visitorView) visitorView.style.display = 'block';
         if(loginView) loginView.style.display = 'none';
         if(adminView) adminView.style.display = 'none';
         if(userView) userView.style.display = 'none';
-        if(guestbookView) guestbookView.style.display = 'none'; 
+        if(guestbookView) guestbookView.style.display = 'none';
         const statsView = document.getElementById('stats-view');
         if(statsView) statsView.style.display = 'none';
         
-        // Tallennetaan kohde-uid globaalisti vieraskirjausta varten (jos tarpeen myöhemmin)
-        // Huom: btnVisitorSign käyttää HOST_UID vakiota tai pitäisi käyttää dynaamista.
-        // Korjataan btnVisitorSign käyttämään tätä 'uid' parametria.
-        window.visitorTargetUid = uid;
-
         if(loadingOverlay) loadingOverlay.style.display = 'none';
         
     }, (error) => {
         console.error("Virhe haettaessa miittiä:", error);
-        alert("Virhe tietojen haussa. Onko QR-koodi oikein?");
+        alert("Virhe tietokantayhteydessä:\n" + error.message);
         if(loadingOverlay) loadingOverlay.style.display = 'none';
     });
 }
 
-// Vieraskirjan tallennus (VIERAS QR-koodilla)
+// Vieraskirjan tallennus
 const btnVisitorSign = document.getElementById('btn-visitor-sign');
 if (btnVisitorSign) {
     btnVisitorSign.onclick = function() {
@@ -129,18 +147,24 @@ if (btnVisitorSign) {
         const nick = nickInput ? nickInput.value.trim() : "";
         
         if(!nick) return alert("Kirjoita nimimerkkisi!");
-        
-        // Käytetään dynaamista UID:ta jos saatavilla, muuten vakiota
-        const targetUid = window.visitorTargetUid || HOST_UID;
 
-        db.ref('miitit/' + targetUid + '/logs/' + currentEventId).push({
+        const targetHost = window.currentVisitorTargetUid || HOST_UID;
+        
+        db.ref('miitit/' + targetHost + '/logs/' + currentEventId).push({
             nickname: nick, 
             from: fromInput ? fromInput.value.trim() : "",
             message: msgInput ? msgInput.value.trim() : "", 
             timestamp: firebase.database.ServerValue.TIMESTAMP
         }).then(() => {
-            alert("Kiitos käynnistä! Kirjaus tallennettu.");
-            window.location.href = "https://www.geocaching.com"; 
+            alert("Kiitos käynnistä! Kirjaus tallennettu.\nSiirrytään miittisivulle...");
+            
+            // UUSI: Älykäs ohjaus
+            if (currentEventGcCode && currentEventGcCode.startsWith('GC')) {
+                window.location.href = "https://coord.info/" + currentEventGcCode;
+            } else {
+                window.location.href = "https://www.geocaching.com";
+            }
+
         }).catch(err => {
             console.error("Tallennusvirhe:", err);
             alert("Virhe tallennuksessa: " + err.message);
@@ -201,21 +225,17 @@ document.addEventListener('visibilitychange', async () => {
 // ==========================================
 
 auth.onAuthStateChanged((user) => {
-    // TÄRKEÄÄ: Jos ollaan vierasnäkymässä (QR-koodi), ÄLÄ tee mitään kirjautumislogiikkaa
-    if (visitorView && visitorView.style.display === 'block') return;
+    // TÄRKEÄÄ: Jos URL:ssa on event-parametri, emme koskaan palaa kirjautumisnäkymään automaattisesti
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('event')) return;
 
     if (user) {
         currentUser = user;
         if(userDisplay) {
-            userDisplay.style.display = 'flex';
+            userDisplay.style.display = 'flex'; // Muutettu flex, CSS hoitaa suunnan
             if(userEmailText) userEmailText.innerText = "👤 " + user.email;
-            
-            // Päivitä versioinfo
-            const vInfo = document.getElementById('version-display-user');
-            if(vInfo) vInfo.innerText = "v7.2.1 (QR Fix)";
         }
         
-        // Jos käyttäjä on Admin/User tilassa, ladataan pääsivu
         const statsView = document.getElementById('stats-view');
         if (guestbookView.style.display !== 'block' && 
             (!statsView || statsView.style.display !== 'block')) {
@@ -238,9 +258,6 @@ function showLoginView() {
     if(userView) userView.style.display = 'none';
     if(guestbookView) guestbookView.style.display = 'none'; 
     if(visitorView) visitorView.style.display = 'none';
-    
-    const vInfo = document.getElementById('version-display-login');
-    if(vInfo) vInfo.innerText = "v7.2.1 (QR Fix)";
 }
 
 function showMainView() {
@@ -296,10 +313,12 @@ if(btnToggleQr) {
         }
 
         container.innerHTML = "";
-        // Luodaan linkki: nykyinenSivu?event=EVENT_ID&uid=HOST_UID
-        // Tämä varmistaa, että vierailija ohjautuu oikeaan tietokantaan!
+        // Otetaan nykyinen kirjautunut UID varmuudella
+        const ownerUid = currentUser ? currentUser.uid : HOST_UID;
         const baseUrl = window.location.href.split('?')[0];
-        const guestUrl = baseUrl + "?event=" + currentEventId + "&uid=" + currentUser.uid;
+        
+        // Linkki: sivu?event=ID&uid=OWNER_ID
+        const guestUrl = `${baseUrl}?event=${currentEventId}&uid=${ownerUid}`;
         
         if(linkText) linkText.innerText = guestUrl;
 
@@ -402,51 +421,31 @@ function parseGPX(xmlText) {
     const parser = new DOMParser();
     const xml = parser.parseFromString(xmlText, "text/xml");
     const wpt = xml.querySelector("wpt");
+    if (!wpt) return null;
+    const lat = parseFloat(wpt.getAttribute("lat"));
+    const lon = parseFloat(wpt.getAttribute("lon"));
     
-    // Perustiedot
-    let result = {
-        attributes: [],
-        coords: "",
-        logs: []
+    let timeStr = "";
+    const shortDesc = wpt.getElementsByTagNameNS("*", "short_description")[0]?.textContent || "";
+    const timeMatch = shortDesc.match(/(\d{1,2}[:\.]\d{2})\s*-\s*(\d{1,2}[:\.]\d{2})/);
+    if (timeMatch) timeStr = `${timeMatch[1].replace('.', ':')} - ${timeMatch[2].replace('.', ':')}`;
+    
+    const attributes = [];
+    const attrElements = wpt.getElementsByTagNameNS("*", "attribute");
+    for (let i = 0; i < attrElements.length; i++) {
+        const attr = attrElements[i];
+        attributes.push({ name: attr.textContent.trim(), inc: attr.getAttribute("inc") === "1" ? 1 : 0 });
+    }
+    
+    return {
+        gc: wpt.querySelector("name")?.textContent || "",
+        name: wpt.getElementsByTagNameNS("*", "name")[1]?.textContent || wpt.querySelector("urlname")?.textContent || "Nimetön miitti",
+        date: wpt.querySelector("time")?.textContent?.split('T')[0] || "",
+        time: timeStr,
+        coords: decimalToDMS(lat, lon),
+        descriptionHtml: wpt.getElementsByTagNameNS("*", "long_description")[0]?.textContent || "",
+        attributes: attributes
     };
-
-    if (wpt) {
-        const lat = parseFloat(wpt.getAttribute("lat"));
-        const lon = parseFloat(wpt.getAttribute("lon"));
-        result.coords = decimalToDMS(lat, lon);
-        
-        let timeStr = "";
-        const shortDesc = wpt.getElementsByTagNameNS("*", "short_description")[0]?.textContent || "";
-        const timeMatch = shortDesc.match(/(\d{1,2}[:\.]\d{2})\s*-\s*(\d{1,2}[:\.]\d{2})/);
-        if (timeMatch) timeStr = `${timeMatch[1].replace('.', ':')} - ${timeMatch[2].replace('.', ':')}`;
-        
-        const attrElements = wpt.getElementsByTagNameNS("*", "attribute");
-        for (let i = 0; i < attrElements.length; i++) {
-            const attr = attrElements[i];
-            result.attributes.push({ name: attr.textContent.trim(), inc: attr.getAttribute("inc") === "1" ? 1 : 0 });
-        }
-    }
-
-    // Parsitaan logit (osallistujat)
-    const logElements = xml.getElementsByTagNameNS("*", "log");
-    for (let i = 0; i < logElements.length; i++) {
-        const l = logElements[i];
-        const finder = l.getElementsByTagNameNS("*", "finder")[0]?.textContent || "";
-        const text = l.getElementsByTagNameNS("*", "text")[0]?.textContent || "";
-        const date = l.getElementsByTagNameNS("*", "date")[0]?.textContent || "";
-        const type = l.getElementsByTagNameNS("*", "type")[0]?.textContent || "";
-
-        // Otetaan vain 'Attended' tyyppiset, tai jos tyyppiä ei määritelty (varmuuden vuoksi)
-        if (finder && (type === "Attended" || type === "Webcam Photo Taken" || type === "")) {
-             result.logs.push({
-                 finder: finder.trim(),
-                 text: text.trim(),
-                 date: date
-             });
-        }
-    }
-
-    return result;
 }
 
 // ==========================================
@@ -486,6 +485,7 @@ function loadEvents() {
             div.className = "card" + (isArchived ? " archived" : "") + (isToday ? " today-highlight" : "");
             
             if (isAdminMode) {
+                // LISTAKORTTI (Alhaalla listoissa)
                 const archiveBtn = isArchived 
                     ? `<button class="btn btn-blue btn-small" onclick="toggleArchive('${evt.key}', false)">♻️ Palauta</button>`
                     : `<button class="btn btn-red btn-small" onclick="toggleArchive('${evt.key}', true)">📦 Arkistoi</button>`;
@@ -504,15 +504,32 @@ function loadEvents() {
                         <button class="btn btn-red btn-small" onclick="deleteEvent('${evt.key}')">🗑 Poista</button>
                     </div>`;
                 
+                // TÄNÄÄN TAPAHTUU -HERO KORTTI (Ylhäällä)
                 if (isToday && noticeAdmin) {
-                    const notice = div.cloneNode(true);
-                    notice.prepend(document.createRange().createContextualFragment('<h3 style="color:#4caf50; margin-top:0;">🌟 TÄNÄÄN TAPAHTUU!</h3>'));
-                    noticeAdmin.appendChild(notice);
+                    const hero = document.createElement('div');
+                    hero.className = "card today-highlight";
+                    hero.style.textAlign = "center";
+                    hero.style.padding = "20px";
+                    hero.style.border = "4px solid #D2691E"; // Vahvempi reunus
+                    hero.style.backgroundColor = "#FFF8DC";  // Hieman erottuva tausta
+
+                    hero.innerHTML = `
+                        <h2 style="color:#D2691E; margin:0 0 10px 0; text-transform:uppercase; letter-spacing:1px;">🌟 Tänään tapahtuu! 🌟</h2>
+                        <h3 style="margin:5px 0; font-size:1.4em;">${evt.name}</h3>
+                        <p style="font-size:1.2em; color:#555; margin:5px 0 15px 0;">⏰ klo ${evt.time || '??:??'}</p>
+                        <button class="btn btn-green" style="font-size:1.3em; padding:15px; width:100%; font-weight:bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);" onclick="openGuestbook('${evt.key}')">
+                            📖 AVAA MIITTIKIRJA NYT
+                        </button>
+                    `;
+                    noticeAdmin.appendChild(hero);
                 }
+
+                // Lisätään myös normaaliin listaan
                 const target = document.getElementById(evt.date >= todayStr ? `list-${evt.type}-future` : `list-${evt.type}-past`);
                 if (target) target.appendChild(div);
 
             } else {
+                // USER MODE (Katselija)
                 div.innerHTML = `
                     <div style="display:flex; justify-content:space-between;"><strong>${evt.name}</strong><span>${evt.date}</span></div>
                     <div style="font-size:0.8em; color:#666; margin-bottom:5px;">🕓 ${evt.time || '-'} • ${evt.location || ''}</div>
@@ -522,9 +539,11 @@ function loadEvents() {
                     </div>`;
                 
                 if (isToday && noticeUser) {
-                    const notice = div.cloneNode(true);
-                    notice.prepend(document.createRange().createContextualFragment('<h3 style="color:#4caf50; margin-top:0; text-align:center;">🌟 TÄNÄÄN!</h3>'));
-                    noticeUser.appendChild(notice);
+                    // Myös käyttäjälle kiva ilmoitus, mutta simppelimpi
+                    const heroUser = div.cloneNode(true);
+                    heroUser.style.border = "4px solid #4caf50";
+                    heroUser.prepend(document.createRange().createContextualFragment('<h3 style="color:#4caf50; margin-top:0; text-align:center;">🌟 TÄNÄÄN!</h3>'));
+                    noticeUser.appendChild(heroUser);
                 }
                 const target = document.getElementById(`user-list-${evt.type}`);
                 if (target) target.appendChild(div);
@@ -545,6 +564,9 @@ function loadEvents() {
 window.openGuestbook = function(eventKey) {
     if(currentEventId) db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
     currentEventId = eventKey;
+    
+    // NOLLATAAN LIVE-LASKURI
+    lastAttendeeCount = null;
     
     db.ref('miitit/' + currentUser.uid + '/events/' + eventKey).on('value', snap => {
         const evt = snap.val(); if(!evt) return;
@@ -640,38 +662,51 @@ if (btnSignLog) {
 }
 
 function loadAttendees(eventKey) {
+    // Tässä käytetään aina kirjautunutta käyttäjää logien lataukseen
     if (!currentUser) return;
     
     db.ref('miitit/' + currentUser.uid + '/logs/' + eventKey).on('value', (snapshot) => {
         const listEl = document.getElementById('attendee-list'); if(!listEl) return;
         listEl.innerHTML = ""; const logs = [];
         snapshot.forEach(child => { logs.push({key: child.key, ...child.val()}); });
+        
+        // Lajittelu: Uusin ensin
         logs.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
         
         logs.forEach(log => {
             const row = document.createElement('div'); row.className = "log-item";
-            
-            // Viestien näyttäminen: Miittikirja vs Nettilogi
-            let messageHtml = "";
-            if (log.message) {
-                messageHtml += `<div style="font-style:italic; color:var(--text-color); opacity:0.8; font-size:0.9em;">📖 ${log.message}</div>`;
-            }
-            if (log.gpxMessage) {
-                 messageHtml += `<div style="font-style:italic; color:var(--secondary-color); font-size:0.85em; margin-top:2px;">🌐 ${log.gpxMessage.substring(0, 100)}${log.gpxMessage.length > 100 ? '...' : ''}</div>`;
-            }
-
             let btns = (isAdminMode && !currentEventArchived && currentUser) ? `
                 <div class="log-actions">
                     <button class="btn-blue btn-small" onclick="openLogEditModal('${log.key}')">✏️</button>
                     <button class="btn-red btn-small" onclick="deleteLog('${log.key}')">🗑</button>
                 </div>` : "";
-            
-            row.innerHTML = `<div><strong style="color:var(--today-border);">${log.nickname}</strong><span>${log.from ? ' / ' + log.from : ''}</span>
-            ${messageHtml}</div>${btns}`;
+            row.innerHTML = `<div><strong style="color:#4caf50;">${log.nickname}</strong><span>${log.from ? ' / ' + log.from : ''}</span><div style="font-style:italic; color:#888; font-size:0.9em;">${log.message || ''}</div></div>${btns}`;
             listEl.appendChild(row);
         });
+        
         const countEl = document.getElementById('attendee-count');
-        if(countEl) countEl.innerText = logs.length;
+        if(countEl) {
+            const currentCount = logs.length;
+            countEl.innerText = currentCount;
+            
+            // --- LIVE ANIMAATIO LOGIIKKA ---
+            // Jos luku on olemassa ja se on SUUREMPI kuin viimeksi muistissa ollut
+            if (lastAttendeeCount !== null && currentCount > lastAttendeeCount) {
+                // Väläytetään vihreänä ja suurennetaan hetkeksi
+                countEl.style.transition = "transform 0.2s, background-color 0.5s";
+                countEl.style.backgroundColor = "#00FF00"; // Kirkas vihreä
+                countEl.style.transform = "scale(1.6)";
+                
+                // Palautetaan normaaliksi pienen viiveen jälkeen
+                setTimeout(() => {
+                    countEl.style.backgroundColor = "#8B4513"; // Alkuperäinen ruskea
+                    countEl.style.transform = "scale(1.0)";
+                }, 1500);
+            }
+            
+            // Päivitetään muistijälki
+            lastAttendeeCount = currentCount;
+        }
     });
 }
 
@@ -771,69 +806,11 @@ if (fileInputSync) {
     fileInputSync.onchange = async function(e) {
         const file = e.target.files[0]; if (!file || !currentEventId) return;
         if(loadingOverlay) loadingOverlay.style.display = 'flex';
-        
-        const text = await file.text(); 
-        const data = parseGPX(text);
-
+        const text = await file.text(); const data = parseGPX(text);
         if (data) {
-            // 1. Päivitä attribuutit ja koordinaatit
-            const updates = {};
-            if(data.attributes && data.attributes.length > 0) updates.attributes = data.attributes;
-            if(data.coords) updates.coords = data.coords;
-            
-            if(Object.keys(updates).length > 0) {
-                await db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update(updates);
-            }
-
-            // 2. Älykäs kävijöiden yhdistäminen (Smart Merge)
-            if (data.logs && data.logs.length > 0) {
-                const logsRef = db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId);
-                const snapshot = await logsRef.once('value');
-                const existingLogs = snapshot.val() || {};
-                
-                // Luodaan kartta olemassa olevista: "nimimerkki" -> "key"
-                const existingMap = {};
-                Object.keys(existingLogs).forEach(key => {
-                    const l = existingLogs[key];
-                    if(l.nickname) existingMap[l.nickname.toLowerCase()] = key;
-                });
-
-                let addedCount = 0;
-                let updatedCount = 0;
-
-                for (const gpxLog of data.logs) {
-                    const nickLower = gpxLog.finder.toLowerCase();
-
-                    // ESTO: Älä koskaan lisää mikkokalevia
-                    if (nickLower === "mikkokalevi") continue;
-
-                    if (existingMap[nickLower]) {
-                        // LÖYTYI: Päivitä vain gpxMessage, älä koske 'message' kenttään (joka on miittikirjan viesti)
-                        const existingKey = existingMap[nickLower];
-                        await logsRef.child(existingKey).update({
-                            gpxMessage: gpxLog.text // Tallenna nettilogi omaksi tiedokseen
-                        });
-                        updatedCount++;
-                    } else {
-                        // UUSI: Luo uusi rivi
-                        await logsRef.push({
-                            nickname: gpxLog.finder,
-                            message: "", // Miittikirjan viesti tyhjäksi
-                            gpxMessage: gpxLog.text, // Nettilogi
-                            from: "",
-                            timestamp: firebase.database.ServerValue.TIMESTAMP
-                        });
-                        addedCount++;
-                    }
-                }
-                alert(`GPX Sync valmis!\n\nLisättiin uusia: ${addedCount}\nPäivitettiin vanhoja: ${updatedCount}`);
-            } else {
-                alert("GPX-tiedostosta päivitettiin tiedot, mutta ei löytynyt loggauksia.");
-            }
+            db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({ attributes: data.attributes, coords: data.coords });
+            alert("Tiedot päivitetty GPX-tiedostosta!");
         }
-        
-        // Tyhjennä input jotta saman tiedoston voi valita uudelleen
-        e.target.value = '';
         if(loadingOverlay) loadingOverlay.style.display = 'none';
     };
 }
