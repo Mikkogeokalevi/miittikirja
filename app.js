@@ -1,6 +1,9 @@
 // ==========================================
-// 1. FIREBASE ASETUKSET JA MUUTTUJAT
+// MK MIITTIKIRJA - APP.JS
+// Versio: 7.0.0
 // ==========================================
+
+const APP_VERSION = "7.0.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -58,6 +61,10 @@ const loadingOverlay = document.getElementById('loading-overlay');
 // ==========================================
 
 window.addEventListener('load', function() {
+    // Asetetaan versionumero näkyviin
+    const verDisplay = document.getElementById('version-display');
+    if(verDisplay) verDisplay.innerText = "v" + APP_VERSION;
+
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('event');
     // Trimmataan välilyönnit pois varmuuden vuoksi
