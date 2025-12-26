@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.2.0 (Smart Merge & WordCloud)
+// Versio: 7.1.0
 // ==========================================
 
 let allStatsData = {
@@ -27,16 +27,10 @@ async function initStats() {
 
         events.forEach(evt => {
             const evtLogs = logsData[evt.key] || {};
-            // Smart Merge -logiikan ansiosta avaimet ovat uniikkeja per käyttäjä
             evt.attendeeCount = Object.keys(evtLogs).length;
-            
-            // Kerätään nimet ja viestit tilastoja varten
-            evt.attendees = Object.values(evtLogs).map(l => ({
-                nickname: l.nickname,
-                message: l.message || "",
-                gpxMessage: l.gpxMessage || ""
-            }));
-            evt.attendeeNames = evt.attendees.map(a => a.nickname);
+            // Tallennetaan koko logiobjekti, ei vain nimiä, jotta saadaan viestit sanalouhosta varten
+            evt.logs = Object.values(evtLogs); 
+            evt.attendeeNames = evt.logs.map(l => l.nickname);
         });
 
         allStatsData.events = events;
@@ -104,9 +98,6 @@ function updateStatsView(data) {
             sortedResults.forEach(evt => {
                 const item = document.createElement('div');
                 item.className = "result-item";
-                item.style.padding = "5px";
-                item.style.borderBottom = "1px solid #ccc";
-                item.style.cursor = "pointer";
                 item.innerHTML = `<strong>${evt.name}</strong><br><small>📅 ${evt.date} • 👤 ${evt.attendeeCount}</small>`;
                 item.onclick = () => { if (window.openGuestbook) window.openGuestbook(evt.key); };
                 resultsEl.appendChild(item);
@@ -117,8 +108,8 @@ function updateStatsView(data) {
     // 3. Tekstilistat
     renderAlphabetStats(data);
     renderTopUsersList(data);
-    renderLoyaltyStats(data); // Uusi: Yhteisöuskollisuus
-    renderWordCloud(data);    // Uusi: Sanalouhos
+    renderLoyaltyPyramid(data); 
+    renderWordCloud(data);      
     
     const filteredForLists = data.filter(e => !e.name.includes("/ PERUTTU /"));
     const sortedByCount = [...filteredForLists].sort((a, b) => b.attendeeCount - a.attendeeCount);
@@ -152,11 +143,13 @@ function renderCharts(data) {
         if (chartInstances[id]) { chartInstances[id].destroy(); }
     };
 
-    // Haetaan värit CSS-muuttujista (jos mahdollista), tai käytetään oletuksia
-    const style = getComputedStyle(document.body);
-    const colPrimary = style.getPropertyValue('--primary-color').trim() || '#8B4513';
-    const colSecondary = style.getPropertyValue('--secondary-color').trim() || '#D2691E';
-    const colAccent = style.getPropertyValue('--accent-color').trim() || '#4caf50';
+    // HUOM: Chart.js käyttää tässä perusvärejä, jotka toimivat useimmissa teemoissa.
+    const colors = {
+        primary: '#8B4513', 
+        secondary: '#D2691E',
+        accent: '#4caf50', 
+        text: '#4E342E'
+    };
 
     // --- 1. VIIKONPÄIVÄT ---
     clearChart('weekdays');
@@ -168,7 +161,7 @@ function renderCharts(data) {
         type: 'bar',
         data: {
             labels: dayLabels,
-            datasets: [{ label: 'Miitit', data: dayData, backgroundColor: colPrimary }]
+            datasets: [{ label: 'Miitit', data: dayData, backgroundColor: colors.primary }]
         }
     });
 
@@ -181,7 +174,7 @@ function renderCharts(data) {
         type: 'doughnut',
         data: {
             labels: ["Miitti", "CITO", "CCE"],
-            datasets: [{ data: Object.values(typeCounts), backgroundColor: [colPrimary, colAccent, colSecondary] }]
+            datasets: [{ data: Object.values(typeCounts), backgroundColor: [colors.primary, colors.accent, colors.secondary] }]
         }
     });
 
@@ -195,7 +188,7 @@ function renderCharts(data) {
             datasets: [{ 
                 label: 'Kävijät', 
                 data: timelineData.map(e => e.attendeeCount),
-                borderColor: colPrimary, backgroundColor: 'rgba(139, 69, 19, 0.2)', fill: true, tension: 0.4
+                borderColor: colors.primary, backgroundColor: 'rgba(139, 69, 19, 0.2)', fill: true, tension: 0.4
             }]
         }
     });
@@ -213,7 +206,7 @@ function renderCharts(data) {
         type: 'bar',
         data: {
             labels: Array.from({length: 24}, (_, i) => i + ":00"),
-            datasets: [{ label: 'Miitit', data: hoursData, backgroundColor: colSecondary }]
+            datasets: [{ label: 'Miitit', data: hoursData, backgroundColor: colors.secondary }]
         }
     });
 
@@ -231,7 +224,7 @@ function renderCharts(data) {
         type: 'bar',
         data: {
             labels: monthNames,
-            datasets: [{ label: 'Kävijämäärä yhteensä', data: monthsData, backgroundColor: colAccent }]
+            datasets: [{ label: 'Kävijämäärä yhteensä', data: monthsData, backgroundColor: '#A0522D' }]
         }
     });
 
@@ -245,7 +238,7 @@ function renderCharts(data) {
         type: 'bar',
         data: {
             labels: sortedLocs.map(x => x[0]),
-            datasets: [{ label: 'Miitit', data: sortedLocs.map(x => x[1]), backgroundColor: colPrimary }]
+            datasets: [{ label: 'Miitit', data: sortedLocs.map(x => x[1]), backgroundColor: colors.primary }]
         },
         options: { indexAxis: 'y' }
     });
@@ -260,7 +253,7 @@ function renderCharts(data) {
         type: 'bar',
         data: {
             labels: topUsers.map(x => x[0]),
-            datasets: [{ label: 'Käynnit', data: topUsers.map(x => x[1]), backgroundColor: colSecondary }]
+            datasets: [{ label: 'Käynnit', data: topUsers.map(x => x[1]), backgroundColor: colors.secondary }]
         },
         options: { indexAxis: 'y' }
     });
@@ -272,7 +265,7 @@ function renderCharts(data) {
         type: 'bar',
         data: {
             labels: topEvents.map(x => x.name.substring(0, 15) + "..."),
-            datasets: [{ label: 'Osallistujat', data: topEvents.map(x => x.attendeeCount), backgroundColor: colAccent }]
+            datasets: [{ label: 'Osallistujat', data: topEvents.map(x => x.attendeeCount), backgroundColor: colors.accent }]
         }
     });
 
@@ -292,15 +285,111 @@ function renderCharts(data) {
         type: 'bar',
         data: {
             labels: topAttrs.map(x => x[0]),
-            datasets: [{ label: 'Esiintyvyys', data: topAttrs.map(x => x[1]), backgroundColor: colPrimary }]
+            datasets: [{ label: 'Esiintyvyys', data: topAttrs.map(x => x[1]), backgroundColor: '#A0522D' }]
         },
         options: { indexAxis: 'y' }
     });
 }
 
 // ==========================================
-// APUFUNKTIOT LISTOILLE
+// APUFUNKTIOT LISTOILLE JA ANALYYSILLE
 // ==========================================
+
+function renderLoyaltyPyramid(data) {
+    const el = document.getElementById('stats-loyalty');
+    if (!el) return;
+
+    // Lasketaan kävijöiden käyntikerrat
+    const userCounts = {};
+    data.forEach(e => e.attendeeNames.forEach(n => userCounts[n] = (userCounts[n] || 0) + 1));
+
+    let tiers = {
+        'Vakikasvot (10+)': 0,
+        'Aktiivit (5-9)': 0,
+        'Satunnaiset (2-4)': 0,
+        'Kertakävijät (1)': 0
+    };
+
+    Object.values(userCounts).forEach(count => {
+        if (count >= 10) tiers['Vakikasvot (10+)']++;
+        else if (count >= 5) tiers['Aktiivit (5-9)']++;
+        else if (count >= 2) tiers['Satunnaiset (2-4)']++;
+        else tiers['Kertakävijät (1)']++;
+    });
+
+    const totalUsers = Object.keys(userCounts).length || 1;
+    let html = `<div style="display:flex; flex-direction:column; align-items:center; gap:5px;">`;
+
+    // Piirretään palkit käänteisessä järjestyksessä (Harvinaisimmat ylös)
+    const order = ['Vakikasvot (10+)', 'Aktiivit (5-9)', 'Satunnaiset (2-4)', 'Kertakävijät (1)'];
+    const colors = ['#8B4513', '#A0522D', '#CD853F', '#DEB887']; // Tumma -> Vaalea
+
+    order.forEach((label, idx) => {
+        const count = tiers[label];
+        const pct = Math.round((count / totalUsers) * 100);
+        // Leveys: minimi 20%, maksimi 100%
+        const width = 20 + (count / totalUsers) * 80; 
+        
+        html += `
+            <div style="width:100%; max-width:400px; display:flex; flex-direction:column; align-items:center;">
+                <div style="width:${width}%; background:${colors[idx]}; color:white; text-align:center; padding:5px; border-radius:4px; font-size:0.9em; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);">
+                    ${label}<br><strong>${count} hlö (${pct}%)</strong>
+                </div>
+            </div>`;
+    });
+    html += `</div>`;
+    el.innerHTML = html;
+}
+
+function renderWordCloud(data) {
+    const el = document.getElementById('stats-wordcloud');
+    if (!el) return;
+
+    // Kerätään kaikki viestit
+    let allText = "";
+    data.forEach(e => {
+        if (e.logs) e.logs.forEach(l => {
+            if (l.message) allText += " " + l.message;
+        });
+    });
+
+    // Siivotaan ja lasketaan sanat
+    const words = allText.toLowerCase()
+        .replace(/[.,!?;:()"]/g, "")
+        .split(/\s+/)
+        .filter(w => w.length > 2); // Vähintään 3 kirjainta
+
+    const stopWords = ["oli", "että", "kun", "niin", "mutta", "siis", "vain", "nyt", "tämä", "sitten", "olla", "ollut", "ovat", "myös", "kanssa", "kuin", "joka", "mitä", "sekä", "täällä", "koko", "jälkeen", "vielä", "paljon", "kiitos", "miitti", "miitistä", "kätkö", "kätköllä", "kk", "tftc", "kiitokset", "log", "hyvä", "tosi", "kiva", "mukava", "järjestäjälle", "järjestäjille"];
+    
+    const counts = {};
+    words.forEach(w => {
+        if (!stopWords.includes(w)) counts[w] = (counts[w] || 0) + 1;
+    });
+
+    // Otetaan top 30 sanaa
+    const topWords = Object.entries(counts)
+        .sort((a,b) => b[1] - a[1])
+        .slice(0, 30);
+
+    if (topWords.length === 0) {
+        el.innerHTML = "Ei riittävästi dataa sanalouhokseen.";
+        return;
+    }
+
+    const maxCount = topWords[0][1];
+    const minCount = topWords[topWords.length - 1][1];
+
+    // Generoidaan "pilvi" HTML
+    let cloudHtml = `<div style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; padding:10px;">`;
+    topWords.forEach(([word, count]) => {
+        // Skaalataan fonttikoko välille 0.8em - 2.5em
+        const size = 0.8 + ((count - minCount) / (maxCount - minCount || 1)) * 1.7;
+        const opacity = 0.6 + ((count - minCount) / (maxCount - minCount || 1)) * 0.4;
+        cloudHtml += `<span style="font-size:${size.toFixed(1)}em; color:rgba(139,69,19,${opacity}); font-weight:bold;">${word}</span>`;
+    });
+    cloudHtml += `</div>`;
+    el.innerHTML = cloudHtml;
+}
 
 function renderAlphabetStats(data) {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZÅÄÖ0123456789".split("");
@@ -360,84 +449,6 @@ function renderAttributesList(data) {
         if (counts.pos > 0) el.innerHTML += `<div class="stats-row"><span>${name}</span> <strong>${counts.pos}</strong></div>`;
         if (counts.neg > 0) el.innerHTML += `<div class="stats-row"><span style="color:#721c24; text-decoration:line-through; opacity:0.7;">${name}</span> <strong>${counts.neg}</strong></div>`;
     });
-}
-
-// UUSI: Yhteisöuskollisuus (Kuinka moni käynyt useammassa miitissä)
-function renderLoyaltyStats(data) {
-    const userMap = {};
-    data.forEach(e => {
-        if(e.attendeeNames) e.attendeeNames.forEach(n => userMap[n] = (userMap[n] || 0) + 1);
-    });
-    
-    // Lasketaan frekvenssit: 1 miitti, 2-5 miittiä, >5 miittiä
-    let once = 0, few = 0, many = 0;
-    const totalUsers = Object.keys(userMap).length;
-    
-    Object.values(userMap).forEach(count => {
-        if(count === 1) once++;
-        else if(count <= 5) few++;
-        else many++;
-    });
-
-    const el = document.getElementById('stats-loyalty');
-    if(el && totalUsers > 0) {
-        el.innerHTML = `
-            <div class="stats-row"><span>Satunnaiset (1 kpl)</span> <strong>${once} (${Math.round(once/totalUsers*100)}%)</strong></div>
-            <div class="stats-row"><span>Aktiivit (2-5 kpl)</span> <strong>${few} (${Math.round(few/totalUsers*100)}%)</strong></div>
-            <div class="stats-row"><span>Konkarit (>5 kpl)</span> <strong>${many} (${Math.round(many/totalUsers*100)}%)</strong></div>
-            <small style="display:block; margin-top:5px; color:#666;">Yhteensä eri nimimerkkejä: ${totalUsers}</small>
-        `;
-    }
-}
-
-// UUSI: Sanalouhos (Yhdistää miittikirjan viestit ja nettilogit)
-function renderWordCloud(data) {
-    const el = document.getElementById('stats-wordcloud');
-    if(!el) return;
-    
-    // Kerää kaikki tekstit
-    let allText = "";
-    data.forEach(e => {
-        if (e.attendees) {
-            e.attendees.forEach(a => {
-                if (a.message && a.message !== "(Massa)") allText += " " + a.message;
-                if (a.gpxMessage) allText += " " + a.gpxMessage;
-            });
-        }
-    });
-
-    if (!allText.trim()) {
-        el.innerHTML = "Ei viestejä analysoitavaksi.";
-        return;
-    }
-
-    // Yksinkertainen sanalaskuri
-    const words = allText.toLowerCase()
-        .replace(/[.,!?;:()"]/g, "") // Poista välimerkit
-        .split(/\s+/)
-        .filter(w => w.length > 3); // Vain yli 3 kirjaimen sanat
-
-    const stopWords = ["oli", "että", "niin", "myös", "mutta", "tämä", "vain", "tässä", "kiitos", "tftc", "miitistä", "kätkölle", "logattu", "lokiin", "nimimerkki", "kanssa", "kuin"];
-    const counts = {};
-
-    words.forEach(w => {
-        if(!stopWords.includes(w)) counts[w] = (counts[w] || 0) + 1;
-    });
-
-    const sortedWords = Object.entries(counts)
-        .sort((a,b) => b[1] - a[1])
-        .slice(0, 20); // Top 20 sanaa
-
-    // Renderöinti
-    const maxCount = sortedWords[0] ? sortedWords[0][1] : 1;
-    
-    el.innerHTML = `<div style="display:flex; flex-wrap:wrap; gap:5px; justify-content:center; padding:10px;">
-        ${sortedWords.map(([word, count]) => {
-            const size = 0.8 + (count / maxCount) * 1.5; // Fonttikoko 0.8em - 2.3em
-            const opacity = 0.5 + (count / maxCount) * 0.5;
-            return `<span style="font-size:${size}em; opacity:${opacity}; color:var(--primary-color);">${word}</span>`;
-        }).join('')}
-    </div>`;
 }
 
 // Autocomplete ja muut haut
