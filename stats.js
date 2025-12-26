@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.0.0
+// Versio: 7.1.0
 // ==========================================
 
 let allStatsData = {
@@ -143,10 +143,13 @@ function renderCharts(data) {
         if (chartInstances[id]) { chartInstances[id].destroy(); }
     };
 
+    // HUOM: Värit määritellään nyt dynaamisemmin tai käytetään kovia arvoja, 
+    // mutta Chart.js ei lue suoraan CSS-muuttujia ilman apufunktioita.
+    // Pidetään nämä perusväreinä, ne toimivat kohtuullisesti kaikissa teemoissa.
     const colors = {
-        primary: '#8B4513', // Ruskea
-        secondary: '#D2691E', // Oranssi
-        accent: '#4caf50', // Vihreä
+        primary: '#8B4513', 
+        secondary: '#D2691E',
+        accent: '#4caf50', 
         text: '#4E342E'
     };
 
