@@ -105,7 +105,6 @@ async function openVisitorGuestbook(uid, eventId) {
 }
 
 // Vieraskirjan tallennus (VIERAS QR-koodilla)
-// TÄMÄ OLI KOHTA JOKA KAATUI. NYT SE ON SUOJATTU IF-LAUSEELLA.
 const btnVisitorSign = document.getElementById('btn-visitor-sign');
 if (btnVisitorSign) {
     btnVisitorSign.onclick = function() {
@@ -541,8 +540,11 @@ window.openGuestbook = function(eventKey) {
         const qrArea = document.getElementById('qr-display-area');
         if(qrArea) qrArea.style.display = 'none';
         
+        // PAKOTETTU NÄKYVIIN (Korjaus)
         const adminTools = document.getElementById('gb-admin-tools');
-        if(adminTools) adminTools.style.display = isAdminMode ? 'block' : 'none';
+        if(adminTools) {
+            adminTools.style.display = 'block'; 
+        }
         
         const actionsArea = document.getElementById('gb-actions-area');
         if(actionsArea) actionsArea.style.display = currentEventArchived ? 'none' : 'block';
