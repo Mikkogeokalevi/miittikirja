@@ -1,9 +1,6 @@
 // ==========================================
-// MK MIITTIKIRJA - APP.JS
-// Versio: 7.2.0 (GPX Log Import Update)
+// 1. FIREBASE ASETUKSET JA MUUTTUJAT
 // ==========================================
-
-const APP_VERSION = "7.2.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -30,16 +27,12 @@ const auth = firebase.auth();
 // Sovelluksen globaali tila
 let currentUser = null;
 let currentEventId = null;
-let currentEventGcCode = null;
 let currentEventArchived = false;
 let globalEventList = []; 
 let isAdminMode = true; 
 let wakeLock = null; 
 
-// Tilamuuttuja live-päivityksille
-let lastAttendeeCount = null;
-
-// OLETUS HOST_UID (Varmuuskopio)
+// MÄÄRITÄ TÄHÄN SINUN UID (HOST), jonne vieraiden kirjaukset menevät
 const HOST_UID = "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
 
 // Käyttöliittymän elementit
@@ -62,91 +55,85 @@ const loadingOverlay = document.getElementById('loading-overlay');
 // ==========================================
 
 window.addEventListener('load', function() {
-    const verLogin = document.getElementById('version-display-login');
-    if(verLogin) verLogin.innerText = "v" + APP_VERSION;
-
-    const verUser = document.getElementById('version-display-user');
-    if(verUser) verUser.innerText = "Versio " + APP_VERSION;
-
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('event');
-    const paramUid = urlParams.get('uid');
-    const targetUid = paramUid ? paramUid.trim() : HOST_UID;
 
     if (eventId) {
-        console.log("Vierastila aktivoitu. Event:", eventId, "UID:", targetUid);
-        if(visitorView) visitorView.style.display = 'block';
-        if(loginView) loginView.style.display = 'none';
-        if(adminView) adminView.style.display = 'none';
-        openVisitorGuestbook(targetUid, eventId.trim());
+        console.log("Vierastila aktivoitu miitille:", eventId);
+        // Avataan vieraskirja suoraan ilman auth-tarkistusta
+        openVisitorGuestbook(HOST_UID, eventId);
     }
 });
 
 async function openVisitorGuestbook(uid, eventId) {
     if(loadingOverlay) loadingOverlay.style.display = 'flex';
-    currentEventId = eventId;
-    window.currentVisitorTargetUid = uid; 
-    lastAttendeeCount = null;
     
+    // Tallennetaan ID talteen vieraskirjausta varten
+    currentEventId = eventId;
+    
+    // Haetaan VAIN tapahtuman tiedot (Säännöt sallivat tämän .read: true)
     db.ref('miitit/' + uid + '/events/' + eventId).once('value', snap => {
         const evt = snap.val();
+        
         if(!evt) {
-            alert(`Miittiä ei löytynyt!\n\nEtsintätiedot:\nEventID: ${eventId}\nOmistaja-UID: ${uid}\n\nTarkista onko miitti poistettu tai onko QR-koodi vanhentunut.`);
+            alert("Miittiä ei löytynyt tai virheellinen linkki!");
             if(loadingOverlay) loadingOverlay.style.display = 'none';
             return;
         }
         
-        currentEventGcCode = evt.gc || null;
+        // Täytetään vierasnäkymän tiedot
         const nameEl = document.getElementById('vv-event-name');
         const infoEl = document.getElementById('vv-event-info');
+        
         if(nameEl) nameEl.innerText = evt.name;
         if(infoEl) infoEl.innerText = `${evt.date} klo ${evt.time || '-'}`;
         
+        // PAKOTETAAN OIKEA NÄKYMÄ PÄÄLLE JA MUUT POIS
         if(visitorView) visitorView.style.display = 'block';
         if(loginView) loginView.style.display = 'none';
         if(adminView) adminView.style.display = 'none';
         if(userView) userView.style.display = 'none';
-        if(guestbookView) guestbookView.style.display = 'none';
+        if(guestbookView) guestbookView.style.display = 'none'; 
         const statsView = document.getElementById('stats-view');
         if(statsView) statsView.style.display = 'none';
         
         if(loadingOverlay) loadingOverlay.style.display = 'none';
+        
     }, (error) => {
         console.error("Virhe haettaessa miittiä:", error);
-        alert("Virhe tietokantayhteydessä:\n" + error.message);
+        alert("Virhe tietojen haussa. Onko QR-koodi oikein?");
         if(loadingOverlay) loadingOverlay.style.display = 'none';
     });
 }
 
+// Vieraskirjan tallennus (VIERAS QR-koodilla)
 const btnVisitorSign = document.getElementById('btn-visitor-sign');
 if (btnVisitorSign) {
     btnVisitorSign.onclick = function() {
         const nickInput = document.getElementById('vv-nickname');
         const fromInput = document.getElementById('vv-from');
         const msgInput = document.getElementById('vv-message');
-        const nick = nickInput ? nickInput.value.trim() : "";
-        if(!nick) return alert("Kirjoita nimimerkkisi!");
 
-        const targetHost = window.currentVisitorTargetUid || HOST_UID;
+        const nick = nickInput ? nickInput.value.trim() : "";
         
-        db.ref('miitit/' + targetHost + '/logs/' + currentEventId).push({
+        if(!nick) return alert("Kirjoita nimimerkkisi!");
+        
+        // Tallennetaan Hostin alle
+        db.ref('miitit/' + HOST_UID + '/logs/' + currentEventId).push({
             nickname: nick, 
             from: fromInput ? fromInput.value.trim() : "",
             message: msgInput ? msgInput.value.trim() : "", 
             timestamp: firebase.database.ServerValue.TIMESTAMP
         }).then(() => {
-            alert("Kiitos käynnistä! Kirjaus tallennettu.\nSiirrytään miittisivulle...");
-            if (currentEventGcCode && currentEventGcCode.startsWith('GC')) {
-                window.location.href = "https://coord.info/" + currentEventGcCode;
-            } else {
-                window.location.href = "https://www.geocaching.com";
-            }
+            alert("Kiitos käynnistä! Kirjaus tallennettu.");
+            window.location.href = "https://www.geocaching.com"; 
         }).catch(err => {
             console.error("Tallennusvirhe:", err);
             alert("Virhe tallennuksessa: " + err.message);
         });
     };
 }
+
 
 // ==========================================
 // 3. OMA VARMISTUSKYSELY
@@ -200,16 +187,17 @@ document.addEventListener('visibilitychange', async () => {
 // ==========================================
 
 auth.onAuthStateChanged((user) => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('event')) return;
+    // TÄRKEÄÄ: Jos ollaan vierasnäkymässä (QR-koodi), ÄLÄ tee mitään kirjautumislogiikkaa
+    if (visitorView && visitorView.style.display === 'block') return;
 
     if (user) {
         currentUser = user;
         if(userDisplay) {
-            userDisplay.style.display = 'flex'; 
+            userDisplay.style.display = 'flex';
             if(userEmailText) userEmailText.innerText = "👤 " + user.email;
         }
         
+        // Jos käyttäjä on Admin/User tilassa, ladataan pääsivu
         const statsView = document.getElementById('stats-view');
         if (guestbookView.style.display !== 'block' && 
             (!statsView || statsView.style.display !== 'block')) {
@@ -271,7 +259,7 @@ if(btnToggleMode) {
 }
 
 // ==========================================
-// 6. QR-KOODI & AUTOCOMPLETE
+// 6. QR-KOODI (HOST NÄKYMÄ) & AUTOCOMPLETE
 // ==========================================
 
 const btnToggleQr = document.getElementById('btn-toggle-qr');
@@ -287,9 +275,9 @@ if(btnToggleQr) {
         }
 
         container.innerHTML = "";
-        const ownerUid = currentUser ? currentUser.uid : HOST_UID;
+        // Luodaan linkki: nykyinenSivu?event=EVENT_ID
         const baseUrl = window.location.href.split('?')[0];
-        const guestUrl = `${baseUrl}?event=${currentEventId}&uid=${ownerUid}`;
+        const guestUrl = baseUrl + "?event=" + currentEventId;
         
         if(linkText) linkText.innerText = guestUrl;
 
@@ -345,7 +333,7 @@ window.selectNick = function(name, inputId, listId) {
 };
 
 // ==========================================
-// 7. APUFUNKTIOT & GPX PARSERI (V7.2.0 PÄIVITYS)
+// 7. APUFUNKTIOT
 // ==========================================
 
 function decimalToDMS(lat, lon) {
@@ -392,45 +380,51 @@ function parseGPX(xmlText) {
     const parser = new DOMParser();
     const xml = parser.parseFromString(xmlText, "text/xml");
     const wpt = xml.querySelector("wpt");
-    if (!wpt) return null;
-    const lat = parseFloat(wpt.getAttribute("lat"));
-    const lon = parseFloat(wpt.getAttribute("lon"));
     
-    let timeStr = "";
-    const shortDesc = wpt.getElementsByTagNameNS("*", "short_description")[0]?.textContent || "";
-    const timeMatch = shortDesc.match(/(\d{1,2}[:\.]\d{2})\s*-\s*(\d{1,2}[:\.]\d{2})/);
-    if (timeMatch) timeStr = `${timeMatch[1].replace('.', ':')} - ${timeMatch[2].replace('.', ':')}`;
-    
-    const attributes = [];
-    const attrElements = wpt.getElementsByTagNameNS("*", "attribute");
-    for (let i = 0; i < attrElements.length; i++) {
-        const attr = attrElements[i];
-        attributes.push({ name: attr.textContent.trim(), inc: attr.getAttribute("inc") === "1" ? 1 : 0 });
-    }
+    // Perustiedot
+    let result = {
+        attributes: [],
+        coords: "",
+        logs: []
+    };
 
-    // UUSI: Logien parsiminen
-    const logs = [];
-    const logNodes = xml.getElementsByTagNameNS("*", "log");
-    for(let i=0; i<logNodes.length; i++) {
-        const type = logNodes[i].getElementsByTagNameNS("*", "type")[0]?.textContent;
-        // Hyväksytään Attended ja Webcam Photo Taken
-        if(type === "Attended" || type === "Webcam Photo Taken") { 
-            const finder = logNodes[i].getElementsByTagNameNS("*", "finder")[0]?.textContent;
-            const text = logNodes[i].getElementsByTagNameNS("*", "text")[0]?.textContent;
-            if(finder) logs.push({ nickname: finder, message: text || "" });
+    if (wpt) {
+        const lat = parseFloat(wpt.getAttribute("lat"));
+        const lon = parseFloat(wpt.getAttribute("lon"));
+        result.coords = decimalToDMS(lat, lon);
+        
+        let timeStr = "";
+        const shortDesc = wpt.getElementsByTagNameNS("*", "short_description")[0]?.textContent || "";
+        const timeMatch = shortDesc.match(/(\d{1,2}[:\.]\d{2})\s*-\s*(\d{1,2}[:\.]\d{2})/);
+        if (timeMatch) timeStr = `${timeMatch[1].replace('.', ':')} - ${timeMatch[2].replace('.', ':')}`;
+        
+        const attrElements = wpt.getElementsByTagNameNS("*", "attribute");
+        for (let i = 0; i < attrElements.length; i++) {
+            const attr = attrElements[i];
+            result.attributes.push({ name: attr.textContent.trim(), inc: attr.getAttribute("inc") === "1" ? 1 : 0 });
         }
     }
-    
-    return {
-        gc: wpt.querySelector("name")?.textContent || "",
-        name: wpt.getElementsByTagNameNS("*", "name")[1]?.textContent || wpt.querySelector("urlname")?.textContent || "Nimetön miitti",
-        date: wpt.querySelector("time")?.textContent?.split('T')[0] || "",
-        time: timeStr,
-        coords: decimalToDMS(lat, lon),
-        descriptionHtml: wpt.getElementsByTagNameNS("*", "long_description")[0]?.textContent || "",
-        attributes: attributes,
-        logs: logs // Palautetaan myös logit
-    };
+
+    // Parsitaan logit (osallistujat)
+    const logElements = xml.getElementsByTagNameNS("*", "log");
+    for (let i = 0; i < logElements.length; i++) {
+        const l = logElements[i];
+        const finder = l.getElementsByTagNameNS("*", "finder")[0]?.textContent || "";
+        const text = l.getElementsByTagNameNS("*", "text")[0]?.textContent || "";
+        const date = l.getElementsByTagNameNS("*", "date")[0]?.textContent || "";
+        const type = l.getElementsByTagNameNS("*", "type")[0]?.textContent || "";
+
+        // Otetaan vain 'Attended' tyyppiset, tai jos tyyppiä ei määritelty (varmuuden vuoksi)
+        if (finder && (type === "Attended" || type === "Webcam Photo Taken" || type === "")) {
+             result.logs.push({
+                 finder: finder.trim(),
+                 text: text.trim(),
+                 date: date
+             });
+        }
+    }
+
+    return result;
 }
 
 // ==========================================
@@ -489,24 +483,10 @@ function loadEvents() {
                     </div>`;
                 
                 if (isToday && noticeAdmin) {
-                    const hero = document.createElement('div');
-                    hero.className = "card today-highlight";
-                    hero.style.textAlign = "center";
-                    hero.style.padding = "20px";
-                    hero.style.border = "4px solid #D2691E"; 
-                    hero.style.backgroundColor = "#FFF8DC";  
-
-                    hero.innerHTML = `
-                        <h2 style="color:#D2691E; margin:0 0 10px 0; text-transform:uppercase; letter-spacing:1px;">🌟 Tänään tapahtuu! 🌟</h2>
-                        <h3 style="margin:5px 0; font-size:1.4em;">${evt.name}</h3>
-                        <p style="font-size:1.2em; color:#555; margin:5px 0 15px 0;">⏰ klo ${evt.time || '??:??'}</p>
-                        <button class="btn btn-green" style="font-size:1.3em; padding:15px; width:100%; font-weight:bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);" onclick="openGuestbook('${evt.key}')">
-                            📖 AVAA MIITTIKIRJA NYT
-                        </button>
-                    `;
-                    noticeAdmin.appendChild(hero);
+                    const notice = div.cloneNode(true);
+                    notice.prepend(document.createRange().createContextualFragment('<h3 style="color:#4caf50; margin-top:0;">🌟 TÄNÄÄN TAPAHTUU!</h3>'));
+                    noticeAdmin.appendChild(notice);
                 }
-
                 const target = document.getElementById(evt.date >= todayStr ? `list-${evt.type}-future` : `list-${evt.type}-past`);
                 if (target) target.appendChild(div);
 
@@ -520,10 +500,9 @@ function loadEvents() {
                     </div>`;
                 
                 if (isToday && noticeUser) {
-                    const heroUser = div.cloneNode(true);
-                    heroUser.style.border = "4px solid #4caf50";
-                    heroUser.prepend(document.createRange().createContextualFragment('<h3 style="color:#4caf50; margin-top:0; text-align:center;">🌟 TÄNÄÄN!</h3>'));
-                    noticeUser.appendChild(heroUser);
+                    const notice = div.cloneNode(true);
+                    notice.prepend(document.createRange().createContextualFragment('<h3 style="color:#4caf50; margin-top:0; text-align:center;">🌟 TÄNÄÄN!</h3>'));
+                    noticeUser.appendChild(notice);
                 }
                 const target = document.getElementById(`user-list-${evt.type}`);
                 if (target) target.appendChild(div);
@@ -544,7 +523,6 @@ function loadEvents() {
 window.openGuestbook = function(eventKey) {
     if(currentEventId) db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
     currentEventId = eventKey;
-    lastAttendeeCount = null;
     
     db.ref('miitit/' + currentUser.uid + '/events/' + eventKey).on('value', snap => {
         const evt = snap.val(); if(!evt) return;
@@ -584,11 +562,15 @@ window.openGuestbook = function(eventKey) {
         const qrArea = document.getElementById('qr-display-area');
         if(qrArea) qrArea.style.display = 'none';
         
+        // --- QR-OSION NÄYTTÄMINEN ---
+        // Näytä QR-alue AINA jos ollaan kirjautuneena (currentUser)
         const qrSection = document.getElementById('qr-section');
         if (qrSection) {
             qrSection.style.display = currentUser ? 'block' : 'none';
         }
         
+        // --- HALLINTATYÖKALUT (GPX / MASSA) ---
+        // Näytä VAIN jos isAdminMode = true
         const adminTools = document.getElementById('gb-admin-tools');
         if(adminTools) {
              adminTools.style.display = (currentUser && isAdminMode) ? 'block' : 'none';
@@ -600,6 +582,7 @@ window.openGuestbook = function(eventKey) {
         const notice = document.getElementById('archived-notice');
         if(notice) notice.style.display = currentEventArchived ? 'block' : 'none';
         
+        // Aktivoi nimiehdotukset admin-kirjaukseen
         if(currentUser) setupAutocomplete('log-nickname', 'log-autocomplete', currentUser.uid);
     });
 
@@ -641,38 +624,32 @@ function loadAttendees(eventKey) {
         const listEl = document.getElementById('attendee-list'); if(!listEl) return;
         listEl.innerHTML = ""; const logs = [];
         snapshot.forEach(child => { logs.push({key: child.key, ...child.val()}); });
-        
         logs.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
         
         logs.forEach(log => {
             const row = document.createElement('div'); row.className = "log-item";
+            
+            // Viestien näyttäminen: Miittikirja vs Nettilogi
+            let messageHtml = "";
+            if (log.message) {
+                messageHtml += `<div style="font-style:italic; color:#888; font-size:0.9em;">📖 ${log.message}</div>`;
+            }
+            if (log.gpxMessage) {
+                 messageHtml += `<div style="font-style:italic; color:#2196f3; font-size:0.85em; margin-top:2px;">🌐 ${log.gpxMessage.substring(0, 100)}${log.gpxMessage.length > 100 ? '...' : ''}</div>`;
+            }
+
             let btns = (isAdminMode && !currentEventArchived && currentUser) ? `
                 <div class="log-actions">
                     <button class="btn-blue btn-small" onclick="openLogEditModal('${log.key}')">✏️</button>
                     <button class="btn-red btn-small" onclick="deleteLog('${log.key}')">🗑</button>
                 </div>` : "";
-            row.innerHTML = `<div><strong style="color:#4caf50;">${log.nickname}</strong><span>${log.from ? ' / ' + log.from : ''}</span><div style="font-style:italic; color:#888; font-size:0.9em;">${log.message || ''}</div></div>${btns}`;
+            
+            row.innerHTML = `<div><strong style="color:#4caf50;">${log.nickname}</strong><span>${log.from ? ' / ' + log.from : ''}</span>
+            ${messageHtml}</div>${btns}`;
             listEl.appendChild(row);
         });
-        
         const countEl = document.getElementById('attendee-count');
-        if(countEl) {
-            const currentCount = logs.length;
-            countEl.innerText = currentCount;
-            
-            if (lastAttendeeCount !== null && currentCount > lastAttendeeCount) {
-                countEl.style.transition = "transform 0.2s, background-color 0.5s";
-                countEl.style.backgroundColor = "#00FF00"; 
-                countEl.style.transform = "scale(1.6)";
-                
-                setTimeout(() => {
-                    countEl.style.backgroundColor = "#8B4513"; 
-                    countEl.style.transform = "scale(1.0)";
-                }, 1500);
-            }
-            
-            lastAttendeeCount = currentCount;
-        }
+        if(countEl) countEl.innerText = logs.length;
     });
 }
 
@@ -761,7 +738,7 @@ if (btnSaveLogEdit) {
 }
 
 // ==========================================
-// 11. GPX-SYNCHRONOINTI JA MASSA-TOIMINNOT (PÄIVITETTY V7.2.0)
+// 11. GPX-SYNCHRONOINTI JA MASSA-TOIMINNOT
 // ==========================================
 
 const btnSyncGpx = document.getElementById('btn-sync-gpx-trigger');
@@ -772,45 +749,69 @@ if (fileInputSync) {
     fileInputSync.onchange = async function(e) {
         const file = e.target.files[0]; if (!file || !currentEventId) return;
         if(loadingOverlay) loadingOverlay.style.display = 'flex';
-        const text = await file.text(); const data = parseGPX(text);
         
-        if (data) {
-            // 1. Päivitetään miitin perustiedot
-            db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({ attributes: data.attributes, coords: data.coords });
-            
-            // 2. Päivitetään logit (uusi ominaisuus v7.2.0)
-            if (data.logs && data.logs.length > 0) {
-                // Haetaan nykyiset logit duplikaattien välttämiseksi
-                const snap = await db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).once('value');
-                const existingNicks = [];
-                snap.forEach(c => existingNicks.push(c.val().nickname));
+        const text = await file.text(); 
+        const data = parseGPX(text);
 
-                let addedCount = 0;
-                // Lisätään vain uudet
-                const updates = {};
-                data.logs.forEach(l => {
-                    if (!existingNicks.includes(l.nickname)) {
-                        const newKey = db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push().key;
-                        updates[newKey] = {
-                            nickname: l.nickname,
-                            message: l.message,
-                            from: "GPX",
-                            timestamp: firebase.database.ServerValue.TIMESTAMP
-                        };
-                        addedCount++;
-                    }
+        if (data) {
+            // 1. Päivitä attribuutit ja koordinaatit
+            const updates = {};
+            if(data.attributes && data.attributes.length > 0) updates.attributes = data.attributes;
+            if(data.coords) updates.coords = data.coords;
+            
+            if(Object.keys(updates).length > 0) {
+                await db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update(updates);
+            }
+
+            // 2. Älykäs kävijöiden yhdistäminen (Smart Merge)
+            if (data.logs && data.logs.length > 0) {
+                const logsRef = db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId);
+                const snapshot = await logsRef.once('value');
+                const existingLogs = snapshot.val() || {};
+                
+                // Luodaan kartta olemassa olevista: "nimimerkki" -> "key"
+                const existingMap = {};
+                Object.keys(existingLogs).forEach(key => {
+                    const l = existingLogs[key];
+                    if(l.nickname) existingMap[l.nickname.toLowerCase()] = key;
                 });
 
-                if (addedCount > 0) {
-                    await db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).update(updates);
-                    alert(`Tiedot päivitetty GPX-tiedostosta!\n\nLisättiin ${addedCount} uutta kävijää listaan.`);
-                } else {
-                    alert("Tiedot päivitetty GPX-tiedostosta!\n\nEi uusia kävijöitä (kaikki löytyivät jo).");
+                let addedCount = 0;
+                let updatedCount = 0;
+
+                for (const gpxLog of data.logs) {
+                    const nickLower = gpxLog.finder.toLowerCase();
+
+                    // ESTO: Älä koskaan lisää mikkokalevia
+                    if (nickLower === "mikkokalevi") continue;
+
+                    if (existingMap[nickLower]) {
+                        // LÖYTYI: Päivitä vain gpxMessage, älä koske 'message' kenttään (joka on miittikirjan viesti)
+                        const existingKey = existingMap[nickLower];
+                        await logsRef.child(existingKey).update({
+                            gpxMessage: gpxLog.text // Tallenna nettilogi omaksi tiedokseen
+                        });
+                        updatedCount++;
+                    } else {
+                        // UUSI: Luo uusi rivi
+                        await logsRef.push({
+                            nickname: gpxLog.finder,
+                            message: "", // Miittikirjan viesti tyhjäksi
+                            gpxMessage: gpxLog.text, // Nettilogi
+                            from: "",
+                            timestamp: firebase.database.ServerValue.TIMESTAMP
+                        });
+                        addedCount++;
+                    }
                 }
+                alert(`GPX Sync valmis!\n\nLisättiin uusia: ${addedCount}\nPäivitettiin vanhoja: ${updatedCount}`);
             } else {
-                alert("Tiedot päivitetty GPX-tiedostosta! (Ei loggauksia tiedostossa)");
+                alert("GPX-tiedostosta päivitettiin tiedot, mutta ei löytynyt loggauksia.");
             }
         }
+        
+        // Tyhjennä input jotta saman tiedoston voi valita uudelleen
+        e.target.value = '';
         if(loadingOverlay) loadingOverlay.style.display = 'none';
     };
 }
