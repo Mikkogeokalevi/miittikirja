@@ -32,7 +32,7 @@ let globalEventList = [];
 let isAdminMode = true; 
 let wakeLock = null; 
 
-// MÄÄRITÄ TÄHÄN SINUN UID (HOST), jonne vieraiden kirjaukset menevät
+// OLETUS HOST_UID (Varmuuskopio, jos linkissä ei ole UID:ta)
 const HOST_UID = "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
 
 // Käyttöliittymän elementit
@@ -57,11 +57,13 @@ const loadingOverlay = document.getElementById('loading-overlay');
 window.addEventListener('load', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('event');
+    // Haetaan myös omistajan UID linkistä, tai käytetään oletusta
+    const targetUid = urlParams.get('uid') || HOST_UID;
 
     if (eventId) {
-        console.log("Vierastila aktivoitu miitille:", eventId);
+        console.log("Vierastila aktivoitu miitille:", eventId, "Omistaja:", targetUid);
         // Avataan vieraskirja suoraan ilman auth-tarkistusta
-        openVisitorGuestbook(HOST_UID, eventId);
+        openVisitorGuestbook(targetUid, eventId);
     }
 });
 
@@ -70,6 +72,9 @@ async function openVisitorGuestbook(uid, eventId) {
     
     // Tallennetaan ID talteen vieraskirjausta varten
     currentEventId = eventId;
+    // TÄRKEÄÄ: Tallennetaan globaali HOST_UID tässä kontekstissa dynaamisesti
+    // Jotta "Tallenna käynti" -nappi tietää mihin kirjoittaa
+    window.currentVisitorTargetUid = uid; 
     
     // Haetaan VAIN tapahtuman tiedot (Säännöt sallivat tämän .read: true)
     db.ref('miitit/' + uid + '/events/' + eventId).once('value', snap => {
@@ -93,7 +98,7 @@ async function openVisitorGuestbook(uid, eventId) {
         if(loginView) loginView.style.display = 'none';
         if(adminView) adminView.style.display = 'none';
         if(userView) userView.style.display = 'none';
-        if(guestbookView) guestbookView.style.display = 'none'; // TÄMÄ OLI ONGELMA
+        if(guestbookView) guestbookView.style.display = 'none';
         const statsView = document.getElementById('stats-view');
         if(statsView) statsView.style.display = 'none';
         
@@ -117,9 +122,12 @@ if (btnVisitorSign) {
         const nick = nickInput ? nickInput.value.trim() : "";
         
         if(!nick) return alert("Kirjoita nimimerkkisi!");
+
+        // Käytetään dynaamista kohde-UID:ta (linkistä saatu) tai fallbackia
+        const targetHost = window.currentVisitorTargetUid || HOST_UID;
         
         // Tallennetaan Hostin alle
-        db.ref('miitit/' + HOST_UID + '/logs/' + currentEventId).push({
+        db.ref('miitit/' + targetHost + '/logs/' + currentEventId).push({
             nickname: nick, 
             from: fromInput ? fromInput.value.trim() : "",
             message: msgInput ? msgInput.value.trim() : "", 
@@ -275,9 +283,11 @@ if(btnToggleQr) {
         }
 
         container.innerHTML = "";
-        // Luodaan linkki: nykyinenSivu?event=EVENT_ID
+        // Luodaan linkki: nykyinenSivu?event=EVENT_ID&uid=OWNER_UID
         const baseUrl = window.location.href.split('?')[0];
-        const guestUrl = baseUrl + "?event=" + currentEventId;
+        // KORJAUS: Lisätään linkkiin currentUser.uid, jotta vieras tietää kenen miittiä haetaan
+        const ownerUid = currentUser ? currentUser.uid : HOST_UID;
+        const guestUrl = baseUrl + "?event=" + currentEventId + "&uid=" + ownerUid;
         
         if(linkText) linkText.innerText = guestUrl;
 
