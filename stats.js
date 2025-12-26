@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.1.0
+// Versio: 7.1.1
 // ==========================================
 
 let allStatsData = {
@@ -111,7 +111,16 @@ function updateStatsView(data) {
     renderLoyaltyPyramid(data); 
     renderWordCloud(data);      
     
-    const filteredForLists = data.filter(e => !e.name.includes("/ PERUTTU /"));
+    // SUODATUS LISTOJA VARTEN (TOP/BOTTOM)
+    // Poistetaan perutut JA tulevaisuudessa olevat miitit
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    const filteredForLists = data.filter(e => {
+        const isCancelled = e.name.includes("/ PERUTTU /");
+        const isFuture = e.date > todayStr; // Jos päiväys on suurempi kuin tänään
+        return !isCancelled && !isFuture;
+    });
+
     const sortedByCount = [...filteredForLists].sort((a, b) => b.attendeeCount - a.attendeeCount);
     
     const renderList = (list, elementId) => {
@@ -143,9 +152,7 @@ function renderCharts(data) {
         if (chartInstances[id]) { chartInstances[id].destroy(); }
     };
 
-    // HUOM: Värit määritellään nyt dynaamisemmin tai käytetään kovia arvoja, 
-    // mutta Chart.js ei lue suoraan CSS-muuttujia ilman apufunktioita.
-    // Pidetään nämä perusväreinä, ne toimivat kohtuullisesti kaikissa teemoissa.
+    // HUOM: Chart.js käyttää tässä perusvärejä, jotka toimivat useimmissa teemoissa.
     const colors = {
         primary: '#8B4513', 
         secondary: '#D2691E',
