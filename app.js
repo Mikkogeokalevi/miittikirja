@@ -97,8 +97,6 @@ async function openVisitorGuestbook(uid, eventId) {
         
         if(loadingOverlay) loadingOverlay.style.display = 'none';
         
-        // HUOM: Emme lataa autocompletea vieraalle, koska vieraalla ei ole 
-        // oikeutta lukea muiden nimiä tietokannasta (Rules estää).
     }, (error) => {
         console.error("Virhe haettaessa miittiä:", error);
         alert("Virhe tietojen haussa. Onko QR-koodi oikein?");
@@ -107,25 +105,33 @@ async function openVisitorGuestbook(uid, eventId) {
 }
 
 // Vieraskirjan tallennus (VIERAS QR-koodilla)
-document.getElementById('btn-visitor-sign').onclick = function() {
-    const nick = document.getElementById('vv-nickname').value.trim();
-    if(!nick) return alert("Kirjoita nimimerkkisi!");
-    
-    // Tallennetaan Hostin alle
-    db.ref('miitit/' + HOST_UID + '/logs/' + currentEventId).push({
-        nickname: nick, 
-        from: document.getElementById('vv-from').value.trim(),
-        message: document.getElementById('vv-message').value.trim(), 
-        timestamp: firebase.database.ServerValue.TIMESTAMP
-    }).then(() => {
-        alert("Kiitos käynnistä! Kirjaus tallennettu.");
-        // Ohjataan käyttäjä pois, jotta hän ei "jää roikkumaan" sivulle
-        window.location.href = "https://www.geocaching.com"; 
-    }).catch(err => {
-        console.error("Tallennusvirhe:", err);
-        alert("Virhe tallennuksessa: " + err.message);
-    });
-};
+// TÄMÄ OLI KOHTA JOKA KAATUI. NYT SE ON SUOJATTU IF-LAUSEELLA.
+const btnVisitorSign = document.getElementById('btn-visitor-sign');
+if (btnVisitorSign) {
+    btnVisitorSign.onclick = function() {
+        const nickInput = document.getElementById('vv-nickname');
+        const fromInput = document.getElementById('vv-from');
+        const msgInput = document.getElementById('vv-message');
+
+        const nick = nickInput ? nickInput.value.trim() : "";
+        
+        if(!nick) return alert("Kirjoita nimimerkkisi!");
+        
+        // Tallennetaan Hostin alle
+        db.ref('miitit/' + HOST_UID + '/logs/' + currentEventId).push({
+            nickname: nick, 
+            from: fromInput ? fromInput.value.trim() : "",
+            message: msgInput ? msgInput.value.trim() : "", 
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        }).then(() => {
+            alert("Kiitos käynnistä! Kirjaus tallennettu.");
+            window.location.href = "https://www.geocaching.com"; 
+        }).catch(err => {
+            console.error("Tallennusvirhe:", err);
+            alert("Virhe tallennuksessa: " + err.message);
+        });
+    };
+}
 
 
 // ==========================================
@@ -241,46 +247,51 @@ function showMainView() {
 
 window.showMainView = showMainView;
 
-document.getElementById('btn-toggle-mode').onclick = function() {
-    isAdminMode = !isAdminMode;
-    const btn = document.getElementById('btn-toggle-mode');
-    btn.innerText = isAdminMode ? "🔄 Hallinta-tila" : "🔄 Miittikirja-tila";
-    showMainView();
-    loadEvents();
-};
+const btnToggleMode = document.getElementById('btn-toggle-mode');
+if(btnToggleMode) {
+    btnToggleMode.onclick = function() {
+        isAdminMode = !isAdminMode;
+        btnToggleMode.innerText = isAdminMode ? "🔄 Hallinta-tila" : "🔄 Miittikirja-tila";
+        showMainView();
+        loadEvents();
+    };
+}
 
 // ==========================================
 // 6. QR-KOODI (HOST NÄKYMÄ) & AUTOCOMPLETE
 // ==========================================
 
-document.getElementById('btn-toggle-qr').onclick = function() {
-    const area = document.getElementById('qr-display-area');
-    const container = document.getElementById('qrcode-container');
-    const linkText = document.getElementById('qr-link-text');
-    
-    if (area.style.display === 'block') {
-        area.style.display = 'none';
-        return;
-    }
+const btnToggleQr = document.getElementById('btn-toggle-qr');
+if(btnToggleQr) {
+    btnToggleQr.onclick = function() {
+        const area = document.getElementById('qr-display-area');
+        const container = document.getElementById('qrcode-container');
+        const linkText = document.getElementById('qr-link-text');
+        
+        if (area.style.display === 'block') {
+            area.style.display = 'none';
+            return;
+        }
 
-    container.innerHTML = "";
-    // Luodaan linkki: nykyinenSivu?event=EVENT_ID
-    const baseUrl = window.location.href.split('?')[0];
-    const guestUrl = baseUrl + "?event=" + currentEventId;
-    
-    if(linkText) linkText.innerText = guestUrl;
+        container.innerHTML = "";
+        // Luodaan linkki: nykyinenSivu?event=EVENT_ID
+        const baseUrl = window.location.href.split('?')[0];
+        const guestUrl = baseUrl + "?event=" + currentEventId;
+        
+        if(linkText) linkText.innerText = guestUrl;
 
-    new QRCode(container, {
-        text: guestUrl,
-        width: 180,
-        height: 180,
-        colorDark : "#8B4513",
-        colorLight : "#ffffff",
-        correctLevel : QRCode.CorrectLevel.H
-    });
+        new QRCode(container, {
+            text: guestUrl,
+            width: 180,
+            height: 180,
+            colorDark : "#8B4513",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
 
-    area.style.display = 'block';
-};
+        area.style.display = 'block';
+    };
+}
 
 function setupAutocomplete(inputId, listId, uid) {
     const input = document.getElementById(inputId);
@@ -555,21 +566,24 @@ window.openGuestbook = function(eventKey) {
 };
 
 // Kirjaus (Admin/User tila)
-document.getElementById('btn-sign-log').onclick = function() {
-    const nick = document.getElementById('log-nickname').value.trim();
-    if(!nick) return alert("Nimi vaaditaan!");
-    
-    db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({
-        nickname: nick, 
-        from: document.getElementById('log-from').value.trim(),
-        message: document.getElementById('log-message').value.trim(), 
-        timestamp: firebase.database.ServerValue.TIMESTAMP
-    }).then(() => { 
-        ['log-nickname','log-from','log-message'].forEach(id => {
-            const el = document.getElementById(id); if(el) el.value = "";
+const btnSignLog = document.getElementById('btn-sign-log');
+if (btnSignLog) {
+    btnSignLog.onclick = function() {
+        const nick = document.getElementById('log-nickname').value.trim();
+        if(!nick) return alert("Nimi vaaditaan!");
+        
+        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({
+            nickname: nick, 
+            from: document.getElementById('log-from').value.trim(),
+            message: document.getElementById('log-message').value.trim(), 
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        }).then(() => { 
+            ['log-nickname','log-from','log-message'].forEach(id => {
+                const el = document.getElementById(id); if(el) el.value = "";
+            });
         });
-    });
-};
+    };
+}
 
 function loadAttendees(eventKey) {
     // Tässä käytetään aina kirjautunutta käyttäjää logien lataukseen
@@ -615,22 +629,25 @@ window.openEditModal = function(key) {
     });
 };
 
-document.getElementById('btn-save-edit').onclick = function() {
-    const key = document.getElementById('edit-key').value;
-    const updateData = {
-        name: document.getElementById('edit-name').value,
-        type: document.getElementById('edit-type').value,
-        gc: document.getElementById('edit-gc').value,
-        date: document.getElementById('edit-date').value,
-        time: document.getElementById('edit-time').value,
-        coords: document.getElementById('edit-coords').value,
-        location: document.getElementById('edit-loc').value,
-        descriptionHtml: document.getElementById('edit-desc').value
+const btnSaveEdit = document.getElementById('btn-save-edit');
+if (btnSaveEdit) {
+    btnSaveEdit.onclick = function() {
+        const key = document.getElementById('edit-key').value;
+        const updateData = {
+            name: document.getElementById('edit-name').value,
+            type: document.getElementById('edit-type').value,
+            gc: document.getElementById('edit-gc').value,
+            date: document.getElementById('edit-date').value,
+            time: document.getElementById('edit-time').value,
+            coords: document.getElementById('edit-coords').value,
+            location: document.getElementById('edit-loc').value,
+            descriptionHtml: document.getElementById('edit-desc').value
+        };
+        db.ref('miitit/' + currentUser.uid + '/events/' + key).update(updateData).then(() => { 
+            if(editModal) editModal.style.display = "none"; 
+        });
     };
-    db.ref('miitit/' + currentUser.uid + '/events/' + key).update(updateData).then(() => { 
-        if(editModal) editModal.style.display = "none"; 
-    });
-};
+}
 
 window.toggleArchive = async function(key, status) {
     const ok = await customConfirm(status ? "Arkistoi miitti" : "Palauta miitti", "Haluatko varmasti muuttaa miitin tilaa?");
@@ -661,33 +678,41 @@ window.openLogEditModal = function(logKey) {
     });
 };
 
-document.getElementById('btn-save-log-edit').onclick = function() {
-    const key = document.getElementById('log-edit-key').value;
-    const update = { 
-        nickname: document.getElementById('log-edit-nick').value, 
-        from: document.getElementById('log-edit-from').value, 
-        message: document.getElementById('log-edit-msg').value 
+const btnSaveLogEdit = document.getElementById('btn-save-log-edit');
+if (btnSaveLogEdit) {
+    btnSaveLogEdit.onclick = function() {
+        const key = document.getElementById('log-edit-key').value;
+        const update = { 
+            nickname: document.getElementById('log-edit-nick').value, 
+            from: document.getElementById('log-edit-from').value, 
+            message: document.getElementById('log-edit-msg').value 
+        };
+        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + key).update(update).then(() => { 
+            if(logEditModal) logEditModal.style.display = "none"; 
+        });
     };
-    db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + key).update(update).then(() => { 
-        if(logEditModal) logEditModal.style.display = "none"; 
-    });
-};
+}
 
 // ==========================================
 // 11. GPX-SYNCHRONOINTI JA MASSA-TOIMINNOT
 // ==========================================
 
-document.getElementById('btn-sync-gpx-trigger').onclick = () => document.getElementById('import-gpx-sync').click();
-document.getElementById('import-gpx-sync').onchange = async function(e) {
-    const file = e.target.files[0]; if (!file || !currentEventId) return;
-    if(loadingOverlay) loadingOverlay.style.display = 'flex';
-    const text = await file.text(); const data = parseGPX(text);
-    if (data) {
-        db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({ attributes: data.attributes, coords: data.coords });
-        alert("Tiedot päivitetty GPX-tiedostosta!");
-    }
-    if(loadingOverlay) loadingOverlay.style.display = 'none';
-};
+const btnSyncGpx = document.getElementById('btn-sync-gpx-trigger');
+if(btnSyncGpx) btnSyncGpx.onclick = () => document.getElementById('import-gpx-sync').click();
+
+const fileInputSync = document.getElementById('import-gpx-sync');
+if (fileInputSync) {
+    fileInputSync.onchange = async function(e) {
+        const file = e.target.files[0]; if (!file || !currentEventId) return;
+        if(loadingOverlay) loadingOverlay.style.display = 'flex';
+        const text = await file.text(); const data = parseGPX(text);
+        if (data) {
+            db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({ attributes: data.attributes, coords: data.coords });
+            alert("Tiedot päivitetty GPX-tiedostosta!");
+        }
+        if(loadingOverlay) loadingOverlay.style.display = 'none';
+    };
+}
 
 window.openMassImport = function() {
     const input = document.getElementById('mass-input');
@@ -698,28 +723,34 @@ window.openMassImport = function() {
     if(massModal) massModal.style.display = "block";
 };
 
-document.getElementById('btn-parse-mass').onclick = function() {
-    const text = document.getElementById('mass-input').value; if(!text) return;
-    let names = []; const blocks = text.split(/Näytä\s+loki|View\s+Log/i);
-    blocks.forEach(b => {
-        if (/Osallistui|Attended/i.test(b)) {
-            const m = b.match(/^(.*?)\s+(?:Premium\s+Member|Member|Reviewer)/i);
-            if (m && m[1]) names.push(m[1].trim());
-        }
-    });
-    names = [...new Set(names)]; if (names.length === 0) return alert("Nimiä ei löytynyt!");
-    document.getElementById('mass-output').value = names.join('\n');
-    document.getElementById('mass-step-1').style.display = 'none'; 
-    document.getElementById('mass-step-2').style.display = 'block';
-};
+const btnParseMass = document.getElementById('btn-parse-mass');
+if (btnParseMass) {
+    btnParseMass.onclick = function() {
+        const text = document.getElementById('mass-input').value; if(!text) return;
+        let names = []; const blocks = text.split(/Näytä\s+loki|View\s+Log/i);
+        blocks.forEach(b => {
+            if (/Osallistui|Attended/i.test(b)) {
+                const m = b.match(/^(.*?)\s+(?:Premium\s+Member|Member|Reviewer)/i);
+                if (m && m[1]) names.push(m[1].trim());
+            }
+        });
+        names = [...new Set(names)]; if (names.length === 0) return alert("Nimiä ei löytynyt!");
+        document.getElementById('mass-output').value = names.join('\n');
+        document.getElementById('mass-step-1').style.display = 'none'; 
+        document.getElementById('mass-step-2').style.display = 'block';
+    };
+}
 
-document.getElementById('btn-save-mass').onclick = function() {
-    const nicks = document.getElementById('mass-output').value.split('\n').map(s => s.trim()).filter(s => s.length > 0);
-    nicks.forEach(n => { 
-        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({ nickname: n, from: "", message: "(Massa)", timestamp: firebase.database.ServerValue.TIMESTAMP }); 
-    });
-    if(massModal) massModal.style.display = "none";
-};
+const btnSaveMass = document.getElementById('btn-save-mass');
+if(btnSaveMass) {
+    btnSaveMass.onclick = function() {
+        const nicks = document.getElementById('mass-output').value.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+        nicks.forEach(n => { 
+            db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({ nickname: n, from: "", message: "(Massa)", timestamp: firebase.database.ServerValue.TIMESTAMP }); 
+        });
+        if(massModal) massModal.style.display = "none";
+    };
+}
 
 window.resetMassModal = function() { 
     document.getElementById('mass-step-1').style.display = 'block'; 
@@ -730,14 +761,22 @@ window.resetMassModal = function() {
 // 12. KIRJAUTUMINEN JA LOPUT
 // ==========================================
 
-document.getElementById('btn-logout').onclick = async function() {
-    const ok = await customConfirm("Kirjaudu ulos", "Haluatko varmasti kirjautua ulos sovelluksesta?");
-    if (ok) auth.signOut().then(() => location.reload());
-};
+const btnLogout = document.getElementById('btn-logout');
+if(btnLogout) {
+    btnLogout.onclick = async function() {
+        const ok = await customConfirm("Kirjaudu ulos", "Haluatko varmasti kirjautua ulos sovelluksesta?");
+        if (ok) auth.signOut().then(() => location.reload());
+    };
+}
 
-document.getElementById('btn-login-google').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-document.getElementById('btn-email-login').onclick = () => auth.signInWithEmailAndPassword(document.getElementById('email-input').value, document.getElementById('password-input').value);
-document.getElementById('btn-email-register').onclick = () => auth.createUserWithEmailAndPassword(document.getElementById('email-input').value, document.getElementById('password-input').value);
+const btnGoogle = document.getElementById('btn-login-google');
+if(btnGoogle) btnGoogle.onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+
+const btnEmailLogin = document.getElementById('btn-email-login');
+if(btnEmailLogin) btnEmailLogin.onclick = () => auth.signInWithEmailAndPassword(document.getElementById('email-input').value, document.getElementById('password-input').value);
+
+const btnEmailReg = document.getElementById('btn-email-register');
+if(btnEmailReg) btnEmailReg.onclick = () => auth.createUserWithEmailAndPassword(document.getElementById('email-input').value, document.getElementById('password-input').value);
 
 window.closeModal = () => { 
     ['edit-modal','mass-modal','log-edit-modal','confirm-modal'].forEach(id => {
@@ -753,30 +792,39 @@ const openStats = () => {
     if (typeof initStats === 'function') initStats();
 };
 
-document.getElementById('btn-show-stats').onclick = openStats;
-document.getElementById('btn-show-stats-user').onclick = openStats;
+const btnStats = document.getElementById('btn-show-stats');
+if(btnStats) btnStats.onclick = openStats;
 
-document.getElementById('btn-find-today').onclick = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const todayEvent = globalEventList.find(e => e.date === today);
-    if (todayEvent) openGuestbook(todayEvent.key); else alert("Tälle päivälle ei ole miittiä.");
-};
+const btnStatsUser = document.getElementById('btn-show-stats-user');
+if(btnStatsUser) btnStatsUser.onclick = openStats;
 
-document.getElementById('btn-process-import').onclick = function() {
-    const text = document.getElementById('import-text').value;
-    const gcMatch = text.match(/(GC[A-Z0-9]+)/);
-    if (gcMatch) document.getElementById('new-gc').value = gcMatch[1];
-    const coordMatch = text.match(/([NS]\s*\d+°\s*[\d\.]+\s*[EW]\s*\d+°\s*[\d\.]+)/);
-    if (coordMatch) {
-        document.getElementById('new-coords').value = coordMatch[1].trim();
-        fetchCityFromCoords(coordMatch[1].trim(), 'new-loc');
-    }
-};
+const btnFindToday = document.getElementById('btn-find-today');
+if(btnFindToday) {
+    btnFindToday.onclick = () => {
+        const today = new Date().toISOString().split('T')[0];
+        const todayEvent = globalEventList.find(e => e.date === today);
+        if (todayEvent) openGuestbook(todayEvent.key); else alert("Tälle päivälle ei ole miittiä.");
+    };
+}
+
+const btnProcessImport = document.getElementById('btn-process-import');
+if(btnProcessImport) {
+    btnProcessImport.onclick = function() {
+        const text = document.getElementById('import-text').value;
+        const gcMatch = text.match(/(GC[A-Z0-9]+)/);
+        if (gcMatch) document.getElementById('new-gc').value = gcMatch[1];
+        const coordMatch = text.match(/([NS]\s*\d+°\s*[\d\.]+\s*[EW]\s*\d+°\s*[\d\.]+)/);
+        if (coordMatch) {
+            document.getElementById('new-coords').value = coordMatch[1].trim();
+            fetchCityFromCoords(coordMatch[1].trim(), 'new-loc');
+        }
+    };
+}
 
 window.navigateEvent = function(direction) {
     if (!currentEventId || globalEventList.length === 0) return;
     const currentIndex = globalEventList.findIndex(e => e.key === currentEventId);
-    const newIndex = currentIndex - direction; // -1 on seuraava (nuoli oikealle), 1 edellinen (nuoli vasemmalle)
+    const newIndex = currentIndex - direction; // -1 on seuraava, 1 edellinen
     if (newIndex >= 0 && newIndex < globalEventList.length) {
         db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
         openGuestbook(globalEventList[newIndex].key);
