@@ -52,8 +52,14 @@
         <div class="card"><p id="vv-event-info" style="text-align:center; font-weight:bold;"></p></div>
         <div class="card-form">
             <h3 style="text-align:center; color:#B22222;">✍️ Kirjaa käyntisi</h3>
+            
+            <div style="background:rgba(255, 0, 0, 0.1); border:1px solid #B22222; padding:10px; border-radius:5px; margin-bottom:15px;">
+                <p style="color:#B22222; font-weight:bold; margin:0; font-size:0.9em;">⚠️ TÄRKEÄÄ:</p>
+                <p style="margin:5px 0 0 0; font-size:0.85em; color:var(--text-color);">Käytäthän <strong style="text-decoration:underline;">virallista nimimerkkiäsi</strong> (samaa kuin Geocaching.comissa), jotta tilastot ja nettiloggaukset yhdistyvät oikein!</p>
+            </div>
+
             <div style="position:relative;">
-                <input type="text" id="vv-nickname" placeholder="Nimimerkkisi" style="font-size: 1.2em; border: 2px solid #8B4513;">
+                <input type="text" id="vv-nickname" placeholder="Nimimerkkisi (Virallinen)" style="font-size: 1.2em; border: 2px solid #8B4513;">
                 <div id="vv-autocomplete" class="autocomplete-list" style="display:none;"></div>
             </div>
             <input type="text" id="vv-from" placeholder="Mistä tulet?">
@@ -164,8 +170,6 @@
             </div>
             <div class="card"><h3>👥 TOP 10 Kävijät</h3><div id="stats-top-users"></div></div>
             
-            <div class="card"><h3>🔺 Yhteisöuskollisuus</h3><div id="stats-loyalty"></div></div>
-
             <div class="card">
                 <h3>🔤 Alkukirjaimet</h3>
                 <div id="stats-alphabet" class="stats-grid"></div>
@@ -174,8 +178,6 @@
             <div class="card"><h3>🏘️ Paikkakunnat</h3><div id="stats-locations" style="max-height: 200px; overflow-y: auto;"></div></div>
             
             <div class="card"><h3>⭐ Attribuutit</h3><div id="stats-attributes" class="scroll-box"></div></div>
-
-            <div class="card"><h3>☁️ Sanalouhos (Viestit)</h3><div id="stats-wordcloud"></div></div>
         </div>
 
         <div id="tab-graphs" class="tab-content">
@@ -211,6 +213,9 @@
                 <p style="font-weight:bold; margin-bottom:5px;">Skannaa ja kirjaa!</p>
                 <div id="qrcode-container"></div>
                 <p id="qr-link-text" style="font-size:0.6em; color:#888; margin-top:5px;"></p>
+                
+                <p style="color:#B22222; font-weight:bold; margin-top:10px;">⚠️ Käytäthän virallista nimimerkkiäsi!<br>
+                <small style="color:var(--text-color); opacity:0.7; font-weight:normal;">(Tärkeää tilastojen ja yhdistelyn vuoksi)</small></p>
             </div>
         </div>
 
@@ -313,7 +318,7 @@
             }
         }
 
-        // --- TEEMAHALLINTA (Versio 7.1.0 - QR FIX) ---
+        // --- TEEMAHALLINTA (Versio 7.2.0) ---
         const themes = [
             { class: '', icon: '🌙', name: 'Yö' },       // 0: Oletus (Dark)
             { class: 'theme-light', icon: '☀️', name: 'Päivä' }, // 1: Light
