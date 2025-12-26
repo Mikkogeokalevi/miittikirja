@@ -1,5 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
+// Versio: 7.0.0
 // ==========================================
 
 let allStatsData = {
@@ -107,8 +108,8 @@ function updateStatsView(data) {
     // 3. Tekstilistat
     renderAlphabetStats(data);
     renderTopUsersList(data);
-    renderLoyaltyPyramid(data); // UUSI
-    renderWordCloud(data);      // UUSI
+    renderLoyaltyPyramid(data); 
+    renderWordCloud(data);      
     
     const filteredForLists = data.filter(e => !e.name.includes("/ PERUTTU /"));
     const sortedByCount = [...filteredForLists].sort((a, b) => b.attendeeCount - a.attendeeCount);
