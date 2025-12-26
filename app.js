@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.1.2 - GPX Smart Merge
+// Versio: 7.1.3 - GPX Globe Icon Fix
 // ==========================================
 
-const APP_VERSION = "7.1.2";
+const APP_VERSION = "7.1.3";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -853,7 +853,8 @@ if (fileInputSync) {
                 if (finder.toLowerCase() === "mikkokalevi") continue; // Ei omistajaa
 
                 const textNode = logNode.getElementsByTagName("groundspeak:text")[0];
-                const netMessage = textNode ? textNode.textContent.trim() : "";
+                const netMessageRaw = textNode ? textNode.textContent.trim() : "";
+                const netMessageFormatted = "🌐: " + netMessageRaw; // Lisätään AINA pallo nettilogiin
                 const finderLower = finder.toLowerCase();
 
                 if (existingLogsMap.has(finderLower)) {
@@ -861,11 +862,12 @@ if (fileInputSync) {
                     const existing = existingLogsMap.get(finderLower);
                     
                     // Tarkistetaan, onko nettilogi jo viestissä (ettei tule tuplana)
-                    if (netMessage && !existing.message.includes(netMessage)) {
+                    if (netMessageRaw && !existing.message.includes(netMessageRaw)) {
                         // YHDISTETÄÄN viestit: "Vanha | 🌐: Uusi"
+                        // Jos vanha viesti on tyhjä, käytetään suoraan "🌐: Uusi"
                         const combinedMessage = existing.message 
-                            ? `${existing.message} | 🌐: ${netMessage}`
-                            : netMessage;
+                            ? `${existing.message} | ${netMessageFormatted}`
+                            : netMessageFormatted;
                         
                         db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + existing.key).update({
                             message: combinedMessage
@@ -877,11 +879,11 @@ if (fileInputSync) {
                     db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({
                         nickname: finder,
                         from: "", // Emme arvaa paikkakuntaa
-                        message: netMessage,
+                        message: netMessageFormatted, // Tässä on jo pallo alussa
                         timestamp: firebase.database.ServerValue.TIMESTAMP
                     });
                     // Lisätään mappiin jotta saman gpx:n sisäiset tuplat eivät haittaa
-                    existingLogsMap.set(finderLower, { key: "temp", message: netMessage });
+                    existingLogsMap.set(finderLower, { key: "temp", message: netMessageFormatted });
                     addedCount++;
                 }
             }
