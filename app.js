@@ -30,6 +30,7 @@ const auth = firebase.auth();
 // Sovelluksen globaali tila
 let currentUser = null;
 let currentEventId = null;
+let currentEventGcCode = null; // UUSI: Tallennetaan GC-koodi ohjausta varten
 let currentEventArchived = false;
 let globalEventList = []; 
 let isAdminMode = true; 
@@ -107,6 +108,9 @@ async function openVisitorGuestbook(uid, eventId) {
             return;
         }
         
+        // Tallennetaan GC-koodi talteen ohjausta varten
+        currentEventGcCode = evt.gc || null;
+
         // Täytetään tiedot
         const nameEl = document.getElementById('vv-event-name');
         const infoEl = document.getElementById('vv-event-info');
@@ -152,8 +156,15 @@ if (btnVisitorSign) {
             message: msgInput ? msgInput.value.trim() : "", 
             timestamp: firebase.database.ServerValue.TIMESTAMP
         }).then(() => {
-            alert("Kiitos käynnistä! Kirjaus tallennettu.");
-            window.location.href = "https://www.geocaching.com"; 
+            alert("Kiitos käynnistä! Kirjaus tallennettu.\nSiirrytään miittisivulle...");
+            
+            // UUSI: Älykäs ohjaus
+            if (currentEventGcCode && currentEventGcCode.startsWith('GC')) {
+                window.location.href = "https://coord.info/" + currentEventGcCode;
+            } else {
+                window.location.href = "https://www.geocaching.com";
+            }
+
         }).catch(err => {
             console.error("Tallennusvirhe:", err);
             alert("Virhe tallennuksessa: " + err.message);
