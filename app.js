@@ -32,6 +32,9 @@ let globalEventList = [];
 let isAdminMode = true; 
 let wakeLock = null; 
 
+// Tilamuuttuja live-päivityksille
+let lastAttendeeCount = null;
+
 // OLETUS HOST_UID (Varmuuskopio)
 const HOST_UID = "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
 
@@ -78,6 +81,9 @@ async function openVisitorGuestbook(uid, eventId) {
     
     currentEventId = eventId;
     window.currentVisitorTargetUid = uid; 
+    
+    // Nollataan live-laskuri aina kun kirja avataan
+    lastAttendeeCount = null;
     
     // Yritetään hakea tapahtuma
     db.ref('miitit/' + uid + '/events/' + eventId).once('value', snap => {
@@ -538,6 +544,9 @@ window.openGuestbook = function(eventKey) {
     if(currentEventId) db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
     currentEventId = eventKey;
     
+    // NOLLATAAN LIVE-LASKURI
+    lastAttendeeCount = null;
+    
     db.ref('miitit/' + currentUser.uid + '/events/' + eventKey).on('value', snap => {
         const evt = snap.val(); if(!evt) return;
         currentEventArchived = (evt.isArchived === true);
@@ -639,7 +648,10 @@ function loadAttendees(eventKey) {
         const listEl = document.getElementById('attendee-list'); if(!listEl) return;
         listEl.innerHTML = ""; const logs = [];
         snapshot.forEach(child => { logs.push({key: child.key, ...child.val()}); });
+        
+        // Lajittelu: Uusin ensin
         logs.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+        
         logs.forEach(log => {
             const row = document.createElement('div'); row.className = "log-item";
             let btns = (isAdminMode && !currentEventArchived && currentUser) ? `
@@ -650,8 +662,30 @@ function loadAttendees(eventKey) {
             row.innerHTML = `<div><strong style="color:#4caf50;">${log.nickname}</strong><span>${log.from ? ' / ' + log.from : ''}</span><div style="font-style:italic; color:#888; font-size:0.9em;">${log.message || ''}</div></div>${btns}`;
             listEl.appendChild(row);
         });
+        
         const countEl = document.getElementById('attendee-count');
-        if(countEl) countEl.innerText = logs.length;
+        if(countEl) {
+            const currentCount = logs.length;
+            countEl.innerText = currentCount;
+            
+            // --- LIVE ANIMAATIO LOGIIKKA ---
+            // Jos luku on olemassa ja se on SUUREMPI kuin viimeksi muistissa ollut
+            if (lastAttendeeCount !== null && currentCount > lastAttendeeCount) {
+                // Väläytetään vihreänä ja suurennetaan hetkeksi
+                countEl.style.transition = "transform 0.2s, background-color 0.5s";
+                countEl.style.backgroundColor = "#00FF00"; // Kirkas vihreä
+                countEl.style.transform = "scale(1.6)";
+                
+                // Palautetaan normaaliksi pienen viiveen jälkeen
+                setTimeout(() => {
+                    countEl.style.backgroundColor = "#8B4513"; // Alkuperäinen ruskea
+                    countEl.style.transform = "scale(1.0)";
+                }, 1500);
+            }
+            
+            // Päivitetään muistijälki
+            lastAttendeeCount = currentCount;
+        }
     });
 }
 
