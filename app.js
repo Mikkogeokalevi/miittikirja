@@ -762,21 +762,6 @@ document.getElementById('btn-find-today').onclick = () => {
     if (todayEvent) openGuestbook(todayEvent.key); else alert("Tälle päivälle ei ole miittiä.");
 };
 
-window.navigateEvent = function(direction) {
-    if (!currentEventId || globalEventList.length === 0) return;
-    const currentIndex = globalEventList.findIndex(e => e.key === currentEventId);
-    const newIndex = currentIndex - direction;
-    if (newIndex >= 0 && newIndex < globalEventList.length) {
-        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
-        openGuestbook(globalEventList[newIndex].key);
-    }
-};
-
-window.toggleDetails = function(id) {
-    const content = document.getElementById(id);
-    if(content) content.style.display = (content.style.display === 'block') ? 'none' : 'block';
-};
-
 document.getElementById('btn-process-import').onclick = function() {
     const text = document.getElementById('import-text').value;
     const gcMatch = text.match(/(GC[A-Z0-9]+)/);
@@ -786,4 +771,19 @@ document.getElementById('btn-process-import').onclick = function() {
         document.getElementById('new-coords').value = coordMatch[1].trim();
         fetchCityFromCoords(coordMatch[1].trim(), 'new-loc');
     }
+};
+
+window.navigateEvent = function(direction) {
+    if (!currentEventId || globalEventList.length === 0) return;
+    const currentIndex = globalEventList.findIndex(e => e.key === currentEventId);
+    const newIndex = currentIndex - direction; // -1 on seuraava (nuoli oikealle), 1 edellinen (nuoli vasemmalle)
+    if (newIndex >= 0 && newIndex < globalEventList.length) {
+        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
+        openGuestbook(globalEventList[newIndex].key);
+    }
+};
+
+window.toggleDetails = function(id) {
+    const content = document.getElementById(id);
+    if(content) content.style.display = (content.style.display === 'block') ? 'none' : 'block';
 };
