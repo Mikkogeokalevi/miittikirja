@@ -1,41 +1,10 @@
 /* ==========================================
    MK MIITTIKIRJA - STYLE.CSS
-   Teema: Mikkokalevi & Dark Mode Support
+   Teema: Mikkokalevi & Dark Mode Default
    ========================================== */
 
 :root {
-    /* OLETUS (PÄIVÄ) TEEMA */
-    --bg-color: #FDF5E6;
-    --text-color: #4E342E;
-    --card-bg: #FFFFFF;
-    --primary-color: #8B4513;       /* Satularuskea */
-    --secondary-color: #D2691E;     /* Suklaa / Oranssi */
-    --accent-color: #A0522D;        /* Sienna */
-    --border-color: #8B4513;
-    --dotted-border: #D2B48C;
-    --input-bg: #FFFFFF;
-    --header-color: #8B4513;
-    --shadow-color: #FAEBD7;
-    --highlight-bg: #FFF8E7;
-    --highlight-border: #CD5C5C;
-    --today-bg: #f1f8e9;
-    --today-border: #4caf50;
-    --link-color: #D2691E;
-    
-    /* Napit */
-    --btn-blue-bg: #8B4513;
-    --btn-blue-text: #ffffff;
-    --btn-green-bg: #4caf50;
-    --btn-green-text: #ffffff;
-    --btn-red-bg: #B22222;
-    --btn-gray-bg: #A0522D;
-    
-    /* Vieraat */
-    --visitor-input-border: #8B4513;
-}
-
-/* YÖ-TEEMA MÄÄRITTELYT */
-body.dark-theme {
+    /* OLETUS (YÖ) TEEMA */
     --bg-color: #121212;
     --text-color: #E0E0E0;
     --card-bg: #1E1E1E;
@@ -53,13 +22,43 @@ body.dark-theme {
     --today-border: #2e7d32;
     --link-color: #FFA500;
 
-    /* Napit (hieman tummemmat tai kontrastikkaammat) */
+    /* Napit (tumma teema) */
     --btn-blue-bg: #A0522D;
+    --btn-blue-text: #ffffff;
     --btn-green-bg: #2e7d32;
+    --btn-green-text: #ffffff;
     --btn-red-bg: #8B0000;
     --btn-gray-bg: #555555;
     
     --visitor-input-border: #CD853F;
+}
+
+/* PÄIVÄ-TEEMA (Kytketään päälle luokalla .light-theme) */
+body.light-theme {
+    --bg-color: #FDF5E6;
+    --text-color: #4E342E;
+    --card-bg: #FFFFFF;
+    --primary-color: #8B4513;       
+    --secondary-color: #D2691E;     
+    --accent-color: #A0522D;        
+    --border-color: #8B4513;
+    --dotted-border: #D2B48C;
+    --input-bg: #FFFFFF;
+    --header-color: #8B4513;
+    --shadow-color: #FAEBD7;
+    --highlight-bg: #FFF8E7;
+    --highlight-border: #CD5C5C;
+    --today-bg: #f1f8e9;
+    --today-border: #4caf50;
+    --link-color: #D2691E;
+    
+    /* Napit (päivä teema) */
+    --btn-blue-bg: #8B4513;
+    --btn-green-bg: #4caf50;
+    --btn-red-bg: #B22222;
+    --btn-gray-bg: #A0522D;
+    
+    --visitor-input-border: #8B4513;
 }
 
 /* --- PERUSTYYLIT --- */
@@ -74,7 +73,7 @@ body {
     -webkit-user-select: none;
     user-select: none;
     overflow-x: hidden;
-    transition: background-color 0.3s, color 0.3s; /* Pehmeä vaihto */
+    transition: background-color 0.3s, color 0.3s; 
 }
 
 h1, h2, h3 { 
@@ -123,12 +122,13 @@ a { color: var(--link-color); }
 
 .card.archived {
     opacity: 0.7;
-    background: #333; /* Tummempi arkistoiduissa */
+    background: #333; 
     border-color: #777;
     border-style: dotted;
     box-shadow: none;
 }
-body:not(.dark-theme) .card.archived {
+/* Korjaus: Kun light-theme on päällä, arkistoitu on vaalea */
+body.light-theme .card.archived {
     background: #e0e0e0;
     border-color: #aaa;
 }
@@ -285,7 +285,7 @@ input::placeholder, textarea::placeholder { color: var(--accent-color); opacity:
     text-decoration: line-through;
     border: 1px solid #c62828;
 }
-body:not(.dark-theme) .attr-tag.neg {
+body.light-theme .attr-tag.neg {
     background: #f8d7da;
     color: #721c24;
     border: 1px solid #f5c6cb;
