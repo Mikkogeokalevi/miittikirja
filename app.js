@@ -551,7 +551,7 @@ window.openGuestbook = function(eventKey) {
         
         // --- HALLINTATYÖKALUT (GPX / MASSA) ---
         // Näytä VAIN jos isAdminMode = true
-        const adminTools = document.getElementById('admin-tools-wrapper');
+        const adminTools = document.getElementById('gb-admin-tools');
         if(adminTools) {
              adminTools.style.display = (currentUser && isAdminMode) ? 'block' : 'none';
         }
