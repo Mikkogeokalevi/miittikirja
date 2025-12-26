@@ -466,16 +466,19 @@
             <span id="gb-time"></span><span id="gb-date"></span><span id="gb-loc"></span><span id="gb-gc"></span><span id="gb-coords"></span>
         </div>
 
-        <div id="gb-admin-tools" style="display:none;">
-            <div style="display:flex; gap:5px; margin-bottom:10px;">
-                <button id="btn-sync-gpx-trigger" class="btn btn-small btn-green" style="flex:1;">🔄 GPX Sync</button>
-                <button onclick="openMassImport()" class="btn btn-small btn-gray" style="flex:1;">📥 Massa</button>
-            </div>
+        <div id="qr-section" style="margin-bottom:10px; display:none;">
             <button id="btn-toggle-qr" class="btn btn-small btn-blue" style="width:100%;">📱 NÄYTÄ QR-KOODI VIERAILLE</button>
             <div id="qr-display-area">
                 <p style="font-weight:bold; margin-bottom:5px;">Skannaa ja kirjaa!</p>
                 <div id="qrcode-container"></div>
                 <p id="qr-link-text" style="font-size:0.6em; color:#888; margin-top:5px;"></p>
+            </div>
+        </div>
+
+        <div id="gb-admin-tools" style="display:none;">
+            <div style="display:flex; gap:5px; margin-bottom:10px;">
+                <button id="btn-sync-gpx-trigger" class="btn btn-small btn-green" style="flex:1;">🔄 GPX Sync</button>
+                <button onclick="openMassImport()" class="btn btn-small btn-gray" style="flex:1;">📥 Massa</button>
             </div>
             <input type="file" id="import-gpx-sync" accept=".gpx" style="display:none;">
         </div>
