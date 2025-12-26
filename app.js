@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.1.1 - GPX Lokien Tuonti
+// Versio: 7.1.2 - GPX Smart Merge
 // ==========================================
 
-const APP_VERSION = "7.1.1";
+const APP_VERSION = "7.1.2";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -815,55 +815,78 @@ if (fileInputSync) {
             db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({ attributes: data.attributes, coords: data.coords });
         }
         
-        // 2. UUSI TOIMINTO: Tuodaan puuttuvat lokit
+        // 2. UUSI TOIMINTO: Tuodaan puuttuvat lokit JA yhdistetään viestit
         const parser = new DOMParser();
         const xml = parser.parseFromString(text, "text/xml");
         const logs = xml.getElementsByTagName("groundspeak:log");
         
         if (logs.length > 0) {
-            // Haetaan ensin olemassa olevat, jotta ei ylikirjoiteta (from/paikkakunta säilyy)
+            // Haetaan ensin olemassa olevat MAP-rakenteeseen
             const snap = await db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).once('value');
-            const existingNicks = new Set();
+            const existingLogsMap = new Map();
+            
             snap.forEach(child => {
                 const val = child.val();
-                if (val.nickname) existingNicks.add(val.nickname.trim().toLowerCase());
+                if (val.nickname) {
+                    existingLogsMap.set(val.nickname.trim().toLowerCase(), {
+                        key: child.key,
+                        message: val.message || ""
+                    });
+                }
             });
 
             let addedCount = 0;
+            let updatedCount = 0;
 
             for (let i = 0; i < logs.length; i++) {
                 const logNode = logs[i];
                 const typeNode = logNode.getElementsByTagName("groundspeak:type")[0];
                 const type = typeNode ? typeNode.textContent : "";
 
-                // Vain Attended-lokit (ja webcam photo jos joskus tarpeen)
+                // Vain Attended-lokit (ja webcam photo)
                 if (type !== "Attended" && type !== "Webcam Photo Taken") continue;
 
                 const finderNode = logNode.getElementsByTagName("groundspeak:finder")[0];
                 const finder = finderNode ? finderNode.textContent.trim() : "";
                 
-                // Suodatussäännöt:
                 if (!finder) continue; // Ei tyhjiä nimiä
                 if (finder.toLowerCase() === "mikkokalevi") continue; // Ei omistajaa
-                if (existingNicks.has(finder.toLowerCase())) continue; // Ei jos on jo kannassa
 
                 const textNode = logNode.getElementsByTagName("groundspeak:text")[0];
-                const message = textNode ? textNode.textContent.trim() : "GPX Import";
+                const netMessage = textNode ? textNode.textContent.trim() : "";
+                const finderLower = finder.toLowerCase();
 
-                // Lisätään uusi kirjaus
-                db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({
-                    nickname: finder,
-                    from: "", // GPX ei kerro paikkakuntaa, jätetään tyhjäksi jotta ei arvata väärin
-                    message: message, // Otetaan viesti GPX:stä
-                    timestamp: firebase.database.ServerValue.TIMESTAMP
-                });
-
-                // Lisätään väliaikaiseen listaan ettei tiedoston sisäiset tuplat haittaa
-                existingNicks.add(finder.toLowerCase());
-                addedCount++;
+                if (existingLogsMap.has(finderLower)) {
+                    // TAPAUS 1: KÄYTTÄJÄ LÖYTYY JO
+                    const existing = existingLogsMap.get(finderLower);
+                    
+                    // Tarkistetaan, onko nettilogi jo viestissä (ettei tule tuplana)
+                    if (netMessage && !existing.message.includes(netMessage)) {
+                        // YHDISTETÄÄN viestit: "Vanha | 🌐: Uusi"
+                        const combinedMessage = existing.message 
+                            ? `${existing.message} | 🌐: ${netMessage}`
+                            : netMessage;
+                        
+                        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + existing.key).update({
+                            message: combinedMessage
+                        });
+                        updatedCount++;
+                    }
+                } else {
+                    // TAPAUS 2: UUSI KÄYTTÄJÄ
+                    db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({
+                        nickname: finder,
+                        from: "", // Emme arvaa paikkakuntaa
+                        message: netMessage,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    });
+                    // Lisätään mappiin jotta saman gpx:n sisäiset tuplat eivät haittaa
+                    existingLogsMap.set(finderLower, { key: "temp", message: netMessage });
+                    addedCount++;
+                }
             }
             
-            alert(`GPX-synkronointi valmis!\n\n- Kätkön tiedot päivitetty.\n- Lisätty ${addedCount} uutta kävijää lokista.`);
+            alert(`GPX-synkronointi valmis!\n\n- Kätkön tiedot päivitetty.\n- Lisätty ${addedCount} uutta kävijää.\n- Päivitetty viesti ${updatedCount} olemassa olevalle kävijälle.`);
         } else {
             alert("Kätkön tiedot päivitetty GPX-tiedostosta!\n(Tiedostossa ei ollut lokimerkintöjä tai lukeminen epäonnistui).");
         }
