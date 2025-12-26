@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.1.0
+// Versio: 7.1.1 - GPX Lokien Tuonti
 // ==========================================
 
-const APP_VERSION = "7.1.0";
+const APP_VERSION = "7.1.1";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -806,12 +806,72 @@ if (fileInputSync) {
     fileInputSync.onchange = async function(e) {
         const file = e.target.files[0]; if (!file || !currentEventId) return;
         if(loadingOverlay) loadingOverlay.style.display = 'flex';
-        const text = await file.text(); const data = parseGPX(text);
+        
+        const text = await file.text();
+        
+        // 1. Vanha toiminto: Päivitetään kätkön attribuutit ja koordinaatit
+        const data = parseGPX(text);
         if (data) {
             db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({ attributes: data.attributes, coords: data.coords });
-            alert("Tiedot päivitetty GPX-tiedostosta!");
         }
+        
+        // 2. UUSI TOIMINTO: Tuodaan puuttuvat lokit
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(text, "text/xml");
+        const logs = xml.getElementsByTagName("groundspeak:log");
+        
+        if (logs.length > 0) {
+            // Haetaan ensin olemassa olevat, jotta ei ylikirjoiteta (from/paikkakunta säilyy)
+            const snap = await db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).once('value');
+            const existingNicks = new Set();
+            snap.forEach(child => {
+                const val = child.val();
+                if (val.nickname) existingNicks.add(val.nickname.trim().toLowerCase());
+            });
+
+            let addedCount = 0;
+
+            for (let i = 0; i < logs.length; i++) {
+                const logNode = logs[i];
+                const typeNode = logNode.getElementsByTagName("groundspeak:type")[0];
+                const type = typeNode ? typeNode.textContent : "";
+
+                // Vain Attended-lokit (ja webcam photo jos joskus tarpeen)
+                if (type !== "Attended" && type !== "Webcam Photo Taken") continue;
+
+                const finderNode = logNode.getElementsByTagName("groundspeak:finder")[0];
+                const finder = finderNode ? finderNode.textContent.trim() : "";
+                
+                // Suodatussäännöt:
+                if (!finder) continue; // Ei tyhjiä nimiä
+                if (finder.toLowerCase() === "mikkokalevi") continue; // Ei omistajaa
+                if (existingNicks.has(finder.toLowerCase())) continue; // Ei jos on jo kannassa
+
+                const textNode = logNode.getElementsByTagName("groundspeak:text")[0];
+                const message = textNode ? textNode.textContent.trim() : "GPX Import";
+
+                // Lisätään uusi kirjaus
+                db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({
+                    nickname: finder,
+                    from: "", // GPX ei kerro paikkakuntaa, jätetään tyhjäksi jotta ei arvata väärin
+                    message: message, // Otetaan viesti GPX:stä
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+
+                // Lisätään väliaikaiseen listaan ettei tiedoston sisäiset tuplat haittaa
+                existingNicks.add(finder.toLowerCase());
+                addedCount++;
+            }
+            
+            alert(`GPX-synkronointi valmis!\n\n- Kätkön tiedot päivitetty.\n- Lisätty ${addedCount} uutta kävijää lokista.`);
+        } else {
+            alert("Kätkön tiedot päivitetty GPX-tiedostosta!\n(Tiedostossa ei ollut lokimerkintöjä tai lukeminen epäonnistui).");
+        }
+
         if(loadingOverlay) loadingOverlay.style.display = 'none';
+        
+        // Nollataan input jotta saman tiedoston voi valita uudelleen tarvittaessa
+        fileInputSync.value = "";
     };
 }
 
