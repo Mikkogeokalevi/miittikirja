@@ -540,10 +540,11 @@ window.openGuestbook = function(eventKey) {
         const qrArea = document.getElementById('qr-display-area');
         if(qrArea) qrArea.style.display = 'none';
         
-        // PAKOTETTU NÄKYVIIN (Korjaus)
+        // --- KORJATTU LOGIIKKA ---
+        // Admin-työkalut (QR, GPX, Massa) näkyvät VAIN jos käyttäjä on kirjautunut (currentUser)
         const adminTools = document.getElementById('gb-admin-tools');
         if(adminTools) {
-            adminTools.style.display = 'block'; 
+             adminTools.style.display = currentUser ? 'block' : 'none';
         }
         
         const actionsArea = document.getElementById('gb-actions-area');
@@ -553,7 +554,7 @@ window.openGuestbook = function(eventKey) {
         if(notice) notice.style.display = currentEventArchived ? 'block' : 'none';
         
         // Aktivoi nimiehdotukset admin-kirjaukseen
-        setupAutocomplete('log-nickname', 'log-autocomplete', currentUser.uid);
+        if(currentUser) setupAutocomplete('log-nickname', 'log-autocomplete', currentUser.uid);
     });
 
     if(adminView) adminView.style.display = 'none'; 
