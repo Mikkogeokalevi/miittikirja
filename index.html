@@ -252,11 +252,20 @@
             color: #8B4513;
             margin-bottom: 10px;
             background: rgba(255,255,255,0.5);
-            padding: 5px;
+            padding: 10px 15px;
             border-radius: 10px;
             display: none; 
+            /* MUUTETTU: Flex-suunta sarakkeeksi jotta versio mahtuu alle */
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        /* UUSI: Rivielementti käyttäjätiedoille sisällä */
+        .user-info-row {
+            display: flex;
             justify-content: space-between;
             align-items: center;
+            width: 100%;
         }
 
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(78, 52, 46, 0.9); overflow-y: auto; }
@@ -291,12 +300,21 @@
         #qr-display-area { text-align: center; margin: 20px 0; padding: 15px; background: #fff; border-radius: 10px; display: none; border: 2px solid #8B4513; }
         #qrcode-container { display: inline-block; padding: 10px; background: #fff; }
 
-        /* Versionumero */
-        #version-display {
+        /* Versionumero login-ruudussa */
+        #version-display-login {
             font-size: 0.7em;
             color: #A0522D;
             margin-top: 15px;
             opacity: 0.7;
+        }
+
+        /* UUSI: Vieritettävä lista (n. 15 riviä) */
+        .scroll-box {
+            max-height: 350px; 
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 5px;
+            background-color: #fff;
         }
 
     </style>
@@ -308,8 +326,11 @@
     <img src="https://img.geocaching.com:443/d75362fa-0668-414e-adb7-20a2b35c3eed.png" class="logo-img" alt="Mikkokalevin logo">
     
     <div id="user-display" class="user-info-bar">
-        <span id="user-email-text"></span>
-        <button id="btn-toggle-mode" class="btn btn-small btn-gray" style="margin:0;">🔄 Vaihda näkymää</button>
+        <div class="user-info-row">
+            <span id="user-email-text"></span>
+            <button id="btn-toggle-mode" class="btn btn-small btn-gray" style="margin:0;">🔄 Vaihda näkymää</button>
+        </div>
+        <div id="version-display-user" style="font-size: 0.7em; color: #A0522D; text-align: right; width: 100%; opacity: 0.8;"></div>
     </div>
 
     <div id="login-view" class="view-section" style="display:flex; flex-direction:column; align-items:center;">
@@ -323,7 +344,7 @@
         <p style="margin: 10px 0; font-size:0.8em; color:#888;">— TAI —</p>
         <button id="btn-login-google" class="btn btn-green">Kirjaudu Googlella</button>
         
-        <div id="version-display"></div>
+        <div id="version-display-login"></div>
     </div>
 
     <div id="visitor-view" class="view-section">
@@ -434,7 +455,9 @@
 
         <div id="tab-lists" class="tab-content active">
             <div class="card"><h3>📈 Yhteenveto</h3><div id="stats-summary-text"></div></div>
-            <div class="card"><h3>🔎 Haun tulokset</h3><div id="stats-results-list"></div></div>
+            
+            <div class="card"><h3>🔎 Haun tulokset</h3><div id="stats-results-list" class="scroll-box"></div></div>
+            
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                 <div class="card"><h3>🏆 TOP 10</h3><div id="stats-top-10" style="font-size:0.8em;"></div></div>
                 <div class="card"><h3>🧊 BOTTOM 10</h3><div id="stats-bottom-10" style="font-size:0.8em;"></div></div>
@@ -449,7 +472,8 @@
                 <div id="stats-special-chars" style="margin-top:10px; font-size:0.8em; text-align:left; border-top:1px solid #eee; padding-top:10px;"></div>
             </div>
             <div class="card"><h3>🏘️ Paikkakunnat</h3><div id="stats-locations" style="max-height: 200px; overflow-y: auto;"></div></div>
-            <div class="card"><h3>⭐ Attribuutit</h3><div id="stats-attributes"></div></div>
+            
+            <div class="card"><h3>⭐ Attribuutit</h3><div id="stats-attributes" class="scroll-box"></div></div>
 
             <div class="card"><h3>☁️ Sanalouhos (Viestit)</h3><div id="stats-wordcloud"></div></div>
         </div>
