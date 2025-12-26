@@ -313,10 +313,10 @@
             }
         }
 
-        // --- TEEMAHALLINTA (Versio 7.1.0) ---
+        // --- TEEMAHALLINTA (Versio 7.1.0 - QR FIX) ---
         const themes = [
-            { class: '', icon: '🌙', name: 'Yö' },       // Oletus (Dark)
-            { class: 'theme-light', icon: '☀️', name: 'Päivä' },
+            { class: '', icon: '🌙', name: 'Yö' },       // 0: Oletus (Dark)
+            { class: 'theme-light', icon: '☀️', name: 'Päivä' }, // 1: Light
             { class: 'theme-green', icon: '🌲', name: 'Metsä' },
             { class: 'theme-blue', icon: '🌊', name: 'Meri' }
         ];
@@ -324,6 +324,16 @@
         let currentThemeIndex = 0;
 
         function initTheme() {
+            // TARKISTETAAN ONKO KYSEESSÄ QR-KOODI (Vierailija)
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('event')) {
+                // VIERAILIJALLE AINA LIGHT (Index 1)
+                currentThemeIndex = 1;
+                applyTheme();
+                return; // Lopetetaan, ei ladata localStoragesta
+            }
+
+            // NORMAALI KÄYTTÄJÄ: Ladataan muistista
             const saved = localStorage.getItem('mk-theme-idx');
             if (saved !== null) {
                 currentThemeIndex = parseInt(saved);
