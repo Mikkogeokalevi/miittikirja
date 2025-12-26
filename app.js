@@ -1,6 +1,6 @@
 // ==========================================
 // APP.JS - Päälogiikka
-// Versio: 7.2.0 (Smart Merge & Fixes)
+// Versio: 7.2.1 (QR Code Fix)
 // ==========================================
 
 // ==========================================
@@ -37,7 +37,7 @@ let globalEventList = [];
 let isAdminMode = true; 
 let wakeLock = null; 
 
-// MÄÄRITÄ TÄHÄN SINUN UID (HOST), jonne vieraiden kirjaukset menevät
+// OLETUS HOST UID (Käytetään jos linkissä ei ole uid-parametria)
 const HOST_UID = "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
 
 // Käyttöliittymän elementit
@@ -62,11 +62,13 @@ const loadingOverlay = document.getElementById('loading-overlay');
 window.addEventListener('load', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('event');
+    const hostId = urlParams.get('uid'); // Lue UID linkistä
 
     if (eventId) {
         console.log("Vierastila aktivoitu miitille:", eventId);
-        // Avataan vieraskirja suoraan ilman auth-tarkistusta
-        openVisitorGuestbook(HOST_UID, eventId);
+        // Käytä linkin UID:ta tai fallbäkkää oletukseen
+        const targetUid = hostId || HOST_UID;
+        openVisitorGuestbook(targetUid, eventId);
     }
 });
 
@@ -76,12 +78,12 @@ async function openVisitorGuestbook(uid, eventId) {
     // Tallennetaan ID talteen vieraskirjausta varten
     currentEventId = eventId;
     
-    // Haetaan VAIN tapahtuman tiedot (Säännöt sallivat tämän .read: true)
+    // Haetaan VAIN tapahtuman tiedot
     db.ref('miitit/' + uid + '/events/' + eventId).once('value', snap => {
         const evt = snap.val();
         
         if(!evt) {
-            alert("Miittiä ei löytynyt tai virheellinen linkki!");
+            alert("Miittiä ei löytynyt tai virheellinen linkki!\nTarkista onko tapahtuma poistettu.");
             if(loadingOverlay) loadingOverlay.style.display = 'none';
             return;
         }
@@ -102,6 +104,11 @@ async function openVisitorGuestbook(uid, eventId) {
         const statsView = document.getElementById('stats-view');
         if(statsView) statsView.style.display = 'none';
         
+        // Tallennetaan kohde-uid globaalisti vieraskirjausta varten (jos tarpeen myöhemmin)
+        // Huom: btnVisitorSign käyttää HOST_UID vakiota tai pitäisi käyttää dynaamista.
+        // Korjataan btnVisitorSign käyttämään tätä 'uid' parametria.
+        window.visitorTargetUid = uid;
+
         if(loadingOverlay) loadingOverlay.style.display = 'none';
         
     }, (error) => {
@@ -123,8 +130,10 @@ if (btnVisitorSign) {
         
         if(!nick) return alert("Kirjoita nimimerkkisi!");
         
-        // Tallennetaan Hostin alle
-        db.ref('miitit/' + HOST_UID + '/logs/' + currentEventId).push({
+        // Käytetään dynaamista UID:ta jos saatavilla, muuten vakiota
+        const targetUid = window.visitorTargetUid || HOST_UID;
+
+        db.ref('miitit/' + targetUid + '/logs/' + currentEventId).push({
             nickname: nick, 
             from: fromInput ? fromInput.value.trim() : "",
             message: msgInput ? msgInput.value.trim() : "", 
@@ -203,7 +212,7 @@ auth.onAuthStateChanged((user) => {
             
             // Päivitä versioinfo
             const vInfo = document.getElementById('version-display-user');
-            if(vInfo) vInfo.innerText = "v7.2.0 (Smart Merge)";
+            if(vInfo) vInfo.innerText = "v7.2.1 (QR Fix)";
         }
         
         // Jos käyttäjä on Admin/User tilassa, ladataan pääsivu
@@ -231,7 +240,7 @@ function showLoginView() {
     if(visitorView) visitorView.style.display = 'none';
     
     const vInfo = document.getElementById('version-display-login');
-    if(vInfo) vInfo.innerText = "v7.2.0 (Smart Merge)";
+    if(vInfo) vInfo.innerText = "v7.2.1 (QR Fix)";
 }
 
 function showMainView() {
@@ -287,9 +296,10 @@ if(btnToggleQr) {
         }
 
         container.innerHTML = "";
-        // Luodaan linkki: nykyinenSivu?event=EVENT_ID
+        // Luodaan linkki: nykyinenSivu?event=EVENT_ID&uid=HOST_UID
+        // Tämä varmistaa, että vierailija ohjautuu oikeaan tietokantaan!
         const baseUrl = window.location.href.split('?')[0];
-        const guestUrl = baseUrl + "?event=" + currentEventId;
+        const guestUrl = baseUrl + "?event=" + currentEventId + "&uid=" + currentUser.uid;
         
         if(linkText) linkText.innerText = guestUrl;
 
