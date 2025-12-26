@@ -165,7 +165,7 @@ auth.onAuthStateChanged((user) => {
         currentUser = null;
         if(userDisplay) userDisplay.style.display = 'none';
         showLoginView();
-        if (wakeLock) { wakeLock.release(); wakeLock = null; }
+        if (wakeLock) { try { wakeLock.release(); } catch(e){} wakeLock = null; }
     }
 });
 
@@ -280,7 +280,7 @@ window.selectNick = function(name, inputId, listId) {
 };
 
 // ==========================================
-// 7. APUFUNKTIOT (SIJAINTI JA KOORDINAATIT)
+// 7. APUFUNKTIOT (SIJAINTI JA GPX-PARSERI)
 // ==========================================
 
 function decimalToDMS(lat, lon) {
@@ -451,7 +451,7 @@ window.openGuestbook = function(eventKey) {
     if(currentEventId) db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
     currentEventId = eventKey;
     
-    db.ref('miitit/' + currentUser.uid + '/events/' + eventKey).on('value', snap => {
+    db.ref('miitit/' + (currentUser ? currentUser.uid : "T8wI16Gf67W4G4yX3Cq7U0U1H6I2") + '/events/' + eventKey).on('value', snap => {
         const evt = snap.val(); if(!evt) return;
         currentEventArchived = (evt.isArchived === true);
 
@@ -499,7 +499,7 @@ window.openGuestbook = function(eventKey) {
         if(notice) notice.style.display = currentEventArchived ? 'block' : 'none';
         
         // Aktivoi nimiehdotukset admin-kirjaukseen
-        setupAutocomplete('log-nickname', 'log-autocomplete', currentUser.uid);
+        if (currentUser) setupAutocomplete('log-nickname', 'log-autocomplete', currentUser.uid);
     });
 
     if(adminView) adminView.style.display = 'none'; 
@@ -513,7 +513,7 @@ window.openGuestbook = function(eventKey) {
     loadAttendees(eventKey);
 };
 
-// Vieraskirjan tallennus (Vieras QR-koodilla)
+// Kirjaus vieraalle (QR-koodilla)
 document.getElementById('btn-visitor-sign').onclick = function() {
     const nick = document.getElementById('vv-nickname').value.trim();
     if(!nick) return alert("Nimi vaaditaan!");
@@ -530,7 +530,7 @@ document.getElementById('btn-visitor-sign').onclick = function() {
     });
 };
 
-// Vieraskirjan tallennus (Admin/User tila)
+// Kirjaus Admin/User tila
 document.getElementById('btn-sign-log').onclick = function() {
     const nick = document.getElementById('log-nickname').value.trim();
     if(!nick) return alert("Nimi vaaditaan!");
@@ -674,7 +674,7 @@ window.openMassImport = function() {
 
 document.getElementById('btn-parse-mass').onclick = function() {
     const text = document.getElementById('mass-input').value; if(!text) return;
-    let names = []; const blocks = text.split(/Näytä\s+loki|View\s+Log/i);
+    let names = []; const blocks = text.split(/Näytä\s+loki|View\s+Log|View\s+\/\s+Edit/i);
     blocks.forEach(b => {
         if (/Osallistui|Attended/i.test(b)) {
             const m = b.match(/^(.*?)\s+(?:Premium\s+Member|Member|Reviewer)/i);
@@ -760,4 +760,4 @@ document.getElementById('btn-process-import').onclick = function() {
         document.getElementById('new-coords').value = coordMatch[1].trim();
         fetchCityFromCoords(coordMatch[1].trim(), 'new-loc');
     }
-};
+}; // LOPPU
