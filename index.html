@@ -313,15 +313,47 @@
             }
         }
 
-        function toggleTheme() {
-            document.body.classList.toggle('dark-theme');
-            const btn = document.getElementById('btn-theme-toggle');
-            if(document.body.classList.contains('dark-theme')) {
-                btn.innerText = "☀️";
-            } else {
-                btn.innerText = "🌙";
+        // --- TEEMAHALLINTA (Versio 7.1.0) ---
+        const themes = [
+            { class: '', icon: '🌙', name: 'Yö' },       // Oletus (Dark)
+            { class: 'theme-light', icon: '☀️', name: 'Päivä' },
+            { class: 'theme-green', icon: '🌲', name: 'Metsä' },
+            { class: 'theme-blue', icon: '🌊', name: 'Meri' }
+        ];
+
+        let currentThemeIndex = 0;
+
+        function initTheme() {
+            const saved = localStorage.getItem('mk-theme-idx');
+            if (saved !== null) {
+                currentThemeIndex = parseInt(saved);
             }
+            applyTheme();
         }
+
+        function toggleTheme() {
+            currentThemeIndex = (currentThemeIndex + 1) % themes.length;
+            localStorage.setItem('mk-theme-idx', currentThemeIndex);
+            applyTheme();
+        }
+
+        function applyTheme() {
+            // Poistetaan kaikki mahdolliset teemaluokat
+            document.body.classList.remove('theme-light', 'theme-green', 'theme-blue');
+
+            // Lisätään uusi, jos se ei ole oletus
+            const theme = themes[currentThemeIndex];
+            if (theme.class) {
+                document.body.classList.add(theme.class);
+            }
+
+            // Päivitetään nappi
+            const btn = document.getElementById('btn-theme-toggle');
+            if(btn) btn.innerText = theme.icon;
+        }
+
+        // Käynnistetään heti
+        initTheme();
     </script>
 </body>
 </html>
