@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.0.0
+// Versio: 7.1.0
 // ==========================================
 
-const APP_VERSION = "7.0.0";
+const APP_VERSION = "7.1.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
