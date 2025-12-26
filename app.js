@@ -1,4 +1,9 @@
 // ==========================================
+// APP.JS - Päälogiikka
+// Versio: 7.2.0 (Smart Merge & Fixes)
+// ==========================================
+
+// ==========================================
 // 1. FIREBASE ASETUKSET JA MUUTTUJAT
 // ==========================================
 
@@ -198,7 +203,7 @@ auth.onAuthStateChanged((user) => {
             
             // Päivitä versioinfo
             const vInfo = document.getElementById('version-display-user');
-            if(vInfo) vInfo.innerText = "v7.1.0 (Smart Merge)";
+            if(vInfo) vInfo.innerText = "v7.2.0 (Smart Merge)";
         }
         
         // Jos käyttäjä on Admin/User tilassa, ladataan pääsivu
@@ -226,7 +231,7 @@ function showLoginView() {
     if(visitorView) visitorView.style.display = 'none';
     
     const vInfo = document.getElementById('version-display-login');
-    if(vInfo) vInfo.innerText = "v7.1.0 (Smart Merge)";
+    if(vInfo) vInfo.innerText = "v7.2.0 (Smart Merge)";
 }
 
 function showMainView() {
