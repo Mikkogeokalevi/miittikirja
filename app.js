@@ -88,12 +88,14 @@ async function openVisitorGuestbook(uid, eventId) {
         if(nameEl) nameEl.innerText = evt.name;
         if(infoEl) infoEl.innerText = `${evt.date} klo ${evt.time || '-'}`;
         
-        // Näytetään vain vierasnäkymä
+        // PAKOTETAAN OIKEA NÄKYMÄ PÄÄLLE JA MUUT POIS
         if(visitorView) visitorView.style.display = 'block';
         if(loginView) loginView.style.display = 'none';
         if(adminView) adminView.style.display = 'none';
         if(userView) userView.style.display = 'none';
-        if(guestbookView) guestbookView.style.display = 'none';
+        if(guestbookView) guestbookView.style.display = 'none'; // TÄMÄ OLI ONGELMA
+        const statsView = document.getElementById('stats-view');
+        if(statsView) statsView.style.display = 'none';
         
         if(loadingOverlay) loadingOverlay.style.display = 'none';
         
@@ -540,11 +542,18 @@ window.openGuestbook = function(eventKey) {
         const qrArea = document.getElementById('qr-display-area');
         if(qrArea) qrArea.style.display = 'none';
         
-        // --- KORJATTU LOGIIKKA ---
-        // Admin-työkalut (QR, GPX, Massa) näkyvät VAIN jos käyttäjä on kirjautunut (currentUser)
-        const adminTools = document.getElementById('gb-admin-tools');
+        // --- QR-OSION NÄYTTÄMINEN ---
+        // Näytä QR-alue AINA jos ollaan kirjautuneena (currentUser)
+        const qrSection = document.getElementById('qr-section');
+        if (qrSection) {
+            qrSection.style.display = currentUser ? 'block' : 'none';
+        }
+        
+        // --- HALLINTATYÖKALUT (GPX / MASSA) ---
+        // Näytä VAIN jos isAdminMode = true
+        const adminTools = document.getElementById('admin-tools-wrapper');
         if(adminTools) {
-             adminTools.style.display = currentUser ? 'block' : 'none';
+             adminTools.style.display = (currentUser && isAdminMode) ? 'block' : 'none';
         }
         
         const actionsArea = document.getElementById('gb-actions-area');
