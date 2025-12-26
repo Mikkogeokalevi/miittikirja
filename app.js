@@ -61,9 +61,12 @@ const loadingOverlay = document.getElementById('loading-overlay');
 // ==========================================
 
 window.addEventListener('load', function() {
-    // Asetetaan versionumero näkyviin
-    const verDisplay = document.getElementById('version-display');
-    if(verDisplay) verDisplay.innerText = "v" + APP_VERSION;
+    // Asetetaan versionumero molempiin paikkoihin (Login & User Bar)
+    const verLogin = document.getElementById('version-display-login');
+    if(verLogin) verLogin.innerText = "v" + APP_VERSION;
+
+    const verUser = document.getElementById('version-display-user');
+    if(verUser) verUser.innerText = "Versio " + APP_VERSION;
 
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('event');
@@ -218,7 +221,7 @@ auth.onAuthStateChanged((user) => {
     if (user) {
         currentUser = user;
         if(userDisplay) {
-            userDisplay.style.display = 'flex';
+            userDisplay.style.display = 'flex'; // Muutettu flex, CSS hoitaa suunnan
             if(userEmailText) userEmailText.innerText = "👤 " + user.email;
         }
         
