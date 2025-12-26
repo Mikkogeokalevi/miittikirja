@@ -12,7 +12,7 @@ const firebaseConfig = {
     appId: "1:588536838615:web:148de0581bbd46c42c7392"
 };
 
-// Alustetaan Firebase huolellisesti
+// Alustetaan Firebase
 try { 
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig); 
@@ -29,10 +29,10 @@ let currentUser = null;
 let currentEventId = null;
 let currentEventArchived = false;
 let globalEventList = []; 
-let isAdminMode = true; // Oletuksena hallintatila päällä
-let wakeLock = null; // Näytön päälläpito-objekti
+let isAdminMode = true; 
+let wakeLock = null;
 
-// Käyttöliittymän pääelementit
+// UI Elementit
 const loginView = document.getElementById('login-view');
 const adminView = document.getElementById('admin-view');
 const userView = document.getElementById('user-view');
@@ -54,11 +54,9 @@ const loadingOverlay = document.getElementById('loading-overlay');
 window.addEventListener('load', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('event');
-    // Mikkokalevin UID kovakoodattuna vieraiden pääsyä varten
     const mikkokaleviUid = "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
 
     if (eventId) {
-        console.log("Vierastila aktivoitu miitille:", eventId);
         openVisitorGuestbook(mikkokaleviUid, eventId);
     }
 });
@@ -75,17 +73,13 @@ async function openVisitorGuestbook(uid, eventId) {
             return;
         }
         
-        const nameEl = document.getElementById('vv-event-name');
-        const infoEl = document.getElementById('vv-event-info');
-        
-        if(nameEl) nameEl.innerText = evt.name;
-        if(infoEl) infoEl.innerText = `${evt.date} klo ${evt.time || '-'}`;
+        if(document.getElementById('vv-event-name')) document.getElementById('vv-event-name').innerText = evt.name;
+        if(document.getElementById('vv-event-info')) document.getElementById('vv-event-info').innerText = `${evt.date} klo ${evt.time || '-'}`;
         
         if(visitorView) visitorView.style.display = 'block';
         if(loginView) loginView.style.display = 'none';
         if(loadingOverlay) loadingOverlay.style.display = 'none';
         
-        // Aktivoi nimiehdotukset myös vieraalle
         setupAutocomplete('vv-nickname', 'vv-autocomplete', uid);
     });
 }
@@ -112,8 +106,8 @@ function customConfirm(title, message) {
             resolve(response);
         };
 
-        if(yesBtn) yesBtn.onclick = function() { handleResponse(true); };
-        if(noBtn) noBtn.onclick = function() { handleResponse(false); };
+        if(yesBtn) yesBtn.onclick = () => handleResponse(true);
+        if(noBtn) noBtn.onclick = () => handleResponse(false);
     });
 }
 
@@ -125,25 +119,15 @@ const requestWakeLock = async () => {
     try {
         if ('wakeLock' in navigator) {
             wakeLock = await navigator.wakeLock.request('screen');
-            console.log('Wake Lock aktivoitu ✅');
         }
-    } catch (err) { 
-        console.error(`Wake Lock virhe: ${err.name}, ${err.message}`); 
-    }
+    } catch (err) { console.error("WakeLock virhe:", err); }
 };
 
-document.addEventListener('visibilitychange', async () => {
-    if (wakeLock !== null && document.visibilityState === 'visible') {
-        await requestWakeLock();
-    }
-});
-
 // ==========================================
-// 5. KIRJAUTUMINEN JA NÄKYMIEN HALLINTA
+// 5. KIRJAUTUMINEN JA NÄKYMÄT
 // ==========================================
 
 auth.onAuthStateChanged((user) => {
-    // Jos ollaan vierasnäkymässä, ei häiritä kirjautumistarkistuksella
     if (visitorView && visitorView.style.display === 'block') return;
 
     if (user) {
@@ -152,20 +136,13 @@ auth.onAuthStateChanged((user) => {
             userDisplay.style.display = 'flex';
             if(userEmailText) userEmailText.innerText = "👤 " + user.email;
         }
-        
-        const statsView = document.getElementById('stats-view');
-        if (guestbookView.style.display !== 'block' && 
-            (!statsView || statsView.style.display !== 'block')) {
-            showMainView();
-        }
-        
+        showMainView();
         loadEvents();
         requestWakeLock();
     } else {
         currentUser = null;
         if(userDisplay) userDisplay.style.display = 'none';
         showLoginView();
-        if (wakeLock) { try { wakeLock.release(); } catch(e){} wakeLock = null; }
     }
 });
 
@@ -178,14 +155,11 @@ function showLoginView() {
 }
 
 function showMainView() {
-    if (!currentUser) { showLoginView(); return; }
-    
+    if (!currentUser) return showLoginView();
     if(loginView) loginView.style.display = 'none'; 
     if(visitorView) visitorView.style.display = 'none';
     if(guestbookView) guestbookView.style.display = 'none';
-    
-    const statsView = document.getElementById('stats-view');
-    if(statsView) statsView.style.display = 'none';
+    if(document.getElementById('stats-view')) document.getElementById('stats-view').style.display = 'none';
 
     if (isAdminMode) {
         if(adminView) adminView.style.display = 'block';
@@ -194,50 +168,29 @@ function showMainView() {
         if(adminView) adminView.style.display = 'none';
         if(userView) userView.style.display = 'block';
     }
-    
-    if(currentEventId) { 
-        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off(); 
-        currentEventId = null; 
-    }
 }
-
-window.showMainView = showMainView;
 
 document.getElementById('btn-toggle-mode').onclick = function() {
     isAdminMode = !isAdminMode;
-    const btn = document.getElementById('btn-toggle-mode');
-    btn.innerText = isAdminMode ? "🔄 Hallinta-tila" : "🔄 Miittikirja-tila";
+    this.innerText = isAdminMode ? "🔄 Hallinta-tila" : "🔄 Miittikirja-tila";
     showMainView();
     loadEvents();
 };
 
 // ==========================================
-// 6. QR-KOODI JA NIMIEHDOTUKSET (AUTOCOMPLETE)
+// 6. QR-KOODI JA NIMIEHDOTUKSET
 // ==========================================
 
 document.getElementById('btn-toggle-qr').onclick = function() {
     const area = document.getElementById('qr-display-area');
     const container = document.getElementById('qrcode-container');
-    const linkText = document.getElementById('qr-link-text');
-    
-    if (area.style.display === 'block') {
-        area.style.display = 'none';
-        return;
-    }
+    if (area.style.display === 'block') { area.style.display = 'none'; return; }
 
     container.innerHTML = "";
     const guestUrl = window.location.origin + window.location.pathname + "?event=" + currentEventId;
-    if(linkText) linkText.innerText = guestUrl;
+    if(document.getElementById('qr-link-text')) document.getElementById('qr-link-text').innerText = guestUrl;
 
-    new QRCode(container, {
-        text: guestUrl,
-        width: 180,
-        height: 180,
-        colorDark : "#8B4513",
-        colorLight : "#ffffff",
-        correctLevel : QRCode.CorrectLevel.H
-    });
-
+    new QRCode(container, { text: guestUrl, width: 180, height: 180, colorDark : "#8B4513" });
     area.style.display = 'block';
 };
 
@@ -258,27 +211,19 @@ function setupAutocomplete(inputId, listId, uid) {
             });
         });
         
-        const matches = [...new Set(allNames)]
-            .filter(n => n.toLowerCase().startsWith(val))
-            .sort()
-            .slice(0, 5);
+        const matches = [...new Set(allNames)].filter(n => n.toLowerCase().startsWith(val)).sort().slice(0, 5);
 
         if (matches.length > 0) {
             list.innerHTML = matches.map(m => `<div class="autocomplete-item" onclick="selectNick('${m}', '${inputId}', '${listId}')">${m}</div>`).join('');
             list.style.display = 'block';
-        } else {
-            list.style.display = 'none';
-        }
+        } else { list.style.display = 'none'; }
     };
 }
 
 window.selectNick = function(name, inputId, listId) {
-    const el = document.getElementById(inputId);
-    if(el) el.value = name;
-    const list = document.getElementById(listId);
-    if(list) list.style.display = 'none';
+    document.getElementById(inputId).value = name;
+    document.getElementById(listId).style.display = 'none';
 };
-
 // ==========================================
 // 7. APUFUNKTIOT (SIJAINTI JA GPX-PARSERI)
 // ==========================================
@@ -486,28 +431,18 @@ window.openGuestbook = function(eventKey) {
             descEl.innerHTML = evt.descriptionHtml; document.getElementById('box-desc').style.display = 'block';
         } else document.getElementById('box-desc').style.display = 'none';
 
-        const qrArea = document.getElementById('qr-display-area');
-        if(qrArea) qrArea.style.display = 'none';
+        if(document.getElementById('qr-display-area')) document.getElementById('qr-display-area').style.display = 'none';
+        if(document.getElementById('gb-admin-tools')) document.getElementById('gb-admin-tools').style.display = isAdminMode ? 'block' : 'none';
+        if(document.getElementById('gb-actions-area')) document.getElementById('gb-actions-area').style.display = currentEventArchived ? 'none' : 'block';
+        if(document.getElementById('archived-notice')) document.getElementById('archived-notice').style.display = currentEventArchived ? 'block' : 'none';
         
-        const adminTools = document.getElementById('gb-admin-tools');
-        if(adminTools) adminTools.style.display = isAdminMode ? 'block' : 'none';
-        
-        const actionsArea = document.getElementById('gb-actions-area');
-        if(actionsArea) actionsArea.style.display = currentEventArchived ? 'none' : 'block';
-        
-        const notice = document.getElementById('archived-notice');
-        if(notice) notice.style.display = currentEventArchived ? 'block' : 'none';
-        
-        // Aktivoi nimiehdotukset admin-kirjaukseen
         if (currentUser) setupAutocomplete('log-nickname', 'log-autocomplete', currentUser.uid);
     });
 
     if(adminView) adminView.style.display = 'none'; 
     if(userView) userView.style.display = 'none'; 
     if(guestbookView) guestbookView.style.display = 'block';
-    
-    const statsView = document.getElementById('stats-view');
-    if(statsView) statsView.style.display = 'none';
+    if(document.getElementById('stats-view')) document.getElementById('stats-view').style.display = 'none';
     
     window.scrollTo(0,0);
     loadAttendees(eventKey);
@@ -612,15 +547,12 @@ window.toggleArchive = async function(key, status) {
 };
 
 window.deleteEvent = async function(key) {
-    const ok = await customConfirm("Poista miitti", "Tätä ei voi perua. Haluatko varmasti poistaa miitin ja kaikki sen kirjaukset?");
-    if (ok) { 
-        db.ref('miitit/'+currentUser.uid+'/events/'+key).remove(); 
-        db.ref('miitit/'+currentUser.uid+'/logs/'+key).remove(); 
-    }
+    const ok = await customConfirm("Poista miitti", "Tätä ei voi perua. Haluatko varmasti poistaa miitin?");
+    if (ok) { db.ref('miitit/'+currentUser.uid+'/events/'+key).remove(); db.ref('miitit/'+currentUser.uid+'/logs/'+key).remove(); }
 };
 
 window.deleteLog = async function(logKey) {
-    const ok = await customConfirm("Poista kirjaus", "Haluatko varmasti poistaa tämän kävijän kirjauksen?");
+    const ok = await customConfirm("Poista kirjaus", "Poistetaanko tämä kävijä?");
     if (ok) db.ref('miitit/'+currentUser.uid+'/logs/'+currentEventId+'/'+logKey).remove();
 };
 
@@ -637,14 +569,8 @@ window.openLogEditModal = function(logKey) {
 
 document.getElementById('btn-save-log-edit').onclick = function() {
     const key = document.getElementById('log-edit-key').value;
-    const update = { 
-        nickname: document.getElementById('log-edit-nick').value, 
-        from: document.getElementById('log-edit-from').value, 
-        message: document.getElementById('log-edit-msg').value 
-    };
-    db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + key).update(update).then(() => { 
-        if(logEditModal) logEditModal.style.display = "none"; 
-    });
+    const update = { nickname: document.getElementById('log-edit-nick').value, from: document.getElementById('log-edit-from').value, message: document.getElementById('log-edit-msg').value };
+    db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId + '/' + key).update(update).then(() => { if(logEditModal) logEditModal.style.display = "none"; });
 };
 
 // ==========================================
@@ -656,19 +582,13 @@ document.getElementById('import-gpx-sync').onchange = async function(e) {
     const file = e.target.files[0]; if (!file || !currentEventId) return;
     if(loadingOverlay) loadingOverlay.style.display = 'flex';
     const text = await file.text(); const data = parseGPX(text);
-    if (data) {
-        db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({ attributes: data.attributes, coords: data.coords });
-        alert("Tiedot päivitetty GPX-tiedostosta!");
-    }
+    if (data) { db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({ attributes: data.attributes, coords: data.coords }); alert("Päivitetty!"); }
     if(loadingOverlay) loadingOverlay.style.display = 'none';
 };
 
 window.openMassImport = function() {
-    const input = document.getElementById('mass-input');
-    const output = document.getElementById('mass-output');
-    if(input) input.value = ""; if(output) output.value = ""; 
-    document.getElementById('mass-step-1').style.display = 'block'; 
-    document.getElementById('mass-step-2').style.display = 'none';
+    document.getElementById('mass-input').value = ""; document.getElementById('mass-output').value = ""; 
+    document.getElementById('mass-step-1').style.display = 'block'; document.getElementById('mass-step-2').style.display = 'none';
     if(massModal) massModal.style.display = "block";
 };
 
@@ -681,23 +601,15 @@ document.getElementById('btn-parse-mass').onclick = function() {
             if (m && m[1]) names.push(m[1].trim());
         }
     });
-    names = [...new Set(names)]; if (names.length === 0) return alert("Nimiä ei löytynyt!");
+    names = [...new Set(names)]; if (names.length === 0) return alert("Ei nimiä!");
     document.getElementById('mass-output').value = names.join('\n');
-    document.getElementById('mass-step-1').style.display = 'none'; 
-    document.getElementById('mass-step-2').style.display = 'block';
+    document.getElementById('mass-step-1').style.display = 'none'; document.getElementById('mass-step-2').style.display = 'block';
 };
 
 document.getElementById('btn-save-mass').onclick = function() {
     const nicks = document.getElementById('mass-output').value.split('\n').map(s => s.trim()).filter(s => s.length > 0);
-    nicks.forEach(n => { 
-        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({ nickname: n, from: "", message: "(Massa)", timestamp: firebase.database.ServerValue.TIMESTAMP }); 
-    });
+    nicks.forEach(n => { db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({ nickname: n, from: "", message: "(Massa)", timestamp: firebase.database.ServerValue.TIMESTAMP }); });
     if(massModal) massModal.style.display = "none";
-};
-
-window.resetMassModal = function() { 
-    document.getElementById('mass-step-1').style.display = 'block'; 
-    document.getElementById('mass-step-2').style.display = 'none'; 
 };
 
 // ==========================================
@@ -705,7 +617,7 @@ window.resetMassModal = function() {
 // ==========================================
 
 document.getElementById('btn-logout').onclick = async function() {
-    const ok = await customConfirm("Kirjaudu ulos", "Haluatko varmasti kirjautua ulos sovelluksesta?");
+    const ok = await customConfirm("Kirjaudu ulos", "Haluatko varmasti ulos?");
     if (ok) auth.signOut().then(() => location.reload());
 };
 
@@ -713,15 +625,10 @@ document.getElementById('btn-login-google').onclick = () => auth.signInWithPopup
 document.getElementById('btn-email-login').onclick = () => auth.signInWithEmailAndPassword(document.getElementById('email-input').value, document.getElementById('password-input').value);
 document.getElementById('btn-email-register').onclick = () => auth.createUserWithEmailAndPassword(document.getElementById('email-input').value, document.getElementById('password-input').value);
 
-window.closeModal = () => { 
-    ['edit-modal','mass-modal','log-edit-modal','confirm-modal'].forEach(id => {
-        const el = document.getElementById(id); if(el) el.style.display = "none";
-    });
-};
+window.closeModal = () => { ['edit-modal','mass-modal','log-edit-modal','confirm-modal'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = "none"; }); };
 
 const openStats = () => {
-    if(adminView) adminView.style.display = 'none'; 
-    if(userView) userView.style.display = 'none';
+    if(adminView) adminView.style.display = 'none'; if(userView) userView.style.display = 'none';
     const statsView = document.getElementById('stats-view');
     if(statsView) statsView.style.display = 'block';
     if (typeof initStats === 'function') initStats();
@@ -733,7 +640,7 @@ document.getElementById('btn-show-stats-user').onclick = openStats;
 document.getElementById('btn-find-today').onclick = () => {
     const today = new Date().toISOString().split('T')[0];
     const todayEvent = globalEventList.find(e => e.date === today);
-    if (todayEvent) openGuestbook(todayEvent.key); else alert("Tälle päivälle ei ole miittiä.");
+    if (todayEvent) openGuestbook(todayEvent.key); else alert("Ei miittiä tänään.");
 };
 
 window.navigateEvent = function(direction) {
@@ -760,4 +667,34 @@ document.getElementById('btn-process-import').onclick = function() {
         document.getElementById('new-coords').value = coordMatch[1].trim();
         fetchCityFromCoords(coordMatch[1].trim(), 'new-loc');
     }
-}; // LOPPU
+};
+
+window.resetMassModal = () => {
+    document.getElementById('mass-step-1').style.display = 'block';
+    document.getElementById('mass-step-2').style.display = 'none';
+};
+
+document.getElementById('btn-add-event').onclick = function() {
+    if(!currentUser) return;
+    const eventData = {
+        type: document.getElementById('new-type').value,
+        gc: document.getElementById('new-gc').value.trim(),
+        name: document.getElementById('new-name').value.trim(),
+        date: document.getElementById('new-date').value,
+        time: document.getElementById('new-time').value.trim(),
+        coords: document.getElementById('new-coords').value.trim(),
+        location: document.getElementById('new-loc').value.trim(),
+        descriptionHtml: document.getElementById('new-desc').value.trim(),
+        createdAt: firebase.database.ServerValue.TIMESTAMP
+    };
+    if(!eventData.name || !eventData.date) return alert("Nimi ja päivä!");
+    db.ref('miitit/' + currentUser.uid + '/events').push(eventData).then(() => {
+        alert("Tallennettu!");
+        document.getElementById('new-event-form').style.display = 'none';
+    });
+};
+
+document.getElementById('new-event-toggle').onclick = function() {
+    const f = document.getElementById('new-event-form');
+    f.style.display = (f.style.display === 'none') ? 'block' : 'none';
+};
