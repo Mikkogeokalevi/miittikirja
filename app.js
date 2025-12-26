@@ -195,6 +195,10 @@ auth.onAuthStateChanged((user) => {
         if(userDisplay) {
             userDisplay.style.display = 'flex';
             if(userEmailText) userEmailText.innerText = "👤 " + user.email;
+            
+            // Päivitä versioinfo
+            const vInfo = document.getElementById('version-display-user');
+            if(vInfo) vInfo.innerText = "v7.1.0 (Smart Merge)";
         }
         
         // Jos käyttäjä on Admin/User tilassa, ladataan pääsivu
@@ -220,6 +224,9 @@ function showLoginView() {
     if(userView) userView.style.display = 'none';
     if(guestbookView) guestbookView.style.display = 'none'; 
     if(visitorView) visitorView.style.display = 'none';
+    
+    const vInfo = document.getElementById('version-display-login');
+    if(vInfo) vInfo.innerText = "v7.1.0 (Smart Merge)";
 }
 
 function showMainView() {
@@ -632,10 +639,10 @@ function loadAttendees(eventKey) {
             // Viestien näyttäminen: Miittikirja vs Nettilogi
             let messageHtml = "";
             if (log.message) {
-                messageHtml += `<div style="font-style:italic; color:#888; font-size:0.9em;">📖 ${log.message}</div>`;
+                messageHtml += `<div style="font-style:italic; color:var(--text-color); opacity:0.8; font-size:0.9em;">📖 ${log.message}</div>`;
             }
             if (log.gpxMessage) {
-                 messageHtml += `<div style="font-style:italic; color:#2196f3; font-size:0.85em; margin-top:2px;">🌐 ${log.gpxMessage.substring(0, 100)}${log.gpxMessage.length > 100 ? '...' : ''}</div>`;
+                 messageHtml += `<div style="font-style:italic; color:var(--secondary-color); font-size:0.85em; margin-top:2px;">🌐 ${log.gpxMessage.substring(0, 100)}${log.gpxMessage.length > 100 ? '...' : ''}</div>`;
             }
 
             let btns = (isAdminMode && !currentEventArchived && currentUser) ? `
@@ -644,7 +651,7 @@ function loadAttendees(eventKey) {
                     <button class="btn-red btn-small" onclick="deleteLog('${log.key}')">🗑</button>
                 </div>` : "";
             
-            row.innerHTML = `<div><strong style="color:#4caf50;">${log.nickname}</strong><span>${log.from ? ' / ' + log.from : ''}</span>
+            row.innerHTML = `<div><strong style="color:var(--today-border);">${log.nickname}</strong><span>${log.from ? ' / ' + log.from : ''}</span>
             ${messageHtml}</div>${btns}`;
             listEl.appendChild(row);
         });
