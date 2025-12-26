@@ -6,16 +6,19 @@
   "display": "standalone",
   "background_color": "#FDF5E6",
   "theme_color": "#8B4513",
+  "orientation": "any",
   "icons": [
     {
       "src": "https://img.geocaching.com:443/d75362fa-0668-414e-adb7-20a2b35c3eed.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "https://img.geocaching.com:443/d75362fa-0668-414e-adb7-20a2b35c3eed.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
