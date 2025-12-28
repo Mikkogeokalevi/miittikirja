@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.1.5 - User Registry & Profile
+// Versio: 7.1.6 - Fix: Bottom 10 excludes future
 // ==========================================
 
 let allStatsData = {
@@ -106,13 +106,21 @@ function updateStatsView(data) {
     }
 
     // 3. Tekstilistat
-    renderUserRegistry(data); // UUSI: Kävijäluettelo
+    renderUserRegistry(data); 
     renderAlphabetStats(data);
-    renderTopUsersList(data); // Vanha Top 10 (ei klikattava)
+    renderTopUsersList(data); 
     renderLoyaltyPyramid(data); 
     renderWordCloud(data);      
     
-    const filteredForLists = data.filter(e => !e.name.includes("/ PERUTTU /"));
+    // --- KORJAUS: Suodatetaan pois tulevat miitit Top/Bottom listoilta ---
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    const filteredForLists = data.filter(e => {
+        const isCancelled = e.name.includes("/ PERUTTU /");
+        const isFuture = e.date > todayStr; 
+        return !isCancelled && !isFuture; // Näytä vain menneet/nykyiset, jotka ei peruttu
+    });
+
     const sortedByCount = [...filteredForLists].sort((a, b) => b.attendeeCount - a.attendeeCount);
     
     const renderList = (list, elementId) => {
@@ -238,7 +246,7 @@ function renderCharts(data) {
         }
     });
 
-    // --- UUSI: 4. KUMULATIIVINEN KASVU (Koko historia) ---
+    // --- 4. KUMULATIIVINEN KASVU (Koko historia) ---
     clearChart('cumulative');
     
     // Käytetään AINA koko dataa (allStatsData.events), jotta graafi näyttää "uran" kehityksen
