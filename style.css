@@ -1,6 +1,6 @@
 /* ==========================================
    MK MIITTIKIRJA - STYLE.CSS
-   Versio: 7.1.0
+   Versio: 7.1.4
    Teema: Multi-Theme Support
    ========================================== */
 
@@ -435,4 +435,21 @@ body.theme-light .attr-tag.neg {
     border: 1px solid var(--dotted-border);
     padding: 5px;
     background-color: var(--card-bg);
+}
+
+/* --- UUSI: KLIKATTAVAT NIMET (User Profile) --- */
+.clickable-name {
+    cursor: pointer;
+    color: var(--link-color);
+    font-weight: bold;
+    border-bottom: 1px dotted var(--secondary-color);
+    transition: all 0.2s;
+}
+.clickable-name:hover {
+    color: var(--primary-color);
+    border-bottom: 1px solid var(--primary-color);
+    background-color: rgba(255,255,255,0.05);
+    border-radius: 4px;
+    padding: 0 4px;
+    margin: 0 -4px;
 }
