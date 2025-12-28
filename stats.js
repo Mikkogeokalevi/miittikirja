@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.1.6 - Fix: Bottom 10 excludes future
+// Versio: 7.2.0 - Map, TimeSlots & Weekday Fix
 // ==========================================
 
 let allStatsData = {
@@ -8,8 +8,9 @@ let allStatsData = {
     attendees: {}
 };
 
-// Säilytetään kaavio-oliot tässä, jotta ne voidaan tuhota päivitettäessä
+// Säilytetään kaavio-oliot ja kartta tässä
 let chartInstances = {};
+let mapInstance = null;
 
 async function initStats() {
     if (!currentUser) return;
@@ -92,8 +93,9 @@ function updateStatsView(data) {
     const resultsEl = document.getElementById('stats-results-list');
     if(resultsEl) {
         resultsEl.innerHTML = "";
-        if (data.length === 0) resultsEl.innerHTML = "Ei hakua vastaavia miittejä.";
-        else {
+        if (data.length === 0) {
+            resultsEl.innerHTML = "Ei hakua vastaavia miittejä.";
+        } else {
             const sortedResults = [...data].sort((a,b) => new Date(b.date) - new Date(a.date));
             sortedResults.forEach(evt => {
                 const item = document.createElement('div');
@@ -105,20 +107,20 @@ function updateStatsView(data) {
         }
     }
 
-    // 3. Tekstilistat
+    // 3. Tekstilistat ja visuaaliset elementit
     renderUserRegistry(data); 
     renderAlphabetStats(data);
     renderTopUsersList(data); 
     renderLoyaltyPyramid(data); 
-    renderWordCloud(data);      
+    renderWordCloud(data);
+    renderTimeSlots(data); // UUSI: 15-min aikataulut
     
-    // --- KORJAUS: Suodatetaan pois tulevat miitit Top/Bottom listoilta ---
+    // Bottom 10 korjaus (ei tulevia/peruttuja)
     const todayStr = new Date().toISOString().split('T')[0];
-    
     const filteredForLists = data.filter(e => {
         const isCancelled = e.name.includes("/ PERUTTU /");
         const isFuture = e.date > todayStr; 
-        return !isCancelled && !isFuture; // Näytä vain menneet/nykyiset, jotka ei peruttu
+        return !isCancelled && !isFuture; 
     });
 
     const sortedByCount = [...filteredForLists].sort((a, b) => b.attendeeCount - a.attendeeCount);
@@ -126,19 +128,147 @@ function updateStatsView(data) {
     const renderList = (list, elementId) => {
         const el = document.getElementById(elementId);
         if(!el) return;
-        el.innerHTML = list.map((e, i) => `<div class="stats-row"><span>${i+1}. ${e.name}</span> <strong>${e.attendeeCount}</strong></div>`).join('') || "Ei tietoja.";
+        if (list.length === 0) { el.innerHTML = "Ei tietoja."; return; }
+        el.innerHTML = list.map((e, i) => 
+            `<div class="stats-row"><span>${i+1}. ${e.name}</span> <strong>${e.attendeeCount}</strong></div>`
+        ).join('');
     };
+
     renderList(sortedByCount.slice(0, 10), 'stats-top-10');
     renderList([...sortedByCount].reverse().slice(0, 10), 'stats-bottom-10');
 
-    // Sijainnit ja attribuutit tekstinä
     renderLocationsTable(data);
     renderAttributesList(data);
 
-    // Päivitetään graafit heti jos välilehti on auki
+    // Päivitetään graafit ja kartta heti jos välilehti on auki
     if(document.getElementById('tab-graphs').classList.contains('active')) {
         renderCharts(data);
     }
+    if(document.getElementById('tab-map') && document.getElementById('tab-map').classList.contains('active')) {
+        renderMap(data);
+    }
+}
+
+// ==========================================
+// UUSI: KARTTANÄKYMÄ (LEAFLET)
+// ==========================================
+
+window.renderMap = function(data) {
+    // Varmistetaan että Leaflet on ladattu ja kontti on olemassa
+    if (typeof L === 'undefined' || !document.getElementById('stats-map')) return;
+
+    // Jos kartta on jo olemassa, poistetaan se jotta voidaan piirtää uudelleen (suodatukset)
+    if (mapInstance) {
+        mapInstance.remove();
+        mapInstance = null;
+    }
+
+    // Alustetaan kartta
+    mapInstance = L.map('stats-map').setView([64.0, 26.0], 5); // Suomen keskipiste
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(mapInstance);
+
+    const bounds = []; // Rajaukset zoomia varten
+
+    // Helper: Muunna koordinaatit (N 60° 12.345 E 024° 34.567) desimaaliksi
+    const parseCoord = (coordStr) => {
+        if (!coordStr) return null;
+        // Yritetään löytää N/S ja E/W lukemat
+        const regex = /([NS])\s*(\d+)°\s*([\d\.]+)\s*([EW])\s*(\d+)°\s*([\d\.]+)/;
+        const match = coordStr.match(regex);
+        
+        if (match) {
+            let lat = parseInt(match[2]) + parseFloat(match[3]) / 60;
+            if (match[1] === 'S') lat = -lat;
+            
+            let lon = parseInt(match[5]) + parseFloat(match[6]) / 60;
+            if (match[4] === 'W') lon = -lon;
+            
+            return [lat, lon];
+        }
+        return null;
+    };
+
+    data.forEach(evt => {
+        if (evt.coords) {
+            const latLng = parseCoord(evt.coords);
+            if (latLng) {
+                const marker = L.marker(latLng).addTo(mapInstance);
+                marker.bindPopup(`<b>${evt.name}</b><br>${evt.date}<br>👤 ${evt.attendeeCount}`);
+                bounds.push(latLng);
+            }
+        }
+    });
+
+    // Zoomataan niin että kaikki nastat näkyvät
+    if (bounds.length > 0) {
+        mapInstance.fitBounds(bounds);
+    }
+    
+    // Tärkeä: Pakota kartan koon päivitys, koska se saattaa olla piilossa olleessa divissä
+    setTimeout(() => { mapInstance.invalidateSize(); }, 200);
+};
+
+// ==========================================
+// UUSI: AIKATAULUT (15 min tarkkuus)
+// ==========================================
+
+function renderTimeSlots(data) {
+    const el = document.getElementById('stats-time-slots');
+    if (!el) return;
+
+    // Alustetaan laskuri kaikille varttikelloajoille
+    const slotCounts = {};
+    for (let h = 0; h < 24; h++) {
+        for (let m = 0; m < 60; m += 15) {
+            const key = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+            slotCounts[key] = 0;
+        }
+    }
+
+    // Käydään datat läpi
+    let maxCount = 0;
+    data.forEach(evt => {
+        if (evt.time) {
+            // Otetaan alkuaika (esim "18:00-19:00" -> "18:00")
+            const start = evt.time.split('-')[0].trim();
+            // Normalisoidaan aika (esim. 18.00 -> 18:00)
+            const normalized = start.replace('.', ':');
+            
+            // Jos aika löytyy meidän varttilistasta, lisätään laskuriin
+            if (slotCounts.hasOwnProperty(normalized)) {
+                slotCounts[normalized]++;
+                if (slotCounts[normalized] > maxCount) maxCount = slotCounts[normalized];
+            }
+        }
+    });
+
+    // Luodaan HTML-ruudukko
+    let html = "";
+    Object.keys(slotCounts).sort().forEach(time => {
+        const count = slotCounts[time];
+        const isActive = count > 0;
+        
+        // Hieno visuaalinen kikka: opacity countin mukaan
+        // Jos 0 -> luokka 'empty'
+        // Jos >0 -> luokka 'active', ja mahdollisesti tummempi väri suosion mukaan
+        
+        let style = "";
+        if (isActive) {
+            // Lasketaan "kuumuus" suhteessa maksimiin (minimi 0.2 opacity)
+            const opacity = 0.4 + (count / maxCount) * 0.6;
+            // style = `background-color: rgba(205, 133, 63, ${opacity}); color: #fff;`; // Käytetään CSS luokkia mieluummin
+        }
+
+        const className = isActive ? "time-slot-box active" : "time-slot-box empty";
+        const content = isActive ? `${time}<br><strong>${count}</strong>` : time;
+        
+        html += `<div class="${className}">${content}</div>`;
+    });
+
+    el.innerHTML = html;
 }
 
 // ==========================================
@@ -149,7 +279,6 @@ window.openUserProfile = function(nickname) {
     if (!nickname) return;
     
     // Etsitään kaikki tapahtumat joissa käyttäjä on ollut
-    // Käytetään allStatsData.events, jotta saadaan koko historia riippumatta filttereistä
     const userEvents = allStatsData.events.filter(evt => 
         evt.attendeeNames && evt.attendeeNames.some(n => n.toLowerCase() === nickname.toLowerCase())
     );
@@ -196,7 +325,6 @@ function renderCharts(data) {
         if (chartInstances[id]) { chartInstances[id].destroy(); }
     };
 
-    // HUOM: Chart.js käyttää tässä perusvärejä, jotka toimivat useimmissa teemoissa.
     const colors = {
         primary: '#8B4513', 
         secondary: '#D2691E',
@@ -204,11 +332,21 @@ function renderCharts(data) {
         text: '#4E342E'
     };
 
-    // --- 1. VIIKONPÄIVÄT ---
+    // --- 1. VIIKONPÄIVÄT (MAANANTAI ALKUINEN) ---
     clearChart('weekdays');
-    const dayLabels = ["Su", "Ma", "Ti", "Ke", "To", "Pe", "La"];
+    const dayLabels = ["Ma", "Ti", "Ke", "To", "Pe", "La", "Su"];
     const dayData = [0,0,0,0,0,0,0];
-    data.forEach(e => { if(e.date) dayData[new Date(e.date).getDay()]++; });
+    
+    data.forEach(e => { 
+        if(e.date) {
+            // getDay(): 0=Su, 1=Ma, ... 6=La
+            // Haluamme: 0=Ma, ... 6=Su
+            // Kaava: (day + 6) % 7
+            const jsDay = new Date(e.date).getDay();
+            const fiDay = (jsDay + 6) % 7;
+            dayData[fiDay]++; 
+        }
+    });
     
     chartInstances['weekdays'] = new Chart(document.getElementById('chart-weekdays-canvas'), {
         type: 'bar',
@@ -246,15 +384,11 @@ function renderCharts(data) {
         }
     });
 
-    // --- 4. KUMULATIIVINEN KASVU (Koko historia) ---
+    // --- 4. KUMULATIIVINEN KASVU ---
     clearChart('cumulative');
-    
-    // Käytetään AINA koko dataa (allStatsData.events), jotta graafi näyttää "uran" kehityksen
     const allEventsSorted = [...allStatsData.events].sort((a,b) => new Date(a.date) - new Date(b.date));
-    
     const uniqueUsersSet = new Set();
     const cumulativePoints = [];
-    
     allEventsSorted.forEach(evt => {
         let newUsers = 0;
         if(evt.attendeeNames) {
@@ -266,11 +400,7 @@ function renderCharts(data) {
                 }
             });
         }
-        // Lisätään datapiste
-        cumulativePoints.push({
-            x: evt.date,
-            y: uniqueUsersSet.size
-        });
+        cumulativePoints.push({ x: evt.date, y: uniqueUsersSet.size });
     });
 
     chartInstances['cumulative'] = new Chart(document.getElementById('chart-cumulative-canvas'), {
@@ -280,16 +410,13 @@ function renderCharts(data) {
             datasets: [{ 
                 label: 'Uniikit kävijät yhteensä', 
                 data: cumulativePoints.map(p => p.y),
-                borderColor: '#2e7d32', // Forest green
-                backgroundColor: 'rgba(46, 125, 50, 0.1)', 
-                fill: true, 
-                pointRadius: 2,
-                tension: 0.1
+                borderColor: '#2e7d32', backgroundColor: 'rgba(46, 125, 50, 0.1)', 
+                fill: true, pointRadius: 2, tension: 0.1
             }]
         }
     });
 
-    // --- 5. KELLONAJAT ---
+    // --- 5. KELLONAJAT (TUNNIT) ---
     clearChart('hours');
     const hoursData = Array(24).fill(0);
     data.forEach(e => {
@@ -324,7 +451,7 @@ function renderCharts(data) {
         }
     });
 
-    // --- 7. PAIKKAKUNNAT (Top 10) ---
+    // --- 7. PAIKKAKUNNAT ---
     clearChart('locations');
     const locMap = {};
     data.forEach(e => { if (e.location) locMap[e.location] = (locMap[e.location] || 0) + 1; });
@@ -370,7 +497,7 @@ function renderCharts(data) {
     const attrMap = {};
     data.forEach(e => {
         if(e.attributes) e.attributes.forEach(a => {
-            if(a.inc === 1) { // Vain positiiviset
+            if(a.inc === 1) { 
                 const name = a.name || a;
                 attrMap[name] = (attrMap[name] || 0) + 1;
             }
@@ -388,31 +515,20 @@ function renderCharts(data) {
 }
 
 // ==========================================
-// APUFUNKTIOT LISTOILLE JA ANALYYSILLE
+// APUFUNKTIOT LISTOILLE
 // ==========================================
 
-// UUSI: Kävijäluettelo (Klikattava)
 function renderUserRegistry(data) {
     const el = document.getElementById('stats-user-registry');
     if(!el) return;
-
-    // Lasketaan käynnit
     const map = {};
     data.forEach(e => { if(e.attendeeNames) e.attendeeNames.forEach(n => map[n] = (map[n] || 0) + 1); });
-    
-    // Järjestetään aktiivisuuden mukaan
     const sorted = Object.entries(map).sort((a,b) => b[1] - a[1]);
-    
-    // Rajoitetaan lista 50:een, jottei selaimen muisti lopu, jos dataa on paljon
-    // Mutta jos on haku päällä (alle 50 tulosta), näytetään kaikki hakutulokset
     const limit = 50;
     const listToShow = sorted.slice(0, limit);
 
-    if (listToShow.length === 0) {
-        el.innerHTML = "Ei kävijöitä.";
-        return;
-    }
-
+    if (listToShow.length === 0) { el.innerHTML = "Ei kävijöitä."; return; }
+    
     el.innerHTML = listToShow.map(([name, count], i) => `
         <div class="stats-row">
             <span>${i+1}. <span class="clickable-name" onclick="openUserProfile('${name}')">${name}</span></span> 
@@ -420,7 +536,6 @@ function renderUserRegistry(data) {
         </div>`).join('');
 }
 
-// VANHA: Top 10 Kävijät (PALAUTETTU ALKUPERÄISEKSI, EI KLIKATTAVA)
 function renderTopUsersList(data) {
     const map = {};
     data.forEach(e => { if(e.attendeeNames) e.attendeeNames.forEach(n => map[n] = (map[n] || 0) + 1); });
@@ -436,38 +551,23 @@ function renderTopUsersList(data) {
 function renderLoyaltyPyramid(data) {
     const el = document.getElementById('stats-loyalty');
     if (!el) return;
-
-    // Lasketaan kävijöiden käyntikerrat
     const userCounts = {};
     data.forEach(e => e.attendeeNames.forEach(n => userCounts[n] = (userCounts[n] || 0) + 1));
-
-    let tiers = {
-        'Vakikasvot (10+)': 0,
-        'Aktiivit (5-9)': 0,
-        'Satunnaiset (2-4)': 0,
-        'Kertakävijät (1)': 0
-    };
-
+    let tiers = { 'Vakikasvot (10+)': 0, 'Aktiivit (5-9)': 0, 'Satunnaiset (2-4)': 0, 'Kertakävijät (1)': 0 };
     Object.values(userCounts).forEach(count => {
         if (count >= 10) tiers['Vakikasvot (10+)']++;
         else if (count >= 5) tiers['Aktiivit (5-9)']++;
         else if (count >= 2) tiers['Satunnaiset (2-4)']++;
         else tiers['Kertakävijät (1)']++;
     });
-
     const totalUsers = Object.keys(userCounts).length || 1;
     let html = `<div style="display:flex; flex-direction:column; align-items:center; gap:5px;">`;
-
-    // Piirretään palkit käänteisessä järjestyksessä (Harvinaisimmat ylös)
     const order = ['Vakikasvot (10+)', 'Aktiivit (5-9)', 'Satunnaiset (2-4)', 'Kertakävijät (1)'];
-    const colors = ['#8B4513', '#A0522D', '#CD853F', '#DEB887']; // Tumma -> Vaalea
-
+    const colors = ['#8B4513', '#A0522D', '#CD853F', '#DEB887'];
     order.forEach((label, idx) => {
         const count = tiers[label];
         const pct = Math.round((count / totalUsers) * 100);
-        // Leveys: minimi 20%, maksimi 100%
         const width = 20 + (count / totalUsers) * 80; 
-        
         html += `
             <div style="width:100%; max-width:400px; display:flex; flex-direction:column; align-items:center;">
                 <div style="width:${width}%; background:${colors[idx]}; color:white; text-align:center; padding:5px; border-radius:4px; font-size:0.9em; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);">
@@ -482,45 +582,18 @@ function renderLoyaltyPyramid(data) {
 function renderWordCloud(data) {
     const el = document.getElementById('stats-wordcloud');
     if (!el) return;
-
-    // Kerätään kaikki viestit
     let allText = "";
-    data.forEach(e => {
-        if (e.logs) e.logs.forEach(l => {
-            if (l.message) allText += " " + l.message;
-        });
-    });
-
-    // Siivotaan ja lasketaan sanat
-    const words = allText.toLowerCase()
-        .replace(/[.,!?;:()"]/g, "")
-        .split(/\s+/)
-        .filter(w => w.length > 2); // Vähintään 3 kirjainta
-
+    data.forEach(e => { if (e.logs) e.logs.forEach(l => { if (l.message) allText += " " + l.message; }); });
+    const words = allText.toLowerCase().replace(/[.,!?;:()"]/g, "").split(/\s+/).filter(w => w.length > 2);
     const stopWords = ["oli", "että", "kun", "niin", "mutta", "siis", "vain", "nyt", "tämä", "sitten", "olla", "ollut", "ovat", "myös", "kanssa", "kuin", "joka", "mitä", "sekä", "täällä", "koko", "jälkeen", "vielä", "paljon", "kiitos", "miitti", "miitistä", "kätkö", "kätköllä", "kk", "tftc", "kiitokset", "log", "hyvä", "tosi", "kiva", "mukava", "järjestäjälle", "järjestäjille"];
-    
     const counts = {};
-    words.forEach(w => {
-        if (!stopWords.includes(w)) counts[w] = (counts[w] || 0) + 1;
-    });
-
-    // Otetaan top 30 sanaa
-    const topWords = Object.entries(counts)
-        .sort((a,b) => b[1] - a[1])
-        .slice(0, 30);
-
-    if (topWords.length === 0) {
-        el.innerHTML = "Ei riittävästi dataa sanalouhokseen.";
-        return;
-    }
-
+    words.forEach(w => { if (!stopWords.includes(w)) counts[w] = (counts[w] || 0) + 1; });
+    const topWords = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 30);
+    if (topWords.length === 0) { el.innerHTML = "Ei riittävästi dataa sanalouhokseen."; return; }
     const maxCount = topWords[0][1];
     const minCount = topWords[topWords.length - 1][1];
-
-    // Generoidaan "pilvi" HTML
     let cloudHtml = `<div style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; padding:10px;">`;
     topWords.forEach(([word, count]) => {
-        // Skaalataan fonttikoko välille 0.8em - 2.5em
         const size = 0.8 + ((count - minCount) / (maxCount - minCount || 1)) * 1.7;
         const opacity = 0.6 + ((count - minCount) / (maxCount - minCount || 1)) * 0.4;
         cloudHtml += `<span style="font-size:${size.toFixed(1)}em; color:rgba(139,69,19,${opacity}); font-weight:bold;">${word}</span>`;
