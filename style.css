@@ -1,7 +1,7 @@
 /* ==========================================
    MK MIITTIKIRJA - STYLE.CSS
-   Versio: 7.1.4
-   Teema: Multi-Theme Support
+   Versio: 7.2.0
+   Teema: Multi-Theme Support + Map & Grid
    ========================================== */
 
 :root {
@@ -437,7 +437,7 @@ body.theme-light .attr-tag.neg {
     background-color: var(--card-bg);
 }
 
-/* --- UUSI: KLIKATTAVAT NIMET (User Profile) --- */
+/* --- KLIKATTAVAT NIMET (User Profile) --- */
 .clickable-name {
     cursor: pointer;
     color: var(--link-color);
@@ -452,4 +452,36 @@ body.theme-light .attr-tag.neg {
     border-radius: 4px;
     padding: 0 4px;
     margin: 0 -4px;
+}
+
+/* --- KARTAN TYYLIT --- */
+#stats-map {
+    height: 500px; /* Tärkeä! Muuten kartta on korkeudeltaan 0 */
+    width: 100%;
+    z-index: 1;
+}
+
+/* --- UUSI: AIKATAULU RUUDUKKO --- */
+.time-slot-box {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 5px;
+    font-size: 0.8em;
+    text-align: center;
+}
+.time-slot-box.active {
+    background: var(--secondary-color);
+    color: #fff; /* Tummaa taustaa vasten */
+    font-weight: bold;
+    border-color: var(--highlight-border);
+    box-shadow: 0 0 5px rgba(0,0,0,0.3);
+}
+/* Light-teema korjaus aktiiviselle boksille */
+body.theme-light .time-slot-box.active {
+    color: #000;
+}
+
+.time-slot-box.empty {
+    opacity: 0.3;
 }
