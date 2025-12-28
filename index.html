@@ -15,6 +15,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 <body>
 
@@ -151,6 +154,7 @@
         <div class="tab-container">
             <button class="tab-btn active" onclick="switchStatsTab('tab-lists', this)">📍 Listat</button>
             <button class="tab-btn" onclick="switchStatsTab('tab-graphs', this)">📊 Graafit</button>
+            <button class="tab-btn" onclick="switchStatsTab('tab-map', this)">🗺️ Kartta</button>
         </div>
 
         <div id="tab-lists" class="tab-content active">
@@ -174,6 +178,11 @@
             <div class="card"><h3>🔺 Yhteisöuskollisuus</h3><div id="stats-loyalty"></div></div>
 
             <div class="card">
+                <h3>⏰ Aloitusajat (15 min)</h3>
+                <div id="stats-time-slots" class="stats-grid"></div>
+            </div>
+
+            <div class="card">
                 <h3>🔤 Alkukirjaimet</h3>
                 <div id="stats-alphabet" class="stats-grid"></div>
                 <div id="stats-special-chars" style="margin-top:10px; font-size:0.8em; text-align:left; border-top:1px solid #eee; padding-top:10px;"></div>
@@ -191,12 +200,19 @@
             <div class="card"><h3>📈 Kävijämäärän kehitys</h3><canvas id="chart-timeline-canvas"></canvas></div>
             <div class="card"><h3>🚀 Yhteisön kumulatiivinen kasvu</h3><canvas id="chart-cumulative-canvas"></canvas></div>
             
-            <div class="card"><h3>🕒 Suosituimmat kellonajat</h3><canvas id="chart-hours-canvas"></canvas></div>
+            <div class="card"><h3>🕒 Suosituimmat kellonajat (Tunnit)</h3><canvas id="chart-hours-canvas"></canvas></div>
             <div class="card"><h3>📅 Kävijät kuukausittain</h3><canvas id="chart-months-canvas"></canvas></div>
             <div class="card"><h3>🏘️ Suosituimmat paikkakunnat</h3><canvas id="chart-locations-canvas"></canvas></div>
             <div class="card"><h3>👥 TOP 10 Kävijät</h3><canvas id="chart-top-attendees-canvas"></canvas></div>
             <div class="card"><h3>🏆 TOP 10 Miitit</h3><canvas id="chart-top-events-canvas"></canvas></div>
             <div class="card"><h3>⭐ Suosituimmat attribuutit</h3><canvas id="chart-attributes-canvas"></canvas></div>
+        </div>
+
+        <div id="tab-map" class="tab-content">
+            <div class="card" style="padding:5px;">
+                <div id="stats-map" style="width:100%; border-radius:4px;"></div>
+                <div style="text-align:center; padding:10px; color:#888;">Näytetään miitit, joilla on koordinaatit.</div>
+            </div>
         </div>
     </div>
 
@@ -343,12 +359,19 @@
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             btn.classList.add('active');
+            
+            // Graafien päivitys
             if(tabId === 'tab-graphs' && typeof renderCharts === 'function') {
                 setTimeout(() => { renderCharts(window.currentFilteredData); }, 100);
             }
+
+            // Kartan päivitys (vaatii näkyvyyden laskennan uudelleen)
+            if(tabId === 'tab-map' && typeof renderMap === 'function') {
+                setTimeout(() => { renderMap(window.currentFilteredData); }, 100);
+            }
         }
 
-        // --- TEEMAHALLINTA (Versio 7.1.0 - QR FIX) ---
+        // --- TEEMAHALLINTA ---
         const themes = [
             { class: '', icon: '🌙', name: 'Yö' },       // 0: Oletus (Dark)
             { class: 'theme-light', icon: '☀️', name: 'Päivä' }, // 1: Light
