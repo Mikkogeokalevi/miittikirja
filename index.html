@@ -182,6 +182,8 @@
             <div class="card"><h3>📊 Viikonpäivien suosio</h3><canvas id="chart-weekdays-canvas"></canvas></div>
             <div class="card"><h3>🍩 Miittityypit</h3><canvas id="chart-types-canvas"></canvas></div>
             <div class="card"><h3>📈 Kävijämäärän kehitys</h3><canvas id="chart-timeline-canvas"></canvas></div>
+            <div class="card"><h3>🚀 Yhteisön kumulatiivinen kasvu</h3><canvas id="chart-cumulative-canvas"></canvas></div>
+            
             <div class="card"><h3>🕒 Suosituimmat kellonajat</h3><canvas id="chart-hours-canvas"></canvas></div>
             <div class="card"><h3>📅 Kävijät kuukausittain</h3><canvas id="chart-months-canvas"></canvas></div>
             <div class="card"><h3>🏘️ Suosituimmat paikkakunnat</h3><canvas id="chart-locations-canvas"></canvas></div>
@@ -293,6 +295,32 @@
             <label>Kotoisin</label><input type="text" id="log-edit-from">
             <label>Viesti</label><textarea id="log-edit-msg" rows="3"></textarea>
             <div style="display:flex; gap:10px; margin-top:20px;"><button id="btn-save-log-edit" class="btn btn-green">Tallenna</button><button onclick="closeModal()" class="btn btn-red">Peruuta</button></div>
+        </div>
+    </div>
+
+    <div id="user-profile-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="up-nickname" style="border-bottom:2px solid var(--primary-color); padding-bottom:10px; margin-bottom:15px;"></h3>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:15px; text-align:center;">
+                <div style="background:var(--highlight-bg); padding:10px; border-radius:8px; border:1px solid var(--border-color);">
+                    <div style="font-size:0.8em; opacity:0.8;">Miittejä</div>
+                    <div id="up-total" style="font-size:1.4em; font-weight:bold; color:var(--secondary-color);">0</div>
+                </div>
+                <div style="background:var(--highlight-bg); padding:10px; border-radius:8px; border:1px solid var(--border-color);">
+                    <div style="font-size:0.8em; opacity:0.8;">Ensimmäinen</div>
+                    <div id="up-first" style="font-size:0.9em; font-weight:bold;">-</div>
+                </div>
+                <div style="background:var(--highlight-bg); padding:10px; border-radius:8px; border:1px solid var(--border-color);">
+                    <div style="font-size:0.8em; opacity:0.8;">Viimeisin</div>
+                    <div id="up-last" style="font-size:0.9em; font-weight:bold;">-</div>
+                </div>
+            </div>
+
+            <h4>Historia</h4>
+            <div id="up-history-list" class="scroll-box" style="max-height: 250px;"></div>
+            
+            <button onclick="document.getElementById('user-profile-modal').style.display='none'" class="btn btn-red" style="margin-top:15px;">Sulje</button>
         </div>
     </div>
 
