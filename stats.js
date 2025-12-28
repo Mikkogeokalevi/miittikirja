@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.1.0
+// Versio: 7.1.4 - User Profiles & Cumulative Growth
 // ==========================================
 
 let allStatsData = {
@@ -133,6 +133,50 @@ function updateStatsView(data) {
 }
 
 // ==========================================
+// UUSI: KÄYTTÄJÄKORTTI (PROFIILI)
+// ==========================================
+
+window.openUserProfile = function(nickname) {
+    if (!nickname) return;
+    
+    // Etsitään kaikki tapahtumat joissa käyttäjä on ollut
+    // Käytetään allStatsData.events, jotta saadaan koko historia riippumatta filttereistä
+    const userEvents = allStatsData.events.filter(evt => 
+        evt.attendeeNames && evt.attendeeNames.some(n => n.toLowerCase() === nickname.toLowerCase())
+    );
+
+    // Lajitellaan aikajärjestykseen (vanhin ensin)
+    userEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    if (userEvents.length === 0) return alert("Ei tietoja tälle käyttäjälle.");
+
+    // Päivitetään modaalin tiedot
+    document.getElementById('up-nickname').innerText = nickname;
+    document.getElementById('up-total').innerText = userEvents.length;
+    
+    const first = userEvents[0];
+    const last = userEvents[userEvents.length - 1];
+    
+    document.getElementById('up-first').innerHTML = `${first.date}<br><span style="font-size:0.8em; font-weight:normal;">${first.name}</span>`;
+    document.getElementById('up-last').innerHTML = `${last.date}<br><span style="font-size:0.8em; font-weight:normal;">${last.name}</span>`;
+
+    const listEl = document.getElementById('up-history-list');
+    listEl.innerHTML = "";
+    
+    userEvents.forEach(evt => {
+        const row = document.createElement('div');
+        row.style.borderBottom = "1px dotted #555";
+        row.style.padding = "5px 0";
+        row.style.fontSize = "0.9em";
+        row.innerHTML = `<strong>${evt.date}</strong> ${evt.name}`;
+        listEl.appendChild(row);
+    });
+
+    // Näytetään modaali
+    document.getElementById('user-profile-modal').style.display = 'block';
+};
+
+// ==========================================
 // GRAAFIEN PIIRTÄMINEN (CHART.JS V4)
 // ==========================================
 
@@ -193,7 +237,51 @@ function renderCharts(data) {
         }
     });
 
-    // --- 4. KELLONAJAT ---
+    // --- UUSI: 4. KUMULATIIVINEN KASVU (Koko historia) ---
+    clearChart('cumulative');
+    
+    // Käytetään AINA koko dataa (allStatsData.events), jotta graafi näyttää "uran" kehityksen
+    const allEventsSorted = [...allStatsData.events].sort((a,b) => new Date(a.date) - new Date(b.date));
+    
+    const uniqueUsersSet = new Set();
+    const cumulativePoints = [];
+    
+    allEventsSorted.forEach(evt => {
+        let newUsers = 0;
+        if(evt.attendeeNames) {
+            evt.attendeeNames.forEach(name => {
+                const lower = name.toLowerCase();
+                if(!uniqueUsersSet.has(lower)) {
+                    uniqueUsersSet.add(lower);
+                    newUsers++;
+                }
+            });
+        }
+        // Lisätään datapiste vain jos se tuo informaatiota, tai on muuten hyvä väli
+        // Tässä lisätään jokainen tapahtuma, jotta nähdään tarkka pvm
+        cumulativePoints.push({
+            x: evt.date,
+            y: uniqueUsersSet.size
+        });
+    });
+
+    chartInstances['cumulative'] = new Chart(document.getElementById('chart-cumulative-canvas'), {
+        type: 'line',
+        data: {
+            labels: cumulativePoints.map(p => p.x),
+            datasets: [{ 
+                label: 'Uniikit kävijät yhteensä', 
+                data: cumulativePoints.map(p => p.y),
+                borderColor: '#2e7d32', // Forest green
+                backgroundColor: 'rgba(46, 125, 50, 0.1)', 
+                fill: true, 
+                pointRadius: 2,
+                tension: 0.1
+            }]
+        }
+    });
+
+    // --- 5. KELLONAJAT ---
     clearChart('hours');
     const hoursData = Array(24).fill(0);
     data.forEach(e => {
@@ -210,7 +298,7 @@ function renderCharts(data) {
         }
     });
 
-    // --- 5. KUUKAUDET ---
+    // --- 6. KUUKAUDET ---
     clearChart('months');
     const monthsData = Array(12).fill(0);
     const monthNames = ["Tam", "Hel", "Maa", "Huh", "Tou", "Kes", "Hei", "Elo", "Syy", "Lok", "Mar", "Jou"];
@@ -228,7 +316,7 @@ function renderCharts(data) {
         }
     });
 
-    // --- 6. PAIKKAKUNNAT (Top 10) ---
+    // --- 7. PAIKKAKUNNAT (Top 10) ---
     clearChart('locations');
     const locMap = {};
     data.forEach(e => { if (e.location) locMap[e.location] = (locMap[e.location] || 0) + 1; });
@@ -243,7 +331,7 @@ function renderCharts(data) {
         options: { indexAxis: 'y' }
     });
 
-    // --- 7. TOP 10 KÄVIJÄT ---
+    // --- 8. TOP 10 KÄVIJÄT ---
     clearChart('topAttendees');
     const userMap = {};
     data.forEach(e => e.attendeeNames.forEach(n => userMap[n] = (userMap[n] || 0) + 1));
@@ -258,7 +346,7 @@ function renderCharts(data) {
         options: { indexAxis: 'y' }
     });
 
-    // --- 8. TOP 10 MIITIT ---
+    // --- 9. TOP 10 MIITIT ---
     clearChart('topEvents');
     const topEvents = [...data].sort((a,b) => b.attendeeCount - a.attendeeCount).slice(0, 10);
     chartInstances['topEvents'] = new Chart(document.getElementById('chart-top-events-canvas'), {
@@ -269,7 +357,7 @@ function renderCharts(data) {
         }
     });
 
-    // --- 9. ATTRIBUUTIT ---
+    // --- 10. ATTRIBUUTIT ---
     clearChart('attrs');
     const attrMap = {};
     data.forEach(e => {
@@ -417,8 +505,9 @@ function renderTopUsersList(data) {
     const sorted = Object.entries(map).sort((a,b) => b[1] - a[1]).slice(0, 10);
     const el = document.getElementById('stats-top-users');
     if(el) el.innerHTML = sorted.map(([name, count], i) => `
-        <div class="stats-row" style="cursor:pointer" onclick="document.getElementById('search-user-name').value='${name}'; document.getElementById('btn-apply-filters').click(); switchStatsTab('tab-lists', document.querySelector('.tab-btn:first-child'));">
-            <span>${i+1}. ${name}</span> <strong>${count} miittiä</strong>
+        <div class="stats-row">
+            <span>${i+1}. <span class="clickable-name" onclick="openUserProfile('${name}')">${name}</span></span> 
+            <strong>${count} miittiä</strong>
         </div>`).join('');
 }
 
@@ -469,6 +558,8 @@ if(userSearchInput) {
     };
 }
 window.selectUser = (name) => {
+    // Jos käyttäjä valitsee hausta, avataanko profiili vai suodatetaanko?
+    // Pidetään vanha logiikka (suodatus), mutta profiilin voi avata listasta
     if(userSearchInput) userSearchInput.value = name;
     if(userAutoList) userAutoList.style.display = 'none';
     document.getElementById('btn-apply-filters').click();
