@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.1.4 - User Profiles & Cumulative Growth
+// Versio: 7.1.5 - User Registry & Profile
 // ==========================================
 
 let allStatsData = {
@@ -106,8 +106,9 @@ function updateStatsView(data) {
     }
 
     // 3. Tekstilistat
+    renderUserRegistry(data); // UUSI: Kävijäluettelo
     renderAlphabetStats(data);
-    renderTopUsersList(data);
+    renderTopUsersList(data); // Vanha Top 10 (ei klikattava)
     renderLoyaltyPyramid(data); 
     renderWordCloud(data);      
     
@@ -257,8 +258,7 @@ function renderCharts(data) {
                 }
             });
         }
-        // Lisätään datapiste vain jos se tuo informaatiota, tai on muuten hyvä väli
-        // Tässä lisätään jokainen tapahtuma, jotta nähdään tarkka pvm
+        // Lisätään datapiste
         cumulativePoints.push({
             x: evt.date,
             y: uniqueUsersSet.size
@@ -383,6 +383,48 @@ function renderCharts(data) {
 // APUFUNKTIOT LISTOILLE JA ANALYYSILLE
 // ==========================================
 
+// UUSI: Kävijäluettelo (Klikattava)
+function renderUserRegistry(data) {
+    const el = document.getElementById('stats-user-registry');
+    if(!el) return;
+
+    // Lasketaan käynnit
+    const map = {};
+    data.forEach(e => { if(e.attendeeNames) e.attendeeNames.forEach(n => map[n] = (map[n] || 0) + 1); });
+    
+    // Järjestetään aktiivisuuden mukaan
+    const sorted = Object.entries(map).sort((a,b) => b[1] - a[1]);
+    
+    // Rajoitetaan lista 50:een, jottei selaimen muisti lopu, jos dataa on paljon
+    // Mutta jos on haku päällä (alle 50 tulosta), näytetään kaikki hakutulokset
+    const limit = 50;
+    const listToShow = sorted.slice(0, limit);
+
+    if (listToShow.length === 0) {
+        el.innerHTML = "Ei kävijöitä.";
+        return;
+    }
+
+    el.innerHTML = listToShow.map(([name, count], i) => `
+        <div class="stats-row">
+            <span>${i+1}. <span class="clickable-name" onclick="openUserProfile('${name}')">${name}</span></span> 
+            <strong>${count}</strong>
+        </div>`).join('');
+}
+
+// VANHA: Top 10 Kävijät (PALAUTETTU ALKUPERÄISEKSI, EI KLIKATTAVA)
+function renderTopUsersList(data) {
+    const map = {};
+    data.forEach(e => { if(e.attendeeNames) e.attendeeNames.forEach(n => map[n] = (map[n] || 0) + 1); });
+    const sorted = Object.entries(map).sort((a,b) => b[1] - a[1]).slice(0, 10);
+    const el = document.getElementById('stats-top-users');
+    if(el) el.innerHTML = sorted.map(([name, count], i) => `
+        <div class="stats-row">
+            <span>${i+1}. ${name}</span> 
+            <strong>${count} miittiä</strong>
+        </div>`).join('');
+}
+
 function renderLoyaltyPyramid(data) {
     const el = document.getElementById('stats-loyalty');
     if (!el) return;
@@ -499,18 +541,6 @@ function renderAlphabetStats(data) {
     }
 }
 
-function renderTopUsersList(data) {
-    const map = {};
-    data.forEach(e => { if(e.attendeeNames) e.attendeeNames.forEach(n => map[n] = (map[n] || 0) + 1); });
-    const sorted = Object.entries(map).sort((a,b) => b[1] - a[1]).slice(0, 10);
-    const el = document.getElementById('stats-top-users');
-    if(el) el.innerHTML = sorted.map(([name, count], i) => `
-        <div class="stats-row">
-            <span>${i+1}. <span class="clickable-name" onclick="openUserProfile('${name}')">${name}</span></span> 
-            <strong>${count} miittiä</strong>
-        </div>`).join('');
-}
-
 function renderLocationsTable(data) {
     const map = {};
     data.forEach(e => { if (e.location) map[e.location] = (map[e.location] || 0) + 1; });
@@ -558,8 +588,6 @@ if(userSearchInput) {
     };
 }
 window.selectUser = (name) => {
-    // Jos käyttäjä valitsee hausta, avataanko profiili vai suodatetaanko?
-    // Pidetään vanha logiikka (suodatus), mutta profiilin voi avata listasta
     if(userSearchInput) userSearchInput.value = name;
     if(userAutoList) userAutoList.style.display = 'none';
     document.getElementById('btn-apply-filters').click();
