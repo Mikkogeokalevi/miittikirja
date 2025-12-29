@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.1.3 - GPX Globe Icon Fix
+// Versio: 7.2.1 - FIX: Add Event & NetLog Button
 // ==========================================
 
-const APP_VERSION = "7.1.3";
+const APP_VERSION = "7.2.1";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -452,6 +452,58 @@ function parseGPX(xmlText) {
 // 8. TAPAHTUMIEN LATAUS
 // ==========================================
 
+// --- PALAUTETTU: Lisää uusi tapahtuma -napit ja logiikka ---
+const newEventToggle = document.getElementById('new-event-toggle');
+if (newEventToggle) {
+    newEventToggle.onclick = function() {
+        const form = document.getElementById('new-event-form');
+        if (form.style.display === 'none') {
+            form.style.display = 'block';
+        } else {
+            form.style.display = 'none';
+        }
+    };
+}
+
+const btnAddEvent = document.getElementById('btn-add-event');
+if (btnAddEvent) {
+    btnAddEvent.onclick = function() {
+        const type = document.getElementById('new-type').value;
+        const gc = document.getElementById('new-gc').value.trim();
+        const name = document.getElementById('new-name').value.trim();
+        const date = document.getElementById('new-date').value;
+        const time = document.getElementById('new-time').value.trim();
+        const coords = document.getElementById('new-coords').value.trim();
+        const loc = document.getElementById('new-loc').value.trim();
+        const desc = document.getElementById('new-desc').value.trim();
+
+        if (!name || !date) {
+            alert("Nimi ja päivämäärä ovat pakollisia!");
+            return;
+        }
+
+        db.ref('miitit/' + currentUser.uid + '/events').push({
+            type: type,
+            gc: gc,
+            name: name,
+            date: date,
+            time: time,
+            coords: coords,
+            location: loc,
+            descriptionHtml: desc,
+            createdAt: firebase.database.ServerValue.TIMESTAMP
+        }).then(() => {
+            alert("Tapahtuma lisätty!");
+            document.getElementById('new-event-form').style.display = 'none';
+            // Tyhjennä kentät
+            ['new-gc', 'new-name', 'new-date', 'new-time', 'new-coords', 'new-loc', 'new-desc'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.value = "";
+            });
+        });
+    };
+}
+
 function loadEvents() {
     if (!currentUser) return;
     const todayStr = new Date().toISOString().split('T')[0];
@@ -571,6 +623,9 @@ window.openGuestbook = function(eventKey) {
     db.ref('miitit/' + currentUser.uid + '/events/' + eventKey).on('value', snap => {
         const evt = snap.val(); if(!evt) return;
         currentEventArchived = (evt.isArchived === true);
+        
+        // PÄIVITETÄÄN GLOBAALI MUUTTUJA NAPPIA VARTEN
+        currentEventGcCode = evt.gc;
 
         document.getElementById('gb-event-name').innerText = evt.name;
         document.getElementById('gb-time').innerText = evt.time || '-';
@@ -639,6 +694,15 @@ window.openGuestbook = function(eventKey) {
     
     window.scrollTo(0,0);
     loadAttendees(eventKey);
+};
+
+// UUSI: Tarkista nettilogi -toiminto
+window.checkNetLog = function() {
+    if (currentEventGcCode && currentEventGcCode.startsWith('GC')) {
+        window.open("https://coord.info/" + currentEventGcCode, "_blank");
+    } else {
+        alert("Ei validia GC-koodia.");
+    }
 };
 
 // Kirjaus (Admin/User tila)
