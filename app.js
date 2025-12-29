@@ -1,6 +1,6 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.2.1 - FIX: Add Event & NetLog Button
+// Versio: 7.2.1 - FIX: Add Event & NetLog
 // ==========================================
 
 const APP_VERSION = "7.2.1";
