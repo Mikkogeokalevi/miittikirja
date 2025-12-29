@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.2.1 - FIX: Add Event & NetLog
+// Versio: 7.2.2 - FIX: New Event GPX Import
 // ==========================================
 
-const APP_VERSION = "7.2.1";
+const APP_VERSION = "7.2.2";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -30,7 +30,7 @@ const auth = firebase.auth();
 // Sovelluksen globaali tila
 let currentUser = null;
 let currentEventId = null;
-let currentEventGcCode = null; // UUSI: Tallennetaan GC-koodi ohjausta varten
+let currentEventGcCode = null; 
 let currentEventArchived = false;
 let globalEventList = []; 
 let isAdminMode = true; 
@@ -62,7 +62,6 @@ const loadingOverlay = document.getElementById('loading-overlay');
 // ==========================================
 
 window.addEventListener('load', function() {
-    // Asetetaan versionumero molempiin paikkoihin (Login & User Bar)
     const verLogin = document.getElementById('version-display-login');
     if(verLogin) verLogin.innerText = "v" + APP_VERSION;
 
@@ -71,18 +70,14 @@ window.addEventListener('load', function() {
 
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('event');
-    // Trimmataan välilyönnit pois varmuuden vuoksi
     const paramUid = urlParams.get('uid');
     const targetUid = paramUid ? paramUid.trim() : HOST_UID;
 
     if (eventId) {
         console.log("Vierastila aktivoitu. Event:", eventId, "UID:", targetUid);
-        
-        // Pakotetaan heti vierasnäkymä päälle, jotta auth ei sekoita pakkaa
         if(visitorView) visitorView.style.display = 'block';
         if(loginView) loginView.style.display = 'none';
         if(adminView) adminView.style.display = 'none';
-
         openVisitorGuestbook(targetUid, eventId.trim());
     }
 });
@@ -92,33 +87,25 @@ async function openVisitorGuestbook(uid, eventId) {
     
     currentEventId = eventId;
     window.currentVisitorTargetUid = uid; 
-    
-    // Nollataan live-laskuri aina kun kirja avataan
     lastAttendeeCount = null;
     
-    // Yritetään hakea tapahtuma
     db.ref('miitit/' + uid + '/events/' + eventId).once('value', snap => {
         const evt = snap.val();
         
         if(!evt) {
-            // DIAGNOSTIIKKA: Näytetään käyttäjälle mitä yritettiin hakea
             alert(`Miittiä ei löytynyt!\n\nEtsintätiedot:\nEventID: ${eventId}\nOmistaja-UID: ${uid}\n\nTarkista onko miitti poistettu tai onko QR-koodi vanhentunut.`);
-            
             if(loadingOverlay) loadingOverlay.style.display = 'none';
             return;
         }
         
-        // Tallennetaan GC-koodi talteen ohjausta varten
         currentEventGcCode = evt.gc || null;
 
-        // Täytetään tiedot
         const nameEl = document.getElementById('vv-event-name');
         const infoEl = document.getElementById('vv-event-info');
         
         if(nameEl) nameEl.innerText = evt.name;
         if(infoEl) infoEl.innerText = `${evt.date} klo ${evt.time || '-'}`;
         
-        // Varmistetaan näkymät vielä kerran
         if(visitorView) visitorView.style.display = 'block';
         if(loginView) loginView.style.display = 'none';
         if(adminView) adminView.style.display = 'none';
@@ -136,7 +123,6 @@ async function openVisitorGuestbook(uid, eventId) {
     });
 }
 
-// Vieraskirjan tallennus
 const btnVisitorSign = document.getElementById('btn-visitor-sign');
 if (btnVisitorSign) {
     btnVisitorSign.onclick = function() {
@@ -145,7 +131,6 @@ if (btnVisitorSign) {
         const msgInput = document.getElementById('vv-message');
 
         const nick = nickInput ? nickInput.value.trim() : "";
-        
         if(!nick) return alert("Kirjoita nimimerkkisi!");
 
         const targetHost = window.currentVisitorTargetUid || HOST_UID;
@@ -157,21 +142,17 @@ if (btnVisitorSign) {
             timestamp: firebase.database.ServerValue.TIMESTAMP
         }).then(() => {
             alert("Kiitos käynnistä! Kirjaus tallennettu.\nSiirrytään miittisivulle...");
-            
-            // UUSI: Älykäs ohjaus
             if (currentEventGcCode && currentEventGcCode.startsWith('GC')) {
                 window.location.href = "https://coord.info/" + currentEventGcCode;
             } else {
                 window.location.href = "https://www.geocaching.com";
             }
-
         }).catch(err => {
             console.error("Tallennusvirhe:", err);
             alert("Virhe tallennuksessa: " + err.message);
         });
     };
 }
-
 
 // ==========================================
 // 3. OMA VARMISTUSKYSELY
@@ -225,14 +206,13 @@ document.addEventListener('visibilitychange', async () => {
 // ==========================================
 
 auth.onAuthStateChanged((user) => {
-    // TÄRKEÄÄ: Jos URL:ssa on event-parametri, emme koskaan palaa kirjautumisnäkymään automaattisesti
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('event')) return;
 
     if (user) {
         currentUser = user;
         if(userDisplay) {
-            userDisplay.style.display = 'flex'; // Muutettu flex, CSS hoitaa suunnan
+            userDisplay.style.display = 'flex'; 
             if(userEmailText) userEmailText.innerText = "👤 " + user.email;
         }
         
@@ -313,11 +293,8 @@ if(btnToggleQr) {
         }
 
         container.innerHTML = "";
-        // Otetaan nykyinen kirjautunut UID varmuudella
         const ownerUid = currentUser ? currentUser.uid : HOST_UID;
         const baseUrl = window.location.href.split('?')[0];
-        
-        // Linkki: sivu?event=ID&uid=OWNER_ID
         const guestUrl = `${baseUrl}?event=${currentEventId}&uid=${ownerUid}`;
         
         if(linkText) linkText.innerText = guestUrl;
@@ -452,7 +429,7 @@ function parseGPX(xmlText) {
 // 8. TAPAHTUMIEN LATAUS
 // ==========================================
 
-// --- PALAUTETTU: Lisää uusi tapahtuma -napit ja logiikka ---
+// --- Lisää uusi tapahtuma -napit ja logiikka ---
 const newEventToggle = document.getElementById('new-event-toggle');
 if (newEventToggle) {
     newEventToggle.onclick = function() {
@@ -461,6 +438,42 @@ if (newEventToggle) {
             form.style.display = 'block';
         } else {
             form.style.display = 'none';
+        }
+    };
+}
+
+// --- KORJATTU: GPX-tiedoston luku lomakkeeseen ---
+const fileInputNew = document.getElementById('import-gpx-new');
+if (fileInputNew) {
+    fileInputNew.onchange = async function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        if(loadingOverlay) loadingOverlay.style.display = 'flex';
+
+        try {
+            const text = await file.text();
+            const data = parseGPX(text);
+
+            if (data) {
+                document.getElementById('new-gc').value = data.gc || "";
+                document.getElementById('new-name').value = data.name || "";
+                document.getElementById('new-date').value = data.date || "";
+                document.getElementById('new-time').value = data.time || "";
+                document.getElementById('new-coords').value = data.coords || "";
+                document.getElementById('new-desc').value = data.descriptionHtml || "";
+                
+                // Haetaan paikkakunta
+                if(data.coords) fetchCityFromCoords(data.coords, 'new-loc');
+                
+            } else {
+                alert("GPX-tiedoston luku epäonnistui.");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Virhe tiedoston käsittelyssä.");
+        } finally {
+            if(loadingOverlay) loadingOverlay.style.display = 'none';
+            fileInputNew.value = ""; // Nollataan jotta voi valita saman uudestaan
         }
     };
 }
