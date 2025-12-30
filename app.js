@@ -147,7 +147,8 @@ if (btnVisitorSign) {
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             });
 
-            // 2. Haetaan historia tilastoja varten
+            // 2. Haetaan historia tilastoja varten (vain jos tallennus onnistui)
+            // Haetaan kaikki tapahtumat ja logit isännältä
             const eventsSnap = await db.ref('miitit/' + targetHost + '/events').once('value');
             const logsSnap = await db.ref('miitit/' + targetHost + '/logs').once('value');
             
@@ -162,6 +163,7 @@ if (btnVisitorSign) {
                 const evtData = eventsMap[eventKey];
                 if (evtData) {
                     let attended = false;
+                    // Tarkistetaan onko käyttäjä tässä miitissä
                     evtLogs.forEach(log => {
                         if (log.val().nickname && log.val().nickname.toLowerCase() === nickLower) {
                             attended = true;
@@ -176,11 +178,12 @@ if (btnVisitorSign) {
             // Lajitellaan historia (vanhin ensin)
             userHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
             
-            const visitCount = userHistory.length; // Sisältää juuri lisätyn
+            // Lasketaan käyntikerrat (sisältää nyt lisätyn)
+            const visitCount = userHistory.length;
 
             // 3. Näytetään modaali (Eka kerta vs Konkari)
             if (visitCount <= 1) {
-                // EKA KERTA
+                // EKA KERTA (visitCount on 1, koska juuri lisättiin)
                 showVisitorModal(nick, true, userHistory);
             } else {
                 // KONKARI
@@ -210,34 +213,44 @@ function showVisitorModal(nick, isFirstTime, history) {
     // Tyhjennetään lista
     if(listEl) listEl.innerHTML = "";
 
-    // Määritetään napin toiminta (ohjaa eteenpäin kun suljetaan)
-    const closeBtn = modal.querySelector('button.btn-red');
-    if(closeBtn) {
-        closeBtn.innerText = "Jatka miittisivulle ➡";
-        closeBtn.className = "btn btn-green"; // Muutetaan vihreäksi
-        closeBtn.onclick = function() {
+    // Muutetaan napin toiminta: "Sulje" -> "Jatka miittisivulle"
+    // Etsitään nappi ja poistetaan vanhat kuuntelijat kloonaamalla se
+    const oldBtn = modal.querySelector('button.btn-red');
+    if(oldBtn) {
+        const newBtn = oldBtn.cloneNode(true);
+        newBtn.innerText = "Jatka miittisivulle ➡";
+        newBtn.className = "btn btn-green"; // Muutetaan vihreäksi
+        newBtn.onclick = function() {
             modal.style.display = 'none';
+            // Palautetaan nappi ennalleen seuraavaa kertaa varten (jos admin käyttää samassa istunnossa)
+            newBtn.innerText = "Sulje";
+            newBtn.className = "btn btn-red";
+            newBtn.onclick = function() { modal.style.display = 'none'; };
+            
             proceedToGeo();
         };
+        oldBtn.parentNode.replaceChild(newBtn, oldBtn);
     }
 
     if (isFirstTime) {
+        // --- EKA KERTA NÄKYMÄ ---
         titleEl.innerHTML = `🎉 Tervetuloa ${nick}! 🎉`;
-        titleEl.style.color = "#d32f2f";
+        titleEl.style.color = "#d32f2f"; // Juhlavampi punainen otsikko
         
-        // Piilotetaan tilastoruudukko ekalla kerralla tai näytetään "1. kerta"
+        // Piilotetaan tilastoruudukko väliaikaisesti tai näytetään "1. kerta"
         totalEl.innerText = "1";
         firstEl.innerHTML = "Tänään!";
         lastEl.innerHTML = "Tänään!";
         
         listEl.innerHTML = `
-            <div style="text-align:center; padding:20px; font-size:1.1em;">
+            <div style="text-align:center; padding:20px; font-size:1.1em; line-height:1.6;">
                 <p><strong>Onnittelut!</strong></p>
-                <p>Tämä on ensimmäinen kirjauksesi tähän miittikirjaan.</p>
-                <p>Hienoa saada sinut mukaan yhteisöön! 😊</p>
+                <p>Tämä on ensimmäinen kirjauksesi Mikkokalevin miittikirjaan.</p>
+                <p>Mahtavaa saada sinut mukaan! 😊</p>
             </div>
         `;
     } else {
+        // --- KONKARI NÄKYMÄ ---
         titleEl.innerHTML = `Hei taas, ${nick}!`;
         titleEl.style.color = "var(--header-color)"; // Palauta normaali väri
         
@@ -249,14 +262,26 @@ function showVisitorModal(nick, isFirstTime, history) {
         firstEl.innerHTML = `${first.date}<br><span style="font-size:0.8em; font-weight:normal;">${first.name}</span>`;
         lastEl.innerHTML = `${last.date}<br><span style="font-size:0.8em; font-weight:normal;">${last.name}</span>`;
 
+        // Listataan viimeisimmät (tai kaikki)
         history.forEach(evt => {
             const row = document.createElement('div');
             row.style.borderBottom = "1px dotted #555";
             row.style.padding = "5px 0";
             row.style.fontSize = "0.9em";
-            row.innerHTML = `<strong>${evt.date}</strong> ${evt.name}`;
+            // Korostetaan nykyinen
+            if (evt.date === history[history.length-1].date && evt.name === history[history.length-1].name) {
+                row.style.backgroundColor = "rgba(46, 125, 50, 0.2)"; // Vihreä korostus
+                row.innerHTML = `<strong>${evt.date}</strong> ${evt.name} (TÄMÄ)`;
+            } else {
+                row.innerHTML = `<strong>${evt.date}</strong> ${evt.name}`;
+            }
             listEl.appendChild(row);
         });
+        
+        // Scrollataan lista loppuun että uusin näkyy
+        setTimeout(() => {
+            listEl.scrollTop = listEl.scrollHeight;
+        }, 100);
     }
 
     modal.style.display = 'block';
@@ -322,6 +347,7 @@ document.addEventListener('visibilitychange', async () => {
 // ==========================================
 
 auth.onAuthStateChanged((user) => {
+    // TÄRKEÄÄ: Jos URL:ssa on event-parametri, emme koskaan palaa kirjautumisnäkymään automaattisesti
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('event')) return;
 
@@ -409,8 +435,11 @@ if(btnToggleQr) {
         }
 
         container.innerHTML = "";
+        // Otetaan nykyinen kirjautunut UID varmuudella
         const ownerUid = currentUser ? currentUser.uid : HOST_UID;
         const baseUrl = window.location.href.split('?')[0];
+        
+        // Linkki: sivu?event=ID&uid=OWNER_ID
         const guestUrl = `${baseUrl}?event=${currentEventId}&uid=${ownerUid}`;
         
         if(linkText) linkText.innerText = guestUrl;
@@ -545,6 +574,7 @@ function parseGPX(xmlText) {
 // 8. TAPAHTUMIEN LATAUS
 // ==========================================
 
+// --- Lisää uusi tapahtuma -napit ja logiikka ---
 const newEventToggle = document.getElementById('new-event-toggle');
 if (newEventToggle) {
     newEventToggle.onclick = function() {
@@ -976,16 +1006,19 @@ if (fileInputSync) {
         
         const text = await file.text();
         
+        // 1. Vanha toiminto: Päivitetään kätkön attribuutit ja koordinaatit
         const data = parseGPX(text);
         if (data) {
             db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({ attributes: data.attributes, coords: data.coords });
         }
         
+        // 2. UUSI TOIMINTO: Tuodaan puuttuvat lokit JA yhdistetään viestit
         const parser = new DOMParser();
         const xml = parser.parseFromString(text, "text/xml");
         const logs = xml.getElementsByTagName("groundspeak:log");
         
         if (logs.length > 0) {
+            // Haetaan ensin olemassa olevat MAP-rakenteeseen
             const snap = await db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).once('value');
             const existingLogsMap = new Map();
             
@@ -1007,23 +1040,28 @@ if (fileInputSync) {
                 const typeNode = logNode.getElementsByTagName("groundspeak:type")[0];
                 const type = typeNode ? typeNode.textContent : "";
 
+                // Vain Attended-lokit (ja webcam photo)
                 if (type !== "Attended" && type !== "Webcam Photo Taken") continue;
 
                 const finderNode = logNode.getElementsByTagName("groundspeak:finder")[0];
                 const finder = finderNode ? finderNode.textContent.trim() : "";
                 
-                if (!finder) continue;
-                if (finder.toLowerCase() === "mikkokalevi") continue;
+                if (!finder) continue; // Ei tyhjiä nimiä
+                if (finder.toLowerCase() === "mikkokalevi") continue; // Ei omistajaa
 
                 const textNode = logNode.getElementsByTagName("groundspeak:text")[0];
                 const netMessageRaw = textNode ? textNode.textContent.trim() : "";
-                const netMessageFormatted = "🌐: " + netMessageRaw;
+                const netMessageFormatted = "🌐: " + netMessageRaw; // Lisätään AINA pallo nettilogiin
                 const finderLower = finder.toLowerCase();
 
                 if (existingLogsMap.has(finderLower)) {
+                    // TAPAUS 1: KÄYTTÄJÄ LÖYTYY JO
                     const existing = existingLogsMap.get(finderLower);
                     
+                    // Tarkistetaan, onko nettilogi jo viestissä (ettei tule tuplana)
                     if (netMessageRaw && !existing.message.includes(netMessageRaw)) {
+                        // YHDISTETÄÄN viestit: "Vanha | 🌐: Uusi"
+                        // Jos vanha viesti on tyhjä, käytetään suoraan "🌐: Uusi"
                         const combinedMessage = existing.message 
                             ? `${existing.message} | ${netMessageFormatted}`
                             : netMessageFormatted;
@@ -1034,12 +1072,14 @@ if (fileInputSync) {
                         updatedCount++;
                     }
                 } else {
+                    // TAPAUS 2: UUSI KÄYTTÄJÄ
                     db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({
                         nickname: finder,
-                        from: "", 
-                        message: netMessageFormatted, 
+                        from: "", // Emme arvaa paikkakuntaa
+                        message: netMessageFormatted, // Tässä on jo pallo alussa
                         timestamp: firebase.database.ServerValue.TIMESTAMP
                     });
+                    // Lisätään mappiin jotta saman gpx:n sisäiset tuplat eivät haittaa
                     existingLogsMap.set(finderLower, { key: "temp", message: netMessageFormatted });
                     addedCount++;
                 }
@@ -1051,6 +1091,8 @@ if (fileInputSync) {
         }
 
         if(loadingOverlay) loadingOverlay.style.display = 'none';
+        
+        // Nollataan input jotta saman tiedoston voi valita uudelleen tarvittaessa
         fileInputSync.value = "";
     };
 }
