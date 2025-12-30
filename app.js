@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.3.2 - FIX: GPX GC-Code Validation
+// Versio: 7.3.3 - Simplified Login
 // ==========================================
 
-const APP_VERSION = "7.3.2";
+const APP_VERSION = "7.3.3";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1232,5 +1232,3 @@ window.toggleDetails = function(id) {
     const content = document.getElementById(id);
     if(content) content.style.display = (content.style.display === 'block') ? 'none' : 'block';
 };
-
-}
