@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.3.3 - Simplified Login
+// Versio: 7.3.4 - FIX: Strict GPX Validation
 // ==========================================
 
-const APP_VERSION = "7.3.3";
+const APP_VERSION = "7.3.4";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -138,7 +138,7 @@ if (btnVisitorSign) {
         
         if(loadingOverlay) loadingOverlay.style.display = 'flex';
 
-        // --- VAIHE 1: YRITETÄÄN TALLENTAA ---
+        // 1. Tallennetaan
         try {
             await db.ref('miitit/' + targetHost + '/logs/' + currentEventId).push({
                 nickname: nick, 
@@ -153,7 +153,7 @@ if (btnVisitorSign) {
             return;
         }
 
-        // --- VAIHE 2: YRITETÄÄN HAKEA HISTORIA ---
+        // 2. Haetaan historia (vikasietoinen)
         let userHistory = null;
         let isFirstTime = false;
 
@@ -188,13 +188,11 @@ if (btnVisitorSign) {
             isFirstTime = (userHistory.length <= 1);
 
         } catch (statsErr) {
-            console.warn("Tilastohaku epäonnistui (todennäköisesti oikeudet):", statsErr);
+            console.warn("Tilastohaku epäonnistui:", statsErr);
             userHistory = null;
         }
 
         if(loadingOverlay) loadingOverlay.style.display = 'none';
-
-        // --- VAIHE 3: NÄYTETÄÄN MODAALI ---
         showVisitorModal(nick, isFirstTime, userHistory);
     };
 }
@@ -232,13 +230,7 @@ function showVisitorModal(nick, isFirstTime, history) {
         totalEl.innerText = "OK";
         firstEl.innerHTML = "-";
         lastEl.innerHTML = "-";
-        listEl.innerHTML = `
-            <div style="text-align:center; padding:20px; font-size:1.1em; line-height:1.6;">
-                <p><strong>Kirjaus tallennettu onnistuneesti!</strong></p>
-                <p>Valitettavasti emme saaneet ladattua aiempaa historiaasi tällä kertaa.</p>
-                <p>Mukavaa miittiä! 😊</p>
-            </div>
-        `;
+        listEl.innerHTML = `<div style="text-align:center; padding:20px;">Kirjaus tallennettu!</div>`;
         modal.style.display = 'block';
         return;
     }
@@ -249,13 +241,7 @@ function showVisitorModal(nick, isFirstTime, history) {
         totalEl.innerText = "1";
         firstEl.innerHTML = "Tänään!";
         lastEl.innerHTML = "Tänään!";
-        listEl.innerHTML = `
-            <div style="text-align:center; padding:20px; font-size:1.1em; line-height:1.6;">
-                <p><strong>Onnittelut!</strong></p>
-                <p>Tämä on ensimmäinen kirjauksesi Mikkokalevin miittikirjaan.</p>
-                <p>Mahtavaa saada sinut mukaan! 😊</p>
-            </div>
-        `;
+        listEl.innerHTML = `<div style="text-align:center; padding:20px;">Tämä on ensimmäinen kirjauksesi Mikkokalevin miittikirjaan.</div>`;
     } else {
         titleEl.innerHTML = `Hei taas, ${nick}!`;
         titleEl.style.color = "var(--header-color)";
@@ -1019,14 +1005,40 @@ if (fileInputSync) {
         if(loadingOverlay) loadingOverlay.style.display = 'flex';
         
         const text = await file.text();
-        
-        // 1. Vanha toiminto: Päivitetään kätkön attribuutit ja koordinaatit
-        const data = parseGPX(text);
+        const data = parseGPX(text); // Parsitaan tiedosto heti alussa
+
+        // --- 1. TARKISTETAAN GC-KOODI (TURVALLISUUS) ---
+        const fileGC = (data.gc || "").trim().toUpperCase();
+        const eventGC = (currentEventGcCode || "").trim().toUpperCase();
+
+        // Jos miitillä on GC-koodi (yli 2 merkkiä), vaaditaan täsmäys
+        if (eventGC.length > 2) {
+            if (!fileGC) {
+                alert("⛔ VIRHE: GPX-tiedostosta ei löytynyt GC-koodia.");
+                if(loadingOverlay) loadingOverlay.style.display = 'none';
+                fileInputSync.value = "";
+                return;
+            }
+            if (fileGC !== eventGC) {
+                alert(`⛔ VIRHE: GPX-tiedoston koodi (${fileGC}) ei vastaa tätä miittiä (${eventGC})!\n\nTuonti keskeytetty tietojen suojaamiseksi.`);
+                if(loadingOverlay) loadingOverlay.style.display = 'none';
+                fileInputSync.value = "";
+                return;
+            }
+        } else {
+            // Jos miitillä EI ole vielä koodia, kysytään lupa
+            if (!confirm(`Tällä miitillä ei ole vielä GC-koodia.\nGPX-tiedoston koodi on: ${fileGC}\n\nHaluatko varmasti tuoda tiedot tähän?`)) {
+                if(loadingOverlay) loadingOverlay.style.display = 'none';
+                fileInputSync.value = "";
+                return;
+            }
+        }
+
+        // --- 2. JOS TARKISTUS MENI LÄPI, JATKETAAN ---
         if (data) {
             db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({ attributes: data.attributes, coords: data.coords });
         }
         
-        // 2. UUSI TOIMINTO: Tuodaan puuttuvat lokit JA yhdistetään viestit
         const parser = new DOMParser();
         const xml = parser.parseFromString(text, "text/xml");
         const logs = xml.getElementsByTagName("groundspeak:log");
