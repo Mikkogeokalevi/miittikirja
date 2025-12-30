@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.3.0 - Visitor Stats & Welcome
+// Versio: 7.3.1 - FIX: Robust Visitor Save
 // ==========================================
 
-const APP_VERSION = "7.3.0";
+const APP_VERSION = "7.3.1";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -123,7 +123,7 @@ async function openVisitorGuestbook(uid, eventId) {
     });
 }
 
-// --- UUSI: VIERAILIJAN KIRJAUS & TILASTOT ---
+// --- KORJATTU: VIERAILIJAN KIRJAUS & TILASTOT ---
 const btnVisitorSign = document.getElementById('btn-visitor-sign');
 if (btnVisitorSign) {
     btnVisitorSign.onclick = async function() {
@@ -138,24 +138,34 @@ if (btnVisitorSign) {
         
         if(loadingOverlay) loadingOverlay.style.display = 'flex';
 
+        // --- VAIHE 1: YRITETÄÄN TALLENTAA ---
         try {
-            // 1. Tallennetaan kirjaus
             await db.ref('miitit/' + targetHost + '/logs/' + currentEventId).push({
                 nickname: nick, 
                 from: fromInput ? fromInput.value.trim() : "",
                 message: msgInput ? msgInput.value.trim() : "", 
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             });
+        } catch (saveErr) {
+            console.error("Tallennusvirhe:", saveErr);
+            if(loadingOverlay) loadingOverlay.style.display = 'none';
+            alert("Virhe tallennuksessa: " + saveErr.message);
+            return; // Lopetetaan, jos itse tallennus ei onnistu
+        }
 
-            // 2. Haetaan historia tilastoja varten (vain jos tallennus onnistui)
-            // Haetaan kaikki tapahtumat ja logit isännältä
+        // --- VAIHE 2: YRITETÄÄN HAKEA HISTORIA (Vikasietoinen) ---
+        // Jos tämä epäonnistuu (esim. oikeuksien takia), näytetään silti onnistunut tallennus -ilmoitus.
+        let userHistory = null;
+        let isFirstTime = false;
+
+        try {
             const eventsSnap = await db.ref('miitit/' + targetHost + '/events').once('value');
             const logsSnap = await db.ref('miitit/' + targetHost + '/logs').once('value');
             
             const eventsMap = {};
             eventsSnap.forEach(child => { eventsMap[child.key] = child.val(); });
             
-            const userHistory = [];
+            userHistory = [];
             const nickLower = nick.toLowerCase();
 
             logsSnap.forEach(evtLogs => {
@@ -163,9 +173,9 @@ if (btnVisitorSign) {
                 const evtData = eventsMap[eventKey];
                 if (evtData) {
                     let attended = false;
-                    // Tarkistetaan onko käyttäjä tässä miitissä
                     evtLogs.forEach(log => {
-                        if (log.val().nickname && log.val().nickname.toLowerCase() === nickLower) {
+                        const val = log.val();
+                        if (val && val.nickname && val.nickname.toLowerCase() === nickLower) {
                             attended = true;
                         }
                     });
@@ -175,28 +185,19 @@ if (btnVisitorSign) {
                 }
             });
 
-            // Lajitellaan historia (vanhin ensin)
+            // Lajitellaan historia
             userHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
-            
-            // Lasketaan käyntikerrat (sisältää nyt lisätyn)
-            const visitCount = userHistory.length;
+            isFirstTime = (userHistory.length <= 1); // 1 = vain tämä nykyinen
 
-            // 3. Näytetään modaali (Eka kerta vs Konkari)
-            if (visitCount <= 1) {
-                // EKA KERTA (visitCount on 1, koska juuri lisättiin)
-                showVisitorModal(nick, true, userHistory);
-            } else {
-                // KONKARI
-                showVisitorModal(nick, false, userHistory);
-            }
-
-        } catch (err) {
-            console.error("Virhe:", err);
-            alert("Virhe tallennuksessa, mutta yritetään ohjata eteenpäin...");
-            proceedToGeo();
-        } finally {
-            if(loadingOverlay) loadingOverlay.style.display = 'none';
+        } catch (statsErr) {
+            console.warn("Tilastohaku epäonnistui (todennäköisesti oikeudet):", statsErr);
+            userHistory = null; // Merkitään että historiaa ei saatu
         }
+
+        if(loadingOverlay) loadingOverlay.style.display = 'none';
+
+        // --- VAIHE 3: NÄYTETÄÄN MODAALI ---
+        showVisitorModal(nick, isFirstTime, userHistory);
     };
 }
 
@@ -214,30 +215,47 @@ function showVisitorModal(nick, isFirstTime, history) {
     if(listEl) listEl.innerHTML = "";
 
     // Muutetaan napin toiminta: "Sulje" -> "Jatka miittisivulle"
-    // Etsitään nappi ja poistetaan vanhat kuuntelijat kloonaamalla se
     const oldBtn = modal.querySelector('button.btn-red');
     if(oldBtn) {
         const newBtn = oldBtn.cloneNode(true);
         newBtn.innerText = "Jatka miittisivulle ➡";
-        newBtn.className = "btn btn-green"; // Muutetaan vihreäksi
+        newBtn.className = "btn btn-green";
         newBtn.onclick = function() {
             modal.style.display = 'none';
-            // Palautetaan nappi ennalleen seuraavaa kertaa varten (jos admin käyttää samassa istunnossa)
+            // Palautus
             newBtn.innerText = "Sulje";
             newBtn.className = "btn btn-red";
             newBtn.onclick = function() { modal.style.display = 'none'; };
-            
             proceedToGeo();
         };
         oldBtn.parentNode.replaceChild(newBtn, oldBtn);
     }
 
-    if (isFirstTime) {
-        // --- EKA KERTA NÄKYMÄ ---
-        titleEl.innerHTML = `🎉 Tervetuloa ${nick}! 🎉`;
-        titleEl.style.color = "#d32f2f"; // Juhlavampi punainen otsikko
+    // --- TAPAUS A: HISTORIA PUUTTUU (Oikeusvirhe tai muu) ---
+    if (history === null) {
+        titleEl.innerHTML = `Kiitos käynnistä, ${nick}!`;
+        titleEl.style.color = "var(--header-color)";
         
-        // Piilotetaan tilastoruudukko väliaikaisesti tai näytetään "1. kerta"
+        totalEl.innerText = "OK";
+        firstEl.innerHTML = "-";
+        lastEl.innerHTML = "-";
+        
+        listEl.innerHTML = `
+            <div style="text-align:center; padding:20px; font-size:1.1em; line-height:1.6;">
+                <p><strong>Kirjaus tallennettu onnistuneesti!</strong></p>
+                <p>Valitettavasti emme saaneet ladattua aiempaa historiaasi tällä kertaa.</p>
+                <p>Mukavaa miittiä! 😊</p>
+            </div>
+        `;
+        modal.style.display = 'block';
+        return;
+    }
+
+    // --- TAPAUS B: ENSIMMÄINEN KERTA ---
+    if (isFirstTime) {
+        titleEl.innerHTML = `🎉 Tervetuloa ${nick}! 🎉`;
+        titleEl.style.color = "#d32f2f";
+        
         totalEl.innerText = "1";
         firstEl.innerHTML = "Tänään!";
         lastEl.innerHTML = "Tänään!";
@@ -249,28 +267,28 @@ function showVisitorModal(nick, isFirstTime, history) {
                 <p>Mahtavaa saada sinut mukaan! 😊</p>
             </div>
         `;
-    } else {
-        // --- KONKARI NÄKYMÄ ---
+    } 
+    // --- TAPAUS C: KONKARI ---
+    else {
         titleEl.innerHTML = `Hei taas, ${nick}!`;
-        titleEl.style.color = "var(--header-color)"; // Palauta normaali väri
+        titleEl.style.color = "var(--header-color)";
         
         totalEl.innerText = history.length;
         
         const first = history[0];
-        const last = history[history.length - 1]; // Tämä on nykyinen miitti
+        const last = history[history.length - 1];
         
         firstEl.innerHTML = `${first.date}<br><span style="font-size:0.8em; font-weight:normal;">${first.name}</span>`;
         lastEl.innerHTML = `${last.date}<br><span style="font-size:0.8em; font-weight:normal;">${last.name}</span>`;
 
-        // Listataan viimeisimmät (tai kaikki)
+        // Listataan
         history.forEach(evt => {
             const row = document.createElement('div');
             row.style.borderBottom = "1px dotted #555";
             row.style.padding = "5px 0";
             row.style.fontSize = "0.9em";
-            // Korostetaan nykyinen
             if (evt.date === history[history.length-1].date && evt.name === history[history.length-1].name) {
-                row.style.backgroundColor = "rgba(46, 125, 50, 0.2)"; // Vihreä korostus
+                row.style.backgroundColor = "rgba(46, 125, 50, 0.2)";
                 row.innerHTML = `<strong>${evt.date}</strong> ${evt.name} (TÄMÄ)`;
             } else {
                 row.innerHTML = `<strong>${evt.date}</strong> ${evt.name}`;
@@ -278,10 +296,7 @@ function showVisitorModal(nick, isFirstTime, history) {
             listEl.appendChild(row);
         });
         
-        // Scrollataan lista loppuun että uusin näkyy
-        setTimeout(() => {
-            listEl.scrollTop = listEl.scrollHeight;
-        }, 100);
+        setTimeout(() => { listEl.scrollTop = listEl.scrollHeight; }, 100);
     }
 
     modal.style.display = 'block';
@@ -692,6 +707,7 @@ function loadEvents() {
             div.className = "card" + (isArchived ? " archived" : "") + (isToday ? " today-highlight" : "");
             
             if (isAdminMode) {
+                // LISTAKORTTI (Alhaalla listoissa)
                 const archiveBtn = isArchived 
                     ? `<button class="btn btn-blue btn-small" onclick="toggleArchive('${evt.key}', false)">♻️ Palauta</button>`
                     : `<button class="btn btn-red btn-small" onclick="toggleArchive('${evt.key}', true)">📦 Arkistoi</button>`;
@@ -710,13 +726,14 @@ function loadEvents() {
                         <button class="btn btn-red btn-small" onclick="deleteEvent('${evt.key}')">🗑 Poista</button>
                     </div>`;
                 
+                // TÄNÄÄN TAPAHTUU -HERO KORTTI (Ylhäällä)
                 if (isToday && noticeAdmin) {
                     const hero = document.createElement('div');
                     hero.className = "card today-highlight";
                     hero.style.textAlign = "center";
                     hero.style.padding = "20px";
-                    hero.style.border = "4px solid #D2691E"; 
-                    hero.style.backgroundColor = "#FFF8DC"; 
+                    hero.style.border = "4px solid #D2691E"; // Vahvempi reunus
+                    hero.style.backgroundColor = "#FFF8DC";  // Hieman erottuva tausta
 
                     hero.innerHTML = `
                         <h2 style="color:#D2691E; margin:0 0 10px 0; text-transform:uppercase; letter-spacing:1px;">🌟 Tänään tapahtuu! 🌟</h2>
@@ -729,10 +746,12 @@ function loadEvents() {
                     noticeAdmin.appendChild(hero);
                 }
 
+                // Lisätään myös normaaliin listaan
                 const target = document.getElementById(evt.date >= todayStr ? `list-${evt.type}-future` : `list-${evt.type}-past`);
                 if (target) target.appendChild(div);
 
             } else {
+                // USER MODE (Katselija)
                 div.innerHTML = `
                     <div style="display:flex; justify-content:space-between;"><strong>${evt.name}</strong><span>${evt.date}</span></div>
                     <div style="font-size:0.8em; color:#666; margin-bottom:5px;">🕓 ${evt.time || '-'} • ${evt.location || ''}</div>
@@ -742,6 +761,7 @@ function loadEvents() {
                     </div>`;
                 
                 if (isToday && noticeUser) {
+                    // Myös käyttäjälle kiva ilmoitus, mutta simppelimpi
                     const heroUser = div.cloneNode(true);
                     heroUser.style.border = "4px solid #4caf50";
                     heroUser.prepend(document.createRange().createContextualFragment('<h3 style="color:#4caf50; margin-top:0; text-align:center;">🌟 TÄNÄÄN!</h3>'));
@@ -767,11 +787,14 @@ window.openGuestbook = function(eventKey) {
     if(currentEventId) db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
     currentEventId = eventKey;
     
+    // NOLLATAAN LIVE-LASKURI
     lastAttendeeCount = null;
     
     db.ref('miitit/' + currentUser.uid + '/events/' + eventKey).on('value', snap => {
         const evt = snap.val(); if(!evt) return;
         currentEventArchived = (evt.isArchived === true);
+        
+        // PÄIVITETÄÄN GLOBAALI MUUTTUJA NAPPIA VARTEN
         currentEventGcCode = evt.gc;
 
         document.getElementById('gb-event-name').innerText = evt.name;
@@ -808,11 +831,15 @@ window.openGuestbook = function(eventKey) {
         const qrArea = document.getElementById('qr-display-area');
         if(qrArea) qrArea.style.display = 'none';
         
+        // --- QR-OSION NÄYTTÄMINEN ---
+        // Näytä QR-alue AINA jos ollaan kirjautuneena (currentUser)
         const qrSection = document.getElementById('qr-section');
         if (qrSection) {
             qrSection.style.display = currentUser ? 'block' : 'none';
         }
         
+        // --- HALLINTATYÖKALUT (GPX / MASSA) ---
+        // Näytä VAIN jos isAdminMode = true
         const adminTools = document.getElementById('gb-admin-tools');
         if(adminTools) {
              adminTools.style.display = (currentUser && isAdminMode) ? 'block' : 'none';
@@ -824,6 +851,7 @@ window.openGuestbook = function(eventKey) {
         const notice = document.getElementById('archived-notice');
         if(notice) notice.style.display = currentEventArchived ? 'block' : 'none';
         
+        // Aktivoi nimiehdotukset admin-kirjaukseen
         if(currentUser) setupAutocomplete('log-nickname', 'log-autocomplete', currentUser.uid);
     });
 
@@ -838,6 +866,7 @@ window.openGuestbook = function(eventKey) {
     loadAttendees(eventKey);
 };
 
+// UUSI: Tarkista nettilogi -toiminto
 window.checkNetLog = function() {
     if (currentEventGcCode && currentEventGcCode.startsWith('GC')) {
         window.open("https://coord.info/" + currentEventGcCode, "_blank");
@@ -846,6 +875,7 @@ window.checkNetLog = function() {
     }
 };
 
+// Kirjaus (Admin/User tila)
 const btnSignLog = document.getElementById('btn-sign-log');
 if (btnSignLog) {
     btnSignLog.onclick = function() {
@@ -866,6 +896,7 @@ if (btnSignLog) {
 }
 
 function loadAttendees(eventKey) {
+    // Tässä käytetään aina kirjautunutta käyttäjää logien lataukseen
     if (!currentUser) return;
     
     db.ref('miitit/' + currentUser.uid + '/logs/' + eventKey).on('value', (snapshot) => {
@@ -873,6 +904,7 @@ function loadAttendees(eventKey) {
         listEl.innerHTML = ""; const logs = [];
         snapshot.forEach(child => { logs.push({key: child.key, ...child.val()}); });
         
+        // Lajittelu: Uusin ensin
         logs.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
         
         logs.forEach(log => {
@@ -891,17 +923,22 @@ function loadAttendees(eventKey) {
             const currentCount = logs.length;
             countEl.innerText = currentCount;
             
+            // --- LIVE ANIMAATIO LOGIIKKA ---
+            // Jos luku on olemassa ja se on SUUREMPI kuin viimeksi muistissa ollut
             if (lastAttendeeCount !== null && currentCount > lastAttendeeCount) {
+                // Väläytetään vihreänä ja suurennetaan hetkeksi
                 countEl.style.transition = "transform 0.2s, background-color 0.5s";
-                countEl.style.backgroundColor = "#00FF00"; 
+                countEl.style.backgroundColor = "#00FF00"; // Kirkas vihreä
                 countEl.style.transform = "scale(1.6)";
                 
+                // Palautetaan normaaliksi pienen viiveen jälkeen
                 setTimeout(() => {
-                    countEl.style.backgroundColor = "#8B4513"; 
+                    countEl.style.backgroundColor = "#8B4513"; // Alkuperäinen ruskea
                     countEl.style.transform = "scale(1.0)";
                 }, 1500);
             }
             
+            // Päivitetään muistijälki
             lastAttendeeCount = currentCount;
         }
     });
