@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.3.1 - FIX: Robust Visitor Save
+// Versio: 7.3.2 - FIX: GPX GC-Code Validation
 // ==========================================
 
-const APP_VERSION = "7.3.1";
+const APP_VERSION = "7.3.2";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -123,7 +123,7 @@ async function openVisitorGuestbook(uid, eventId) {
     });
 }
 
-// --- KORJATTU: VIERAILIJAN KIRJAUS & TILASTOT ---
+// --- VIERAILIJAN KIRJAUS & TILASTOT ---
 const btnVisitorSign = document.getElementById('btn-visitor-sign');
 if (btnVisitorSign) {
     btnVisitorSign.onclick = async function() {
@@ -150,11 +150,10 @@ if (btnVisitorSign) {
             console.error("Tallennusvirhe:", saveErr);
             if(loadingOverlay) loadingOverlay.style.display = 'none';
             alert("Virhe tallennuksessa: " + saveErr.message);
-            return; // Lopetetaan, jos itse tallennus ei onnistu
+            return;
         }
 
-        // --- VAIHE 2: YRITETÄÄN HAKEA HISTORIA (Vikasietoinen) ---
-        // Jos tämä epäonnistuu (esim. oikeuksien takia), näytetään silti onnistunut tallennus -ilmoitus.
+        // --- VAIHE 2: YRITETÄÄN HAKEA HISTORIA ---
         let userHistory = null;
         let isFirstTime = false;
 
@@ -185,13 +184,12 @@ if (btnVisitorSign) {
                 }
             });
 
-            // Lajitellaan historia
             userHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
-            isFirstTime = (userHistory.length <= 1); // 1 = vain tämä nykyinen
+            isFirstTime = (userHistory.length <= 1);
 
         } catch (statsErr) {
             console.warn("Tilastohaku epäonnistui (todennäköisesti oikeudet):", statsErr);
-            userHistory = null; // Merkitään että historiaa ei saatu
+            userHistory = null;
         }
 
         if(loadingOverlay) loadingOverlay.style.display = 'none';
@@ -211,10 +209,8 @@ function showVisitorModal(nick, isFirstTime, history) {
     const lastEl = document.getElementById('up-last');
     const listEl = document.getElementById('up-history-list');
     
-    // Tyhjennetään lista
     if(listEl) listEl.innerHTML = "";
 
-    // Muutetaan napin toiminta: "Sulje" -> "Jatka miittisivulle"
     const oldBtn = modal.querySelector('button.btn-red');
     if(oldBtn) {
         const newBtn = oldBtn.cloneNode(true);
@@ -222,7 +218,6 @@ function showVisitorModal(nick, isFirstTime, history) {
         newBtn.className = "btn btn-green";
         newBtn.onclick = function() {
             modal.style.display = 'none';
-            // Palautus
             newBtn.innerText = "Sulje";
             newBtn.className = "btn btn-red";
             newBtn.onclick = function() { modal.style.display = 'none'; };
@@ -231,15 +226,12 @@ function showVisitorModal(nick, isFirstTime, history) {
         oldBtn.parentNode.replaceChild(newBtn, oldBtn);
     }
 
-    // --- TAPAUS A: HISTORIA PUUTTUU (Oikeusvirhe tai muu) ---
     if (history === null) {
         titleEl.innerHTML = `Kiitos käynnistä, ${nick}!`;
         titleEl.style.color = "var(--header-color)";
-        
         totalEl.innerText = "OK";
         firstEl.innerHTML = "-";
         lastEl.innerHTML = "-";
-        
         listEl.innerHTML = `
             <div style="text-align:center; padding:20px; font-size:1.1em; line-height:1.6;">
                 <p><strong>Kirjaus tallennettu onnistuneesti!</strong></p>
@@ -251,15 +243,12 @@ function showVisitorModal(nick, isFirstTime, history) {
         return;
     }
 
-    // --- TAPAUS B: ENSIMMÄINEN KERTA ---
     if (isFirstTime) {
         titleEl.innerHTML = `🎉 Tervetuloa ${nick}! 🎉`;
         titleEl.style.color = "#d32f2f";
-        
         totalEl.innerText = "1";
         firstEl.innerHTML = "Tänään!";
         lastEl.innerHTML = "Tänään!";
-        
         listEl.innerHTML = `
             <div style="text-align:center; padding:20px; font-size:1.1em; line-height:1.6;">
                 <p><strong>Onnittelut!</strong></p>
@@ -267,21 +256,15 @@ function showVisitorModal(nick, isFirstTime, history) {
                 <p>Mahtavaa saada sinut mukaan! 😊</p>
             </div>
         `;
-    } 
-    // --- TAPAUS C: KONKARI ---
-    else {
+    } else {
         titleEl.innerHTML = `Hei taas, ${nick}!`;
         titleEl.style.color = "var(--header-color)";
-        
         totalEl.innerText = history.length;
-        
         const first = history[0];
         const last = history[history.length - 1];
-        
         firstEl.innerHTML = `${first.date}<br><span style="font-size:0.8em; font-weight:normal;">${first.name}</span>`;
         lastEl.innerHTML = `${last.date}<br><span style="font-size:0.8em; font-weight:normal;">${last.name}</span>`;
 
-        // Listataan
         history.forEach(evt => {
             const row = document.createElement('div');
             row.style.borderBottom = "1px dotted #555";
@@ -295,7 +278,6 @@ function showVisitorModal(nick, isFirstTime, history) {
             }
             listEl.appendChild(row);
         });
-        
         setTimeout(() => { listEl.scrollTop = listEl.scrollHeight; }, 100);
     }
 
@@ -362,7 +344,6 @@ document.addEventListener('visibilitychange', async () => {
 // ==========================================
 
 auth.onAuthStateChanged((user) => {
-    // TÄRKEÄÄ: Jos URL:ssa on event-parametri, emme koskaan palaa kirjautumisnäkymään automaattisesti
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('event')) return;
 
@@ -450,11 +431,8 @@ if(btnToggleQr) {
         }
 
         container.innerHTML = "";
-        // Otetaan nykyinen kirjautunut UID varmuudella
         const ownerUid = currentUser ? currentUser.uid : HOST_UID;
         const baseUrl = window.location.href.split('?')[0];
-        
-        // Linkki: sivu?event=ID&uid=OWNER_ID
         const guestUrl = `${baseUrl}?event=${currentEventId}&uid=${ownerUid}`;
         
         if(linkText) linkText.innerText = guestUrl;
@@ -589,7 +567,6 @@ function parseGPX(xmlText) {
 // 8. TAPAHTUMIEN LATAUS
 // ==========================================
 
-// --- Lisää uusi tapahtuma -napit ja logiikka ---
 const newEventToggle = document.getElementById('new-event-toggle');
 if (newEventToggle) {
     newEventToggle.onclick = function() {
@@ -1255,3 +1232,5 @@ window.toggleDetails = function(id) {
     const content = document.getElementById(id);
     if(content) content.style.display = (content.style.display === 'block') ? 'none' : 'block';
 };
+
+}
