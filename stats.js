@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.3.5 - Map Popup Action
+// Versio: 7.3.6 - Admin User Profile Links
 // ==========================================
 
 let allStatsData = {
@@ -221,7 +221,7 @@ window.renderMap = function(data) {
                 const style = getPointStyle(evt);
                 const marker = L.circleMarker(latLng, style).addTo(mapInstance);
                 
-                // UUSI POPUP SISÄLTÖ
+                // POPUP SISÄLTÖ (Nappi avaa miittikirjan)
                 const popupHtml = `
                     <div style="text-align:center; min-width:150px;">
                         <b style="font-size:1.1em;">${evt.name}</b><br>
@@ -324,6 +324,10 @@ function renderTimeSlots(data) {
     el.innerHTML = html;
 }
 
+// ==========================================
+// UUSI: USER PROFILE LINKIT (VAIN ADMIN)
+// ==========================================
+
 window.openUserProfile = function(nickname) {
     if (!nickname) return;
     const userEvents = allStatsData.events.filter(evt => 
@@ -341,14 +345,44 @@ window.openUserProfile = function(nickname) {
 
     const listEl = document.getElementById('up-history-list');
     listEl.innerHTML = "";
+    
     userEvents.forEach(evt => {
         const row = document.createElement('div');
         row.style.borderBottom = "1px dotted #555";
         row.style.padding = "5px 0";
         row.style.fontSize = "0.9em";
         row.innerHTML = `<strong>${evt.date}</strong> ${evt.name}`;
+
+        // --- TÄSSÄ ON RAJOITUS: TOIMII VAIN KIRJAUTUNEELLE KÄYTTÄJÄLLE (ADMIN) ---
+        if (currentUser) {
+            row.style.cursor = "pointer";
+            row.title = "Siirry miittiin";
+            row.style.transition = "background-color 0.2s";
+            
+            // Hover efekti
+            row.addEventListener('mouseenter', () => { row.style.backgroundColor = "rgba(139, 69, 19, 0.15)"; });
+            row.addEventListener('mouseleave', () => { row.style.backgroundColor = "transparent"; });
+
+            row.onclick = function() {
+                // Sulje käyttäjäkortti
+                const modal = document.getElementById('user-profile-modal');
+                if(modal) modal.style.display = 'none';
+                
+                // Sulje tilastonäkymä, jotta alta paljastuu miittilista/kirja
+                const stats = document.getElementById('stats-view');
+                if(stats) stats.style.display = 'none';
+
+                // Siirry miittiin
+                if(window.openGuestbook) window.openGuestbook(evt.key);
+            };
+        } else {
+            // Vieraille normaali teksti, ei linkkiä
+            row.style.cursor = "default";
+        }
+
         listEl.appendChild(row);
     });
+    
     document.getElementById('user-profile-modal').style.display = 'block';
 };
 
