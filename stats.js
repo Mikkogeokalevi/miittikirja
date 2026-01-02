@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.3.2 - Map Year Colors & Legend
+// Versio: 7.3.5 - Map Popup Action
 // ==========================================
 
 let allStatsData = {
@@ -143,7 +143,7 @@ function updateStatsView(data) {
 }
 
 // ==========================================
-// UUSI: KARTTANÄKYMÄ (YEAR COLORS)
+// UUSI: KARTTANÄKYMÄ (YEAR COLORS & POPUP LINK)
 // ==========================================
 
 window.renderMap = function(data) {
@@ -154,7 +154,9 @@ window.renderMap = function(data) {
         mapInstance = null;
     }
 
-    mapInstance = L.map('stats-map').setView([64.0, 26.0], 5);
+    mapInstance = L.map('stats-map', {
+        tap: true // Mobiilituki
+    }).setView([64.0, 26.0], 5);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap'
@@ -162,7 +164,7 @@ window.renderMap = function(data) {
 
     const bounds = [];
     const todayStr = new Date().toISOString().split('T')[0];
-    const legendData = new Set(); // Kerätään tähän käytetyt värit selitettä varten
+    const legendData = new Set(); 
 
     // VÄRIPALETTI VUOSILLE
     const yearColors = {
@@ -186,7 +188,7 @@ window.renderMap = function(data) {
         // 2. TULEVAT
         if (evt.date > todayStr) {
             legendData.add(JSON.stringify({color: '#2196F3', label: 'Tulevat'}));
-            return { color: '#0d47a1', fillColor: '#2196F3', fillOpacity: 0.9, radius: 10 }; // Iso sininen
+            return { color: '#0d47a1', fillColor: '#2196F3', fillOpacity: 0.9, radius: 10 }; 
         }
 
         // 3. MENNEET (VUOSITTAIN)
@@ -218,7 +220,18 @@ window.renderMap = function(data) {
             if (latLng) {
                 const style = getPointStyle(evt);
                 const marker = L.circleMarker(latLng, style).addTo(mapInstance);
-                marker.bindPopup(`<b>${evt.name}</b><br>${evt.date}<br>👤 ${evt.attendeeCount}`);
+                
+                // UUSI POPUP SISÄLTÖ
+                const popupHtml = `
+                    <div style="text-align:center; min-width:150px;">
+                        <b style="font-size:1.1em;">${evt.name}</b><br>
+                        <span style="color:#666;">${evt.date}</span><br>
+                        <span style="font-weight:bold;">👤 ${evt.attendeeCount}</span><br>
+                        <button class="btn btn-small btn-green" style="margin-top:10px; width:100%;" onclick="goToEventFromMap('${evt.key}')">📖 Avaa miittikirja</button>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupHtml);
                 bounds.push(latLng);
             }
         }
@@ -228,14 +241,12 @@ window.renderMap = function(data) {
         mapInstance.fitBounds(bounds);
     }
     
-    // Piirretään selite kartan alle
     renderMapLegend(legendData);
 
     setTimeout(() => { mapInstance.invalidateSize(); }, 200);
 };
 
 function renderMapLegend(legendSet) {
-    // Etsitään tai luodaan selite-elementti
     let legendContainer = document.getElementById('map-legend-container');
     if (!legendContainer) {
         const mapDiv = document.getElementById('stats-map');
@@ -253,16 +264,14 @@ function renderMapLegend(legendSet) {
     }
     
     if (!legendContainer) return;
-    legendContainer.innerHTML = ""; // Tyhjennetään vanhat
+    legendContainer.innerHTML = "";
 
-    // Muunnetaan takaisin objekteiksi ja lajitellaan (Tulevat -> Perutut -> Vuodet 2026->2020)
     const items = Array.from(legendSet).map(s => JSON.parse(s));
     
-    // Yksinkertainen lajittelu: Vuosiluvut numerona, tekstit erikseen
     items.sort((a, b) => {
         const yearA = parseInt(a.label);
         const yearB = parseInt(b.label);
-        if (!isNaN(yearA) && !isNaN(yearB)) return yearB - yearA; // Uusin vuosi ensin
+        if (!isNaN(yearA) && !isNaN(yearB)) return yearB - yearA; 
         if (a.label === 'Tulevat') return -1;
         if (b.label === 'Tulevat') return 1;
         return 0;
@@ -341,6 +350,16 @@ window.openUserProfile = function(nickname) {
         listEl.appendChild(row);
     });
     document.getElementById('user-profile-modal').style.display = 'block';
+};
+
+// UUSI APUFUNKTIO KARTTALINKILLE
+window.goToEventFromMap = function(key) {
+    if (typeof window.openGuestbook === 'function') {
+        document.getElementById('stats-view').style.display = 'none';
+        window.openGuestbook(key);
+    } else {
+        alert("Virhe: Miittikirjaa ei voitu avata.");
+    }
 };
 
 function renderCharts(data) {
