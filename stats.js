@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.5.3 - Event Types & Organizer Logic
+// Versio: 7.5.4 - Host in Top Lists (FULL)
 // ==========================================
 
 let allStatsData = {
@@ -84,23 +84,22 @@ function updateStatsView(data) {
     let typeCounts = { miitti: 0, cito: 0, cce: 0 };
 
     data.forEach(e => {
-        // Tarkistetaan onko peruttu (merkkijono nimeen)
         if (e.name && e.name.includes("/ PERUTTU /")) {
             countCancelled++;
         }
-        
-        // Lasketaan tyypit (myös perutut ovat jotain tyyppiä)
         const t = (e.type || 'miitti').toLowerCase();
         if (typeCounts[t] !== undefined) {
             typeCounts[t]++;
         } else {
-            // Jos tuntematon tyyppi, lasketaan miitiksi
             typeCounts['miitti']++;
         }
     });
 
     // Järjestäjän omat osallistumiset (Kaikki - Perutut)
     const organizerAttended = totalEvents - countCancelled;
+    
+    // TALLENNETAAN GLOBAALISTI JOTTA RENDER-FUNKTIOT NÄKEVÄT SEN
+    window.currentOrganizerStats = { count: organizerAttended };
 
     // 2. Lasketaan uniikit nimimerkit
     const uniqueNames = new Set();
@@ -111,7 +110,7 @@ function updateStatsView(data) {
     });
     const uniqueCount = uniqueNames.size;
 
-    // 3. Päivitetään yhteenveto (UUSI LAYOUT)
+    // 3. Päivitetään yhteenveto
     const summaryEl = document.getElementById('stats-summary-text');
     if(summaryEl) {
         summaryEl.innerHTML = `
@@ -196,8 +195,154 @@ function updateStatsView(data) {
 }
 
 // ==========================================
-// HEATMAP (Värikkäämpi & Selkeämpi)
+// RENDERÖINTI - LISÄTTY HOST LISTOIHIN
 // ==========================================
+
+function renderUserRegistry(data) {
+    const el = document.getElementById('stats-user-registry');
+    if(!el) return;
+    const map = {};
+    data.forEach(e => { if(e.attendeeNames) e.attendeeNames.forEach(n => map[n] = (map[n] || 0) + 1); });
+    const sorted = Object.entries(map).sort((a,b) => b[1] - a[1]);
+    
+    // --- LISÄÄ HOST LISTAN KÄRKEEN ---
+    let html = "";
+    if (window.currentOrganizerStats && window.currentOrganizerStats.count > 0) {
+        html += `<div class="stats-row" style="background:rgba(255, 140, 0, 0.1); border-left:3px solid #FF8C00; padding-left:5px;">
+            <span>👑 Mikkokalevi <span style="font-size:0.8em; color:#888;">(Järjestäjä)</span></span> 
+            <strong>${window.currentOrganizerStats.count}</strong>
+        </div>`;
+    }
+
+    const limit = 50;
+    const listToShow = sorted.slice(0, limit);
+    
+    if (listToShow.length === 0 && !html) { el.innerHTML = "Ei kävijöitä."; return; }
+    
+    html += listToShow.map(([name, count], i) => 
+        `<div class="stats-row"><span>${i+1}. <span class="clickable-name" onclick="openUserProfile('${name}')">${name}</span></span> <strong>${count}</strong></div>`
+    ).join('');
+    
+    el.innerHTML = html;
+}
+
+function renderTopUsersList(data) {
+    const map = {};
+    data.forEach(e => { if(e.attendeeNames) e.attendeeNames.forEach(n => map[n] = (map[n] || 0) + 1); });
+    const sorted = Object.entries(map).sort((a,b) => b[1] - a[1]).slice(0, 10);
+    const el = document.getElementById('stats-top-users');
+    if(!el) return;
+
+    let html = "";
+    // --- LISÄÄ HOST TOP-LISTAN KÄRKEEN ---
+    if (window.currentOrganizerStats && window.currentOrganizerStats.count > 0) {
+        html += `<div class="stats-row" style="background:rgba(255, 140, 0, 0.1); border-left:3px solid #FF8C00; padding-left:5px;">
+            <span>👑 Mikkokalevi</span> <strong>${window.currentOrganizerStats.count} miittiä</strong>
+        </div>`;
+    }
+
+    html += sorted.map(([name, count], i) => `<div class="stats-row"><span>${i+1}. ${name}</span> <strong>${count} miittiä</strong></div>`).join('');
+    el.innerHTML = html;
+}
+
+function renderLoyaltyPyramid(data) {
+    const el = document.getElementById('stats-loyalty');
+    if (!el) return;
+    const userCounts = {};
+    data.forEach(e => e.attendeeNames.forEach(n => userCounts[n] = (userCounts[n] || 0) + 1));
+    let tiers = { 'Vakikasvot (10+)': 0, 'Aktiivit (5-9)': 0, 'Satunnaiset (2-4)': 0, 'Kertakävijät (1)': 0 };
+    Object.values(userCounts).forEach(count => {
+        if (count >= 10) tiers['Vakikasvot (10+)']++;
+        else if (count >= 5) tiers['Aktiivit (5-9)']++;
+        else if (count >= 2) tiers['Satunnaiset (2-4)']++;
+        else tiers['Kertakävijät (1)']++;
+    });
+    const totalUsers = Object.keys(userCounts).length || 1;
+    let html = `<div style="display:flex; flex-direction:column; align-items:center; gap:5px;">`;
+    const order = ['Vakikasvot (10+)', 'Aktiivit (5-9)', 'Satunnaiset (2-4)', 'Kertakävijät (1)'];
+    const colors = ['#8B4513', '#A0522D', '#CD853F', '#DEB887'];
+    order.forEach((label, idx) => {
+        const count = tiers[label];
+        const pct = Math.round((count / totalUsers) * 100);
+        const width = 20 + (count / totalUsers) * 80; 
+        html += `<div style="width:100%; max-width:400px; display:flex; flex-direction:column; align-items:center;"><div style="width:${width}%; background:${colors[idx]}; color:white; text-align:center; padding:5px; border-radius:4px; font-size:0.9em; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);">${label}<br><strong>${count} hlö (${pct}%)</strong></div></div>`;
+    });
+    html += `</div>`;
+    el.innerHTML = html;
+}
+
+function renderWordCloud(data) {
+    const el = document.getElementById('stats-wordcloud');
+    if (!el) return;
+    let allText = "";
+    data.forEach(e => { if (e.logs) e.logs.forEach(l => { if (l.message) allText += " " + l.message; }); });
+    const words = allText.toLowerCase().replace(/[.,!?;:()"]/g, "").split(/\s+/).filter(w => w.length > 2);
+    const stopWords = ["oli", "että", "kun", "niin", "mutta", "siis", "vain", "nyt", "tämä", "sitten", "olla", "ollut", "ovat", "myös", "kanssa", "kuin", "joka", "mitä", "sekä", "täällä", "koko", "jälkeen", "vielä", "paljon", "kiitos", "miitti", "miitistä", "kätkö", "kätköllä", "kk", "tftc", "kiitokset", "log", "hyvä", "tosi", "kiva", "mukava", "järjestäjälle", "järjestäjille"];
+    const counts = {};
+    words.forEach(w => { if (!stopWords.includes(w)) counts[w] = (counts[w] || 0) + 1; });
+    const topWords = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 30);
+    if (topWords.length === 0) { el.innerHTML = "Ei riittävästi dataa sanalouhokseen."; return; }
+    const maxCount = topWords[0][1];
+    const minCount = topWords[topWords.length - 1][1];
+    let cloudHtml = `<div style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; padding:10px;">`;
+    topWords.forEach(([word, count]) => {
+        const size = 0.8 + ((count - minCount) / (maxCount - minCount || 1)) * 1.7;
+        const opacity = 0.6 + ((count - minCount) / (maxCount - minCount || 1)) * 0.4;
+        cloudHtml += `<span style="font-size:${size.toFixed(1)}em; color:rgba(139,69,19,${opacity}); font-weight:bold;">${word}</span>`;
+    });
+    cloudHtml += `</div>`;
+    el.innerHTML = cloudHtml;
+}
+
+function renderAlphabetStats(data) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZÅÄÖ0123456789".split("");
+    const counts = {};
+    const specialChars = {};
+    data.forEach(e => {
+        if(e.name) {
+            const firstChar = e.name.trim().charAt(0).toUpperCase();
+            if (chars.includes(firstChar)) counts[firstChar] = (counts[firstChar] || 0) + 1;
+            else specialChars[firstChar] = (specialChars[firstChar] || 0) + 1;
+        }
+    });
+    const grid = document.getElementById('stats-alphabet');
+    if(grid) grid.innerHTML = chars.map(c => `<div class="char-box ${!counts[c] ? 'empty' : ''}">${c}<br><small>${counts[c] || 0}</small></div>`).join('');
+    const specialEl = document.getElementById('stats-special-chars');
+    if(specialEl) {
+        const entries = Object.entries(specialChars);
+        specialEl.innerHTML = entries.length ? "<strong>Muut merkit:</strong><br>" + entries.map(([ch, n]) => `${ch} (${n})`).join(', ') : "";
+    }
+}
+
+function renderLocationsTable(data) {
+    const map = {};
+    data.forEach(e => { if (e.location) map[e.location] = (map[e.location] || 0) + 1; });
+    const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]);
+    const el = document.getElementById('stats-locations');
+    if(el) el.innerHTML = sorted.map(([loc, n]) => `<div class="stats-row"><span>${loc}</span> <strong>${n}</strong></div>`).join('');
+}
+
+function renderAttributesList(data) {
+    const map = {};
+    data.forEach(e => {
+        if (e.attributes && Array.isArray(e.attributes)) {
+            e.attributes.forEach(attr => {
+                const name = attr.name || attr;
+                const isNeg = (attr.inc === 0);
+                if (!map[name]) map[name] = { pos: 0, neg: 0 };
+                if (isNeg) map[name].neg++; else map[name].pos++;
+            });
+        }
+    });
+    const el = document.getElementById('stats-attributes');
+    if(!el) return;
+    el.innerHTML = "";
+    Object.entries(map).sort((a, b) => a[0].localeCompare(b[0])).forEach(([name, counts]) => {
+        if (counts.pos > 0) el.innerHTML += `<div class="stats-row"><span>${name}</span> <strong>${counts.pos}</strong></div>`;
+        if (counts.neg > 0) el.innerHTML += `<div class="stats-row"><span style="color:#721c24; text-decoration:line-through; opacity:0.7;">${name}</span> <strong>${counts.neg}</strong></div>`;
+    });
+}
+
 function renderYearHeatmap(data) {
     const el = document.getElementById('stats-year-heatmap');
     if (!el) return;
@@ -254,7 +399,7 @@ function renderYearHeatmap(data) {
 }
 
 // ==========================================
-// KARTTANÄKYMÄ (Fuzzy Grouping - Noin 100m)
+// KARTTANÄKYMÄ (Fuzzy Grouping)
 // ==========================================
 
 window.renderMap = function(data) {
@@ -399,76 +544,6 @@ window.renderMap = function(data) {
     setTimeout(() => { mapInstance.invalidateSize(); }, 200);
 };
 
-function renderMapLegend(legendSet) {
-    let legendContainer = document.getElementById('map-legend-container');
-    if (!legendContainer) {
-        const mapDiv = document.getElementById('stats-map');
-        if (mapDiv) {
-            legendContainer = document.createElement('div');
-            legendContainer.id = 'map-legend-container';
-            legendContainer.style.display = 'flex';
-            legendContainer.style.flexWrap = 'wrap';
-            legendContainer.style.gap = '10px';
-            legendContainer.style.padding = '10px';
-            legendContainer.style.justifyContent = 'center';
-            legendContainer.style.fontSize = '0.9em';
-            mapDiv.parentNode.appendChild(legendContainer);
-        }
-    }
-    if (!legendContainer) return;
-    legendContainer.innerHTML = "";
-    const items = Array.from(legendSet).map(s => JSON.parse(s));
-    items.sort((a, b) => {
-        const yearA = parseInt(a.label);
-        const yearB = parseInt(b.label);
-        if (!isNaN(yearA) && !isNaN(yearB)) return yearB - yearA; 
-        if (a.label === 'Tulevat') return -1;
-        if (b.label === 'Tulevat') return 1;
-        return 0;
-    });
-    items.forEach(item => {
-        const div = document.createElement('div');
-        div.innerHTML = `<span style="display:inline-block; width:12px; height:12px; background:${item.color}; border-radius:50%; margin-right:5px; border:1px solid #333;"></span>${item.label}`;
-        legendContainer.appendChild(div);
-    });
-}
-
-function renderTimeSlots(data) {
-    const el = document.getElementById('stats-time-slots');
-    if (!el) return;
-
-    const slotCounts = {};
-    for (let h = 0; h < 24; h++) {
-        for (let m = 0; m < 60; m += 15) {
-            const key = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
-            slotCounts[key] = 0;
-        }
-    }
-
-    let maxCount = 0;
-    data.forEach(evt => {
-        if (evt.time) {
-            const start = evt.time.split('-')[0].trim();
-            const normalized = start.replace('.', ':');
-            if (slotCounts.hasOwnProperty(normalized)) {
-                slotCounts[normalized]++;
-                if (slotCounts[normalized] > maxCount) maxCount = slotCounts[normalized];
-            }
-        }
-    });
-
-    let html = "";
-    Object.keys(slotCounts).sort().forEach(time => {
-        const count = slotCounts[time];
-        const isActive = count > 0;
-        const className = isActive ? "time-slot-box active" : "time-slot-box empty";
-        const content = isActive ? `${time}<br><strong>${count}</strong>` : time;
-        html += `<div class="${className}">${content}</div>`;
-    });
-
-    el.innerHTML = html;
-}
-
 window.openUserProfile = function(nickname) {
     if (!nickname) return;
     const userEvents = allStatsData.events.filter(evt => 
@@ -609,124 +684,6 @@ function renderCharts(data) {
     const topAttrs = Object.entries(attrMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
     chartInstances['attrs'] = new Chart(document.getElementById('chart-attributes-canvas'), {
         type: 'bar', data: { labels: topAttrs.map(x => x[0]), datasets: [{ label: 'Esiintyvyys', data: topAttrs.map(x => x[1]), backgroundColor: '#A0522D' }] }, options: { indexAxis: 'y' }
-    });
-}
-
-function renderUserRegistry(data) {
-    const el = document.getElementById('stats-user-registry');
-    if(!el) return;
-    const map = {};
-    data.forEach(e => { if(e.attendeeNames) e.attendeeNames.forEach(n => map[n] = (map[n] || 0) + 1); });
-    const sorted = Object.entries(map).sort((a,b) => b[1] - a[1]);
-    const limit = 50;
-    const listToShow = sorted.slice(0, limit);
-    if (listToShow.length === 0) { el.innerHTML = "Ei kävijöitä."; return; }
-    el.innerHTML = listToShow.map(([name, count], i) => `<div class="stats-row"><span>${i+1}. <span class="clickable-name" onclick="openUserProfile('${name}')">${name}</span></span> <strong>${count}</strong></div>`).join('');
-}
-
-function renderTopUsersList(data) {
-    const map = {};
-    data.forEach(e => { if(e.attendeeNames) e.attendeeNames.forEach(n => map[n] = (map[n] || 0) + 1); });
-    const sorted = Object.entries(map).sort((a,b) => b[1] - a[1]).slice(0, 10);
-    const el = document.getElementById('stats-top-users');
-    if(el) el.innerHTML = sorted.map(([name, count], i) => `<div class="stats-row"><span>${i+1}. ${name}</span> <strong>${count} miittiä</strong></div>`).join('');
-}
-
-function renderLoyaltyPyramid(data) {
-    const el = document.getElementById('stats-loyalty');
-    if (!el) return;
-    const userCounts = {};
-    data.forEach(e => e.attendeeNames.forEach(n => userCounts[n] = (userCounts[n] || 0) + 1));
-    let tiers = { 'Vakikasvot (10+)': 0, 'Aktiivit (5-9)': 0, 'Satunnaiset (2-4)': 0, 'Kertakävijät (1)': 0 };
-    Object.values(userCounts).forEach(count => {
-        if (count >= 10) tiers['Vakikasvot (10+)']++;
-        else if (count >= 5) tiers['Aktiivit (5-9)']++;
-        else if (count >= 2) tiers['Satunnaiset (2-4)']++;
-        else tiers['Kertakävijät (1)']++;
-    });
-    const totalUsers = Object.keys(userCounts).length || 1;
-    let html = `<div style="display:flex; flex-direction:column; align-items:center; gap:5px;">`;
-    const order = ['Vakikasvot (10+)', 'Aktiivit (5-9)', 'Satunnaiset (2-4)', 'Kertakävijät (1)'];
-    const colors = ['#8B4513', '#A0522D', '#CD853F', '#DEB887'];
-    order.forEach((label, idx) => {
-        const count = tiers[label];
-        const pct = Math.round((count / totalUsers) * 100);
-        const width = 20 + (count / totalUsers) * 80; 
-        html += `<div style="width:100%; max-width:400px; display:flex; flex-direction:column; align-items:center;"><div style="width:${width}%; background:${colors[idx]}; color:white; text-align:center; padding:5px; border-radius:4px; font-size:0.9em; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);">${label}<br><strong>${count} hlö (${pct}%)</strong></div></div>`;
-    });
-    html += `</div>`;
-    el.innerHTML = html;
-}
-
-function renderWordCloud(data) {
-    const el = document.getElementById('stats-wordcloud');
-    if (!el) return;
-    let allText = "";
-    data.forEach(e => { if (e.logs) e.logs.forEach(l => { if (l.message) allText += " " + l.message; }); });
-    const words = allText.toLowerCase().replace(/[.,!?;:()"]/g, "").split(/\s+/).filter(w => w.length > 2);
-    const stopWords = ["oli", "että", "kun", "niin", "mutta", "siis", "vain", "nyt", "tämä", "sitten", "olla", "ollut", "ovat", "myös", "kanssa", "kuin", "joka", "mitä", "sekä", "täällä", "koko", "jälkeen", "vielä", "paljon", "kiitos", "miitti", "miitistä", "kätkö", "kätköllä", "kk", "tftc", "kiitokset", "log", "hyvä", "tosi", "kiva", "mukava", "järjestäjälle", "järjestäjille"];
-    const counts = {};
-    words.forEach(w => { if (!stopWords.includes(w)) counts[w] = (counts[w] || 0) + 1; });
-    const topWords = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 30);
-    if (topWords.length === 0) { el.innerHTML = "Ei riittävästi dataa sanalouhokseen."; return; }
-    const maxCount = topWords[0][1];
-    const minCount = topWords[topWords.length - 1][1];
-    let cloudHtml = `<div style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; padding:10px;">`;
-    topWords.forEach(([word, count]) => {
-        const size = 0.8 + ((count - minCount) / (maxCount - minCount || 1)) * 1.7;
-        const opacity = 0.6 + ((count - minCount) / (maxCount - minCount || 1)) * 0.4;
-        cloudHtml += `<span style="font-size:${size.toFixed(1)}em; color:rgba(139,69,19,${opacity}); font-weight:bold;">${word}</span>`;
-    });
-    cloudHtml += `</div>`;
-    el.innerHTML = cloudHtml;
-}
-
-function renderAlphabetStats(data) {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZÅÄÖ0123456789".split("");
-    const counts = {};
-    const specialChars = {};
-    data.forEach(e => {
-        if(e.name) {
-            const firstChar = e.name.trim().charAt(0).toUpperCase();
-            if (chars.includes(firstChar)) counts[firstChar] = (counts[firstChar] || 0) + 1;
-            else specialChars[firstChar] = (specialChars[firstChar] || 0) + 1;
-        }
-    });
-    const grid = document.getElementById('stats-alphabet');
-    if(grid) grid.innerHTML = chars.map(c => `<div class="char-box ${!counts[c] ? 'empty' : ''}">${c}<br><small>${counts[c] || 0}</small></div>`).join('');
-    const specialEl = document.getElementById('stats-special-chars');
-    if(specialEl) {
-        const entries = Object.entries(specialChars);
-        specialEl.innerHTML = entries.length ? "<strong>Muut merkit:</strong><br>" + entries.map(([ch, n]) => `${ch} (${n})`).join(', ') : "";
-    }
-}
-
-function renderLocationsTable(data) {
-    const map = {};
-    data.forEach(e => { if (e.location) map[e.location] = (map[e.location] || 0) + 1; });
-    const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]);
-    const el = document.getElementById('stats-locations');
-    if(el) el.innerHTML = sorted.map(([loc, n]) => `<div class="stats-row"><span>${loc}</span> <strong>${n}</strong></div>`).join('');
-}
-
-function renderAttributesList(data) {
-    const map = {};
-    data.forEach(e => {
-        if (e.attributes && Array.isArray(e.attributes)) {
-            e.attributes.forEach(attr => {
-                const name = attr.name || attr;
-                const isNeg = (attr.inc === 0);
-                if (!map[name]) map[name] = { pos: 0, neg: 0 };
-                if (isNeg) map[name].neg++; else map[name].pos++;
-            });
-        }
-    });
-    const el = document.getElementById('stats-attributes');
-    if(!el) return;
-    el.innerHTML = "";
-    Object.entries(map).sort((a, b) => a[0].localeCompare(b[0])).forEach(([name, counts]) => {
-        if (counts.pos > 0) el.innerHTML += `<div class="stats-row"><span>${name}</span> <strong>${counts.pos}</strong></div>`;
-        if (counts.neg > 0) el.innerHTML += `<div class="stats-row"><span style="color:#721c24; text-decoration:line-through; opacity:0.7;">${name}</span> <strong>${counts.neg}</strong></div>`;
     });
 }
 
