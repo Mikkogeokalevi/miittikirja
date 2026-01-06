@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.5.5 - FIX: Full Uncompressed Code
+// Versio: 7.5.6 - Titles in List & User Card
 // ==========================================
 
 let allStatsData = {
@@ -95,10 +95,7 @@ function updateStatsView(data) {
         }
     });
 
-    // Järjestäjän omat osallistumiset (Kaikki - Perutut)
     const organizerAttended = totalEvents - countCancelled;
-    
-    // TALLENNETAAN GLOBAALISTI
     window.currentOrganizerStats = { count: organizerAttended };
 
     // 2. Lasketaan uniikit nimimerkit
@@ -205,7 +202,7 @@ function renderUserRegistry(data) {
     data.forEach(e => { if(e.attendeeNames) e.attendeeNames.forEach(n => map[n] = (map[n] || 0) + 1); });
     const sorted = Object.entries(map).sort((a,b) => b[1] - a[1]);
     
-    // --- LISÄÄ HOST LISTAN KÄRKEEN ---
+    // --- HOST ---
     let html = "";
     if (window.currentOrganizerStats && window.currentOrganizerStats.count > 0) {
         html += `<div class="stats-row" style="background:rgba(255, 140, 0, 0.1); border-left:3px solid #FF8C00; padding-left:5px;">
@@ -219,9 +216,18 @@ function renderUserRegistry(data) {
     
     if (listToShow.length === 0 && !html) { el.innerHTML = "Ei kävijöitä."; return; }
     
-    html += listToShow.map(([name, count], i) => 
-        `<div class="stats-row"><span>${i+1}. <span class="clickable-name" onclick="openUserProfile('${name}')">${name}</span></span> <strong>${count}</strong></div>`
-    ).join('');
+    // --- LISÄTTY TITTELI RIVILLE ---
+    html += listToShow.map(([name, count], i) => {
+        let title = "";
+        if (window.MK_Messages && typeof window.MK_Messages.getRankTitle === 'function') {
+            title = window.MK_Messages.getRankTitle(count);
+        }
+        return `<div class="stats-row">
+            <span>${i+1}. <span class="clickable-name" onclick="openUserProfile('${name}')">${name}</span> 
+            <span style="font-size:0.8em; color:#888; font-style:italic;">(${title})</span></span> 
+            <strong>${count}</strong>
+        </div>`;
+    }).join('');
     
     el.innerHTML = html;
 }
@@ -234,7 +240,6 @@ function renderTopUsersList(data) {
     if(!el) return;
 
     let html = "";
-    // --- LISÄÄ HOST TOP-LISTAN KÄRKEEN ---
     if (window.currentOrganizerStats && window.currentOrganizerStats.count > 0) {
         html += `<div class="stats-row" style="background:rgba(255, 140, 0, 0.1); border-left:3px solid #FF8C00; padding-left:5px;">
             <span>👑 Mikkokalevi</span> <strong>${window.currentOrganizerStats.count} miittiä</strong>
@@ -244,6 +249,8 @@ function renderTopUsersList(data) {
     html += sorted.map(([name, count], i) => `<div class="stats-row"><span>${i+1}. ${name}</span> <strong>${count} miittiä</strong></div>`).join('');
     el.innerHTML = html;
 }
+
+// ... KAIKKI MUUT FUNKTIOT ENNALLAAN ...
 
 function renderLoyaltyPyramid(data) {
     const el = document.getElementById('stats-loyalty');
@@ -398,10 +405,6 @@ function renderYearHeatmap(data) {
     el.innerHTML = html;
 }
 
-// ==========================================
-// KARTTANÄKYMÄ (Fuzzy Grouping)
-// ==========================================
-
 window.renderMap = function(data) {
     if (typeof L === 'undefined' || !document.getElementById('stats-map')) return;
 
@@ -442,7 +445,6 @@ window.renderMap = function(data) {
         return null;
     };
 
-    // FUZZY GROUPING (~100m)
     const groupedEvents = {};
     
     data.forEach(evt => {
@@ -622,7 +624,14 @@ window.openUserProfile = function(nickname) {
     userEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
     if (userEvents.length === 0) return alert("Ei tietoja tälle käyttäjälle.");
 
-    document.getElementById('up-nickname').innerText = nickname;
+    // --- PÄIVITETTY OTSAKKEEN TITTELI ---
+    let title = "";
+    if (window.MK_Messages && typeof window.MK_Messages.getRankTitle === 'function') {
+        title = window.MK_Messages.getRankTitle(userEvents.length);
+    }
+    
+    document.getElementById('up-nickname').innerHTML = `${nickname}<br><small style="font-size:0.6em; color:#666; font-weight:normal;">${title}</small>`;
+    
     document.getElementById('up-total').innerText = userEvents.length;
     const first = userEvents[0];
     const last = userEvents[userEvents.length - 1];
