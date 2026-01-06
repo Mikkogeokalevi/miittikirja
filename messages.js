@@ -10,8 +10,8 @@ window.MK_Messages = {
         if (count <= 1) return "Miittitulokas";
         if (count <= 10) return "Satunnainen seikkailija";
         if (count <= 20) return "Aktiivikävijä";
-        if (count <= 35) return "Vakiokasvo";
-        if (count <= 50) return "Konkari";
+        if (count <= 40) return "Vakiokasvo";
+        if (count <= 60) return "Konkari";
         return "Mikkokalevi VIP"; // Yli 50
     },
 
