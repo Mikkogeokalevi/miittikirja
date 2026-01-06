@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.4.1 - Duplicates Check & Reverse List
+// Versio: 7.4.2 - Messages Extracted Safely
 // ==========================================
 
-const APP_VERSION = "7.4.1";
+const APP_VERSION = "7.4.2";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -175,8 +175,8 @@ if (btnVisitorSign) {
         let stats = {
             isFirstTime: false,
             totalVisits: 0,
-            title: "Miittitulokas",
-            greeting: "Tervetuloa!",
+            title: "",
+            greeting: "",
             streakText: "",
             isMilestone: false
         };
@@ -194,7 +194,7 @@ if (btnVisitorSign) {
                 allHostEvents.push(e);
             });
             
-            // Järjestetään kaikki miitit aikajärjestykseen (laskentaa varten)
+            // Järjestetään kaikki miitit aikajärjestykseen
             allHostEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             userHistory = [];
@@ -224,24 +224,15 @@ if (btnVisitorSign) {
             stats.isFirstTime = (stats.totalVisits <= 1);
             stats.isMilestone = (stats.totalVisits % 10 === 0) || stats.isFirstTime;
 
-            // --- A) TITTELIT ---
-            if (stats.totalVisits === 1) stats.title = "Miittitulokas";
-            else if (stats.totalVisits <= 10) stats.title = "Satunnainen seikkailija";
-            else if (stats.totalVisits <= 20) stats.title = "Aktiivikävijä";
-            else if (stats.totalVisits <= 35) stats.title = "Vakiokasvo";
-            else if (stats.totalVisits <= 50) stats.title = "Konkari";
-            else stats.title = "Mikkokalevi VIP";
-
-            // --- B) ARVOTAAN TERVEHDYS ---
-            const greetings = [
-                "Hei taas!", "Huomenta!", "Ilta pelastettu!", "Mahtavaa että pääsit!",
-                "Sankarimme saapui!", "Oho, löysit perille!", "Mikä meininki?",
-                "Katos kuka täällä!", "Nonii, vihdoin!", "Tervetuloa kotiin.",
-                "Parempi myöhään kuin ei milloinkaan!", "Se on hän!", "Legendaarista."
-            ];
-            stats.greeting = stats.isFirstTime 
-                ? `🎉 Tervetuloa ${nick}! 🎉` 
-                : `${greetings[Math.floor(Math.random() * greetings.length)]} ${nick}!`;
+            // --- A & B) HAETAAN TEKSTIT ULKOISESTA TIEDOSTOSTA (messages.js) ---
+            if (window.MK_Messages) {
+                stats.title = window.MK_Messages.getRankTitle(stats.totalVisits);
+                stats.greeting = window.MK_Messages.getRandomGreeting(nick, stats.isFirstTime);
+            } else {
+                // Fallback jos messages.js puuttuu
+                stats.title = "Vieras";
+                stats.greeting = `Tervetuloa ${nick}!`;
+            }
 
             // --- D) PUTKI & GAP ANALYYSI ---
             if (!stats.isFirstTime && allHostEvents.length > 0) {
@@ -266,7 +257,9 @@ if (btnVisitorSign) {
                                 break;
                             }
                         }
-                        stats.streakText = `🔥 <strong>LIEKEISSÄ!</strong> ${streak}. miitti putkeen!`;
+                        if(window.MK_Messages) {
+                            stats.streakText = window.MK_Messages.getStreakMessage(streak);
+                        }
                     } else {
                         // Tauko laskuri
                         const lastVisitEvent = userHistory[userHistory.length - 2];
@@ -275,7 +268,9 @@ if (btnVisitorSign) {
                             const lastVisitGlobalIndex = allHostEvents.findIndex(e => e.key === lastVisitEvent.key);
                             const missedCount = (currentEventIndex - lastVisitGlobalIndex) - 1;
                             
-                            stats.streakText = `Olikin jo ikävä! Edellinen käyntisi oli <strong>${daysDiff} päivää</strong> sitten.<br><small>(Väliin jäi ${missedCount} miittiä)</small>`;
+                            if(window.MK_Messages) {
+                                stats.streakText = window.MK_Messages.getMissedMessage(daysDiff, missedCount);
+                            }
                         }
                     }
                 }
@@ -304,12 +299,10 @@ function showVisitorModal(nick, history, stats) {
     if(listEl) listEl.innerHTML = "";
 
     // --- NAPPIEN PÄIVITYS (Jatka Geocaching / Kirjaa toinen) ---
-    // Etsitään modaalin alaosan napit. Jos ei ole containeri, luodaan, tai korvataan vanha punainen.
     const closeBtn = modal.querySelector('button.btn-red');
     let btnContainer = modal.querySelector('#visitor-action-buttons');
     
     if (!btnContainer && closeBtn) {
-        // Luodaan uusi container napeille jos ei ole
         btnContainer = document.createElement('div');
         btnContainer.id = 'visitor-action-buttons';
         btnContainer.style.display = 'flex';
@@ -327,7 +320,6 @@ function showVisitorModal(nick, history, stats) {
 
         document.getElementById('btn-visit-geo').onclick = function() {
             modal.style.display = 'none';
-            // Palautetaan sulje nappi jos admin avaa modaalin myöhemmin
             resetModalButtons(btnContainer); 
             proceedToGeo();
         };
@@ -335,12 +327,10 @@ function showVisitorModal(nick, history, stats) {
         document.getElementById('btn-log-another').onclick = function() {
             modal.style.display = 'none';
             resetModalButtons(btnContainer);
-            // Tyhjennetään kentät
             ['vv-nickname', 'vv-from', 'vv-message'].forEach(id => {
                 const el = document.getElementById(id);
                 if(el) el.value = "";
             });
-            // Focus nimimerkkiin
             setTimeout(() => { 
                 const el = document.getElementById('vv-nickname');
                 if(el) el.focus();
@@ -356,7 +346,6 @@ function showVisitorModal(nick, history, stats) {
     }
 
     // --- RAKENNETAAN SISÄLTÖ ---
-    
     titleEl.innerHTML = `<div style="font-size:0.8em; color:#888; margin-bottom:5px;">${stats.title}</div>${stats.greeting}`;
     titleEl.style.color = stats.isFirstTime ? "#d32f2f" : "var(--header-color)";
 
@@ -392,7 +381,6 @@ function showVisitorModal(nick, history, stats) {
         }
 
         // --- LISTA KÄÄNTEISESSÄ JÄRJESTYKSESSÄ (Uusin ylös) ---
-        // Tehdään kopio ja käännetään renderöintiä varten
         const displayHistory = [...history].reverse();
 
         displayHistory.forEach(evt => {
@@ -401,7 +389,6 @@ function showVisitorModal(nick, history, stats) {
             row.style.padding = "5px 0";
             row.style.fontSize = "0.9em";
             
-            // Korostetaan nykyinen miitti (joka on nyt listan huipulla)
             if (evt.date === last.date && evt.name === last.name) {
                 row.style.backgroundColor = "rgba(46, 125, 50, 0.2)";
                 row.style.borderLeft = "4px solid #4caf50";
@@ -412,13 +399,11 @@ function showVisitorModal(nick, history, stats) {
             }
             listEl.appendChild(row);
         });
-        // Scrollaus ylös koska uusin on siellä
         setTimeout(() => { listEl.scrollTop = 0; }, 100);
     }
 
     modal.style.display = 'block';
 
-    // Ilotulitus
     if (stats.isMilestone) {
         triggerConfetti(200, 2);
     } else {
@@ -427,7 +412,6 @@ function showVisitorModal(nick, history, stats) {
 }
 
 function resetModalButtons(container) {
-    // Palauttaa alkuperäisen punaisen Sulje-napin, jotta admin-näkymä ei hajoa
     container.outerHTML = `<button onclick="document.getElementById('user-profile-modal').style.display='none'" class="btn btn-red" style="margin-top:15px;">Sulje</button>`;
 }
 
@@ -1441,6 +1425,7 @@ window.triggerConfetti = function(amount, durationSec) {
     const end = Date.now() + duration;
 
     (function frame() {
+        // Luodaan muutama partikkeli
         for(let i=0; i<3; i++) {
             createParticle();
         }
@@ -1467,7 +1452,7 @@ function createParticle() {
     document.body.appendChild(p);
 
     const speed = Math.random() * 5 + 2;
-    const angle = Math.random() * 2 - 1; 
+    const angle = Math.random() * 2 - 1; // Sway
     
     let top = -10;
     let left = parseFloat(p.style.left);
