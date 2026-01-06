@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.4.0 - Gamification, Confetti & Stats
+// Versio: 7.4.1 - Duplicates Check & Reverse List
 // ==========================================
 
-const APP_VERSION = "7.4.0";
+const APP_VERSION = "7.4.1";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -138,22 +138,39 @@ if (btnVisitorSign) {
         
         if(loadingOverlay) loadingOverlay.style.display = 'flex';
 
-        // 1. Tallennetaan kirjaus
+        // 1. TARKISTETAAN ONKO JO LOGANNUT TÄHÄN MIITTIIN
         try {
+            const currentLogsSnap = await db.ref('miitit/' + targetHost + '/logs/' + currentEventId).once('value');
+            let alreadyLogged = false;
+            currentLogsSnap.forEach(child => {
+                const val = child.val();
+                if (val.nickname && val.nickname.toLowerCase() === nick.toLowerCase()) {
+                    alreadyLogged = true;
+                }
+            });
+
+            if (alreadyLogged) {
+                if(loadingOverlay) loadingOverlay.style.display = 'none';
+                alert(`Hei ${nick}, olet jo kirjannut käynnin tähän miittiin!\n\nEi tarvitse kirjata uudelleen.`);
+                return;
+            }
+
+            // 2. TALLENNETAAN JOS EI OLE DUPLIKAATTI
             await db.ref('miitit/' + targetHost + '/logs/' + currentEventId).push({
                 nickname: nick, 
                 from: fromInput ? fromInput.value.trim() : "",
                 message: msgInput ? msgInput.value.trim() : "", 
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             });
+
         } catch (saveErr) {
-            console.error("Tallennusvirhe:", saveErr);
+            console.error("Virhe:", saveErr);
             if(loadingOverlay) loadingOverlay.style.display = 'none';
             alert("Virhe tallennuksessa: " + saveErr.message);
             return;
         }
 
-        // 2. Haetaan historia ja lasketaan statistiikka
+        // 3. Haetaan historia ja lasketaan statistiikka
         let userHistory = null;
         let stats = {
             isFirstTime: false,
@@ -177,7 +194,7 @@ if (btnVisitorSign) {
                 allHostEvents.push(e);
             });
             
-            // Järjestetään kaikki miitit aikajärjestykseen
+            // Järjestetään kaikki miitit aikajärjestykseen (laskentaa varten)
             allHostEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             userHistory = [];
@@ -201,7 +218,7 @@ if (btnVisitorSign) {
                 }
             });
 
-            // Järjestetään käyttäjän historia
+            // Järjestetään käyttäjän historia aikajärjestykseen (laskentaa varten)
             userHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
             stats.totalVisits = userHistory.length;
             stats.isFirstTime = (stats.totalVisits <= 1);
@@ -222,29 +239,21 @@ if (btnVisitorSign) {
                 "Katos kuka täällä!", "Nonii, vihdoin!", "Tervetuloa kotiin.",
                 "Parempi myöhään kuin ei milloinkaan!", "Se on hän!", "Legendaarista."
             ];
-            // Jos ensimmäinen kerta, aina tervetuloa. Muuten arvotaan.
             stats.greeting = stats.isFirstTime 
                 ? `🎉 Tervetuloa ${nick}! 🎉` 
                 : `${greetings[Math.floor(Math.random() * greetings.length)]} ${nick}!`;
 
             // --- D) PUTKI & GAP ANALYYSI ---
             if (!stats.isFirstTime && allHostEvents.length > 0) {
-                // Etsitään nykyisen miitin indeksi globaalissa listassa
                 const currentEventIndex = allHostEvents.findIndex(e => e.key === currentEventId);
                 
                 if (currentEventIndex > 0) {
-                    // Katsotaan onko käyttäjä käynyt EDELISESSÄ miitissä (joka ei ole tämä nykyinen)
                     const previousEventKey = allHostEvents[currentEventIndex - 1].key;
                     const attendedPrevious = userHistory.some(e => e.key === previousEventKey);
 
                     if (attendedPrevious) {
-                        // PUTKI PÄÄLLÄ! Lasketaan kuinka monta putkeen.
+                        // Putki laskuri
                         let streak = 0;
-                        // Käydään historiaa lopusta alkuun
-                        // userHistory on järjestetty vanhin -> uusin.
-                        // Viimeisin on nykyinen (streak 1).
-                        // Tarkistetaan onko userHistory[last-1] sama kuin allEvents[current-1]
-                        
                         let globalIdx = currentEventIndex;
                         let historyIdx = userHistory.length - 1;
                         
@@ -259,12 +268,10 @@ if (btnVisitorSign) {
                         }
                         stats.streakText = `🔥 <strong>LIEKEISSÄ!</strong> ${streak}. miitti putkeen!`;
                     } else {
-                        // GAP - Edellinen käynti oli joskus aiemmin
-                        // Etsitään userHistoryn toiseksi viimeinen (viimeinen on tämä nykyinen)
+                        // Tauko laskuri
                         const lastVisitEvent = userHistory[userHistory.length - 2];
                         if (lastVisitEvent) {
                             const daysDiff = Math.floor((new Date() - new Date(lastVisitEvent.date)) / (1000 * 60 * 60 * 24));
-                            // Lasketaan montako jäi väliin
                             const lastVisitGlobalIndex = allHostEvents.findIndex(e => e.key === lastVisitEvent.key);
                             const missedCount = (currentEventIndex - lastVisitGlobalIndex) - 1;
                             
@@ -296,19 +303,49 @@ function showVisitorModal(nick, history, stats) {
     
     if(listEl) listEl.innerHTML = "";
 
-    const oldBtn = modal.querySelector('button.btn-red');
-    if(oldBtn) {
-        const newBtn = oldBtn.cloneNode(true);
-        newBtn.innerText = "Jatka miittisivulle ➡";
-        newBtn.className = "btn btn-green";
-        newBtn.onclick = function() {
+    // --- NAPPIEN PÄIVITYS (Jatka Geocaching / Kirjaa toinen) ---
+    // Etsitään modaalin alaosan napit. Jos ei ole containeri, luodaan, tai korvataan vanha punainen.
+    const closeBtn = modal.querySelector('button.btn-red');
+    let btnContainer = modal.querySelector('#visitor-action-buttons');
+    
+    if (!btnContainer && closeBtn) {
+        // Luodaan uusi container napeille jos ei ole
+        btnContainer = document.createElement('div');
+        btnContainer.id = 'visitor-action-buttons';
+        btnContainer.style.display = 'flex';
+        btnContainer.style.flexDirection = 'column';
+        btnContainer.style.gap = '10px';
+        btnContainer.style.marginTop = '15px';
+        closeBtn.parentNode.replaceChild(btnContainer, closeBtn);
+    }
+    
+    if (btnContainer) {
+        btnContainer.innerHTML = `
+            <button id="btn-visit-geo" class="btn btn-green" style="font-size:1.1em;">Jatka miittisivulle ➡</button>
+            <button id="btn-log-another" class="btn btn-blue" style="background:#555;">Kirjaa toinen kävijä 👤</button>
+        `;
+
+        document.getElementById('btn-visit-geo').onclick = function() {
             modal.style.display = 'none';
-            newBtn.innerText = "Sulje";
-            newBtn.className = "btn btn-red";
-            newBtn.onclick = function() { modal.style.display = 'none'; };
+            // Palautetaan sulje nappi jos admin avaa modaalin myöhemmin
+            resetModalButtons(btnContainer); 
             proceedToGeo();
         };
-        oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+
+        document.getElementById('btn-log-another').onclick = function() {
+            modal.style.display = 'none';
+            resetModalButtons(btnContainer);
+            // Tyhjennetään kentät
+            ['vv-nickname', 'vv-from', 'vv-message'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.value = "";
+            });
+            // Focus nimimerkkiin
+            setTimeout(() => { 
+                const el = document.getElementById('vv-nickname');
+                if(el) el.focus();
+            }, 300);
+        };
     }
 
     if (history === null) {
@@ -320,11 +357,9 @@ function showVisitorModal(nick, history, stats) {
 
     // --- RAKENNETAAN SISÄLTÖ ---
     
-    // Tervehdys ja Titteli
     titleEl.innerHTML = `<div style="font-size:0.8em; color:#888; margin-bottom:5px;">${stats.title}</div>${stats.greeting}`;
     titleEl.style.color = stats.isFirstTime ? "#d32f2f" : "var(--header-color)";
 
-    // Numerotiedot
     totalEl.innerText = stats.totalVisits;
     
     if (stats.isFirstTime) {
@@ -338,12 +373,12 @@ function showVisitorModal(nick, history, stats) {
             </div>`;
     } else {
         const first = history[0];
-        const last = history[history.length - 1]; // Tämä nykyinen
+        const last = history[history.length - 1]; // Nykyinen
         
         firstEl.innerHTML = `${first.date}<br><span style="font-size:0.8em; font-weight:normal;">${first.name}</span>`;
         lastEl.innerHTML = `${last.date}<br><span style="font-size:0.8em; font-weight:normal;">${last.name}</span>`;
 
-        // Putki-info listan alkuun
+        // Putki-info
         if (stats.streakText) {
             const infoBox = document.createElement('div');
             infoBox.style.background = "var(--highlight-bg)";
@@ -356,32 +391,44 @@ function showVisitorModal(nick, history, stats) {
             listEl.appendChild(infoBox);
         }
 
-        // Itse lista
-        history.forEach(evt => {
+        // --- LISTA KÄÄNTEISESSÄ JÄRJESTYKSESSÄ (Uusin ylös) ---
+        // Tehdään kopio ja käännetään renderöintiä varten
+        const displayHistory = [...history].reverse();
+
+        displayHistory.forEach(evt => {
             const row = document.createElement('div');
             row.style.borderBottom = "1px dotted #555";
             row.style.padding = "5px 0";
             row.style.fontSize = "0.9em";
+            
+            // Korostetaan nykyinen miitti (joka on nyt listan huipulla)
             if (evt.date === last.date && evt.name === last.name) {
                 row.style.backgroundColor = "rgba(46, 125, 50, 0.2)";
-                row.innerHTML = `<strong>${evt.date}</strong> ${evt.name} (TÄMÄ)`;
+                row.style.borderLeft = "4px solid #4caf50";
+                row.style.paddingLeft = "5px";
+                row.innerHTML = `<strong>${evt.date}</strong> ${evt.name} <span style="font-size:0.8em; color:#4caf50;">(NYT)</span>`;
             } else {
                 row.innerHTML = `<strong>${evt.date}</strong> ${evt.name}`;
             }
             listEl.appendChild(row);
         });
-        setTimeout(() => { listEl.scrollTop = listEl.scrollHeight; }, 100);
+        // Scrollaus ylös koska uusin on siellä
+        setTimeout(() => { listEl.scrollTop = 0; }, 100);
     }
 
     modal.style.display = 'block';
 
-    // --- C) ILOTULITUS ---
-    // Jos eka kerta tai tasaluku -> Iso jytky. Muuten pieni.
+    // Ilotulitus
     if (stats.isMilestone) {
-        triggerConfetti(200, 2); // Paljon, 2 sekuntia
+        triggerConfetti(200, 2);
     } else {
-        triggerConfetti(50, 0.5); // Vähän, lyhyesti
+        triggerConfetti(50, 0.5);
     }
+}
+
+function resetModalButtons(container) {
+    // Palauttaa alkuperäisen punaisen Sulje-napin, jotta admin-näkymä ei hajoa
+    container.outerHTML = `<button onclick="document.getElementById('user-profile-modal').style.display='none'" class="btn btn-red" style="margin-top:15px;">Sulje</button>`;
 }
 
 function proceedToGeo() {
@@ -1394,7 +1441,6 @@ window.triggerConfetti = function(amount, durationSec) {
     const end = Date.now() + duration;
 
     (function frame() {
-        // Luodaan muutama partikkeli
         for(let i=0; i<3; i++) {
             createParticle();
         }
@@ -1421,7 +1467,7 @@ function createParticle() {
     document.body.appendChild(p);
 
     const speed = Math.random() * 5 + 2;
-    const angle = Math.random() * 2 - 1; // Sway
+    const angle = Math.random() * 2 - 1; 
     
     let top = -10;
     let left = parseFloat(p.style.left);
