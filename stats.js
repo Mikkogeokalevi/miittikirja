@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.5.1 - Heatmap Colors & Fuzzy Map Grouping
+// Versio: 7.5.2 - Unique Users & Host Stats
 // ==========================================
 
 let allStatsData = {
@@ -76,13 +76,32 @@ document.getElementById('btn-apply-filters').onclick = () => {
 function updateStatsView(data) {
     window.currentFilteredData = data;
 
-    const totalAttendees = data.reduce((sum, e) => sum + e.attendeeCount, 0);
+    // 1. Lasketaan perusluvut
+    const totalEvents = data.length;
+    const totalGuestVisits = data.reduce((sum, e) => sum + e.attendeeCount, 0);
+    
+    // 2. Lasketaan uniikit nimimerkit
+    const uniqueNames = new Set();
+    data.forEach(evt => {
+        if(evt.attendeeNames) {
+            evt.attendeeNames.forEach(n => uniqueNames.add(n.trim().toLowerCase()));
+        }
+    });
+    const uniqueCount = uniqueNames.size;
+
+    // 3. Päivitetään yhteenveto (Lisätty uniikit ja järjestäjä)
     const summaryEl = document.getElementById('stats-summary-text');
     if(summaryEl) {
         summaryEl.innerHTML = `
-            Tapahtumia: <strong>${data.length}</strong> kpl<br>
-            Osallistumisia yhteensä: <strong>${totalAttendees}</strong> kpl<br>
-            Keskiarvo: <strong>${data.length ? (totalAttendees / data.length).toFixed(1) : 0}</strong> kävijää/miitti
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; text-align:left;">
+                <div>Tapahtumia:</div><div style="text-align:right;"><strong>${totalEvents}</strong> kpl</div>
+                <div>Vieraskirjauksia:</div><div style="text-align:right;"><strong>${totalGuestVisits}</strong> kpl</div>
+                <div>Uniikit vieraat:</div><div style="text-align:right; color:var(--primary-color);"><strong>${uniqueCount}</strong> hlö</div>
+                <div style="border-top:1px solid #555; padding-top:5px; margin-top:5px;">Järjestäjä (Sinä):</div><div style="border-top:1px solid #555; padding-top:5px; margin-top:5px; text-align:right; color:#888;"><strong>${totalEvents}</strong> kpl</div>
+            </div>
+            <div style="margin-top:10px; border-top:1px dashed #555; padding-top:10px; text-align:center;">
+                Keskiarvo: <strong style="font-size:1.2em; color:var(--secondary-color);">${totalEvents ? (totalGuestVisits / totalEvents).toFixed(1) : 0}</strong> vierasta / miitti
+            </div>
         `;
     }
 
@@ -110,7 +129,6 @@ function updateStatsView(data) {
     renderWordCloud(data);
     renderTimeSlots(data);
     
-    // HEATMAP
     renderYearHeatmap(data);
 
     const todayStr = new Date().toISOString().split('T')[0];
@@ -146,7 +164,7 @@ function updateStatsView(data) {
 }
 
 // ==========================================
-// UUSI: HEATMAP (Värikkäämpi & Selkeämpi)
+// HEATMAP (Värikkäämpi & Selkeämpi)
 // ==========================================
 function renderYearHeatmap(data) {
     const el = document.getElementById('stats-year-heatmap');
@@ -178,22 +196,16 @@ function renderYearHeatmap(data) {
         let rowHtml = `<tr><td style="font-weight:bold; color:var(--header-color);">${year}</td>`;
         
         rowData.forEach(count => {
-            // VÄRIKOODAUS (Traffic Lights)
-            let bg = 'rgba(255,255,255,0.05)'; // Tyhjä
+            let bg = 'rgba(255,255,255,0.05)';
             let color = 'transparent';
             let border = '1px solid #333';
 
             if (count > 0) {
-                color = '#000'; // Teksti mustaksi värin päällä
+                color = '#000';
                 border = 'none';
-                
-                if (count === 1) {
-                    bg = '#81c784'; // Vihreä (Rauhallinen)
-                } else if (count <= 3) {
-                    bg = '#FFD54F'; // Keltainen (Aktiivinen)
-                } else {
-                    bg = '#FF7043'; // Punainen/Oranssi (Kiireinen)
-                }
+                if (count === 1) { bg = '#81c784'; } 
+                else if (count <= 3) { bg = '#FFD54F'; } 
+                else { bg = '#FF7043'; }
             }
             
             rowHtml += `<td style="text-align:center; background:${bg}; color:${color}; border-radius:4px; border:${border}; font-weight:bold;" title="${count} miittiä">${count > 0 ? count : ''}</td>`;
@@ -210,7 +222,7 @@ function renderYearHeatmap(data) {
 }
 
 // ==========================================
-// UUSI: KARTTANÄKYMÄ (Fuzzy Grouping - Noin 100m)
+// KARTTANÄKYMÄ (Fuzzy Grouping - Noin 100m)
 // ==========================================
 
 window.renderMap = function(data) {
@@ -253,8 +265,7 @@ window.renderMap = function(data) {
         return null;
     };
 
-    // 1. RYHMITTELE TAPAHTUMAT (FUZZY GROUPING)
-    // Pyöristetään 3 desimaaliin (~110m tarkkuus) jolloin lähekkäiset osuvat samaan "ruutuun"
+    // FUZZY GROUPING (~100m)
     const groupedEvents = {};
     
     data.forEach(evt => {
@@ -262,14 +273,13 @@ window.renderMap = function(data) {
         const latLng = parseCoord(evt.coords);
         if(!latLng) return;
 
-        // Luodaan avain pyöristetyistä koordinaateista
         const latKey = latLng[0].toFixed(3);
         const lonKey = latLng[1].toFixed(3);
         const key = `${latKey}_${lonKey}`;
 
         if (!groupedEvents[key]) {
             groupedEvents[key] = {
-                center: latLng, // Käytetään ensimmäisen tarkkaa sijaintia keskipisteenä
+                center: latLng,
                 events: []
             };
         }
@@ -300,14 +310,13 @@ window.renderMap = function(data) {
         
         return { 
             color: isCluster ? '#FFF' : '#333', 
-            weight: isCluster ? 3 : 1, // Paksumpi reunus ryhmille
+            weight: isCluster ? 3 : 1, 
             fillColor: color, 
             fillOpacity: 0.9, 
-            radius: isCluster ? 12 : 8 // Isompi pallo ryhmille
+            radius: isCluster ? 12 : 8 
         };
     };
 
-    // 2. PIIRRÄ MARKERIT
     Object.values(groupedEvents).forEach(group => {
         const latLng = group.center;
         const style = getPointStyle(group.events);
@@ -316,7 +325,6 @@ window.renderMap = function(data) {
         let popupHtml = "";
         
         if (group.events.length === 1) {
-            // YKSI MIITTI
             const evt = group.events[0];
             popupHtml = `
                 <div style="text-align:center; min-width:150px;">
@@ -327,14 +335,12 @@ window.renderMap = function(data) {
                 </div>
             `;
         } else {
-            // RYHMÄ (LÄHEKKÄISET)
             popupHtml = `<div style="min-width:200px;">
                 <div style="text-align:center; font-weight:bold; border-bottom:1px solid #ccc; margin-bottom:5px; padding-bottom:5px;">
                     📍 ${group.events.length} miittiä alueella
                 </div>
                 <div style="max-height:200px; overflow-y:auto;">`;
             
-            // Järjestetään uusin ensin
             group.events.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(evt => {
                 popupHtml += `
                     <div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dotted #eee; display:flex; justify-content:space-between; align-items:center;">
@@ -395,10 +401,6 @@ function renderMapLegend(legendSet) {
     });
 }
 
-// ==========================================
-// AIKATAULUT (15 min tarkkuus)
-// ==========================================
-
 function renderTimeSlots(data) {
     const el = document.getElementById('stats-time-slots');
     if (!el) return;
@@ -434,10 +436,6 @@ function renderTimeSlots(data) {
 
     el.innerHTML = html;
 }
-
-// ==========================================
-// USER PROFILE LINKIT (ADMIN)
-// ==========================================
 
 window.openUserProfile = function(nickname) {
     if (!nickname) return;
