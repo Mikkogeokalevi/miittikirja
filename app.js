@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.3.4 - FIX: Strict GPX Validation
+// Versio: 7.3.5 - Järjestysnumerot & Listajärjestys
 // ==========================================
 
-const APP_VERSION = "7.3.4";
+const APP_VERSION = "7.3.5";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -550,7 +550,7 @@ function parseGPX(xmlText) {
 }
 
 // ==========================================
-// 8. TAPAHTUMIEN LATAUS
+// 8. TAPAHTUMIEN LATAUS & NUMEROINTI
 // ==========================================
 
 const newEventToggle = document.getElementById('new-event-toggle');
@@ -656,27 +656,55 @@ function loadEvents() {
 
         const events = [];
         snapshot.forEach(child => { events.push({key: child.key, ...child.val()}); });
-        events.sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0));
+        
+        // 1. LAJITTELLAAN VANHIN -> UUSIN (Järjestysnumerointia varten)
+        events.sort((a,b) => new Date(a.date || 0) - new Date(b.date || 0));
+        
+        // 2. LASKETAAN JÄRJESTYSNUMEROT TYYPITTÄIN
+        const counts = { miitti: 0, cito: 0, cce: 0 };
+        events.forEach(e => {
+            const type = (e.type || 'miitti').toLowerCase();
+            if (counts[type] !== undefined) {
+                counts[type]++;
+                e.seqNumber = counts[type]; // Tallennetaan numero objektiin
+            }
+        });
+
+        // Tallennetaan globaali lista (tässä aikajärjestyksessä Vanhin -> Uusin)
         globalEventList = events;
 
         if(eventStatsEl) eventStatsEl.innerText = `Löytyi ${events.length} tapahtumaa.`;
 
-        events.forEach(evt => {
+        // 3. EROTELLAAN TULEVAT JA MENNEET + JÄRJESTETÄÄN NÄKYMÄT
+        
+        // Tulevat: Tänään tai tulevaisuudessa -> NOUSEVA järjestys (Tänään, Huomenna...)
+        const futureEvents = events.filter(e => e.date >= todayStr);
+        
+        // Menneet: Ennen tätä päivää -> LASKEVA järjestys (Eilinen, Viime vuonna...)
+        const pastEvents = events.filter(e => e.date < todayStr).reverse();
+
+        // Yhdistetään renderöintijonoon
+        const displayQueue = [...futureEvents, ...pastEvents];
+
+        displayQueue.forEach(evt => {
             const isToday = (evt.date === todayStr);
             const isArchived = (evt.isArchived === true);
             const countId = `count-${isAdminMode ? 'adm' : 'usr'}-${evt.key}`;
+            
+            // Muotoillaan nimi numeron kanssa
+            const displayName = `#${evt.seqNumber || '?'} ${evt.name}`;
             
             const div = document.createElement('div');
             div.className = "card" + (isArchived ? " archived" : "") + (isToday ? " today-highlight" : "");
             
             if (isAdminMode) {
-                // LISTAKORTTI (Alhaalla listoissa)
+                // LISTAKORTTI (Admin)
                 const archiveBtn = isArchived 
                     ? `<button class="btn btn-blue btn-small" onclick="toggleArchive('${evt.key}', false)">♻️ Palauta</button>`
                     : `<button class="btn btn-red btn-small" onclick="toggleArchive('${evt.key}', true)">📦 Arkistoi</button>`;
 
                 div.innerHTML = `
-                    <div style="display:flex; justify-content:space-between;"><strong>${evt.name}</strong><span>${evt.date}</span></div>
+                    <div style="display:flex; justify-content:space-between;"><strong>${displayName}</strong><span>${evt.date}</span></div>
                     <div style="font-size:0.8em; color:#666; margin-bottom:5px;">🕓 ${evt.time || '-'}</div>
                     <div style="font-size:0.9em; color:#A0522D; display:flex; justify-content:space-between;">
                         <span><a href="https://coord.info/${evt.gc}" target="_blank" style="color:#A0522D; font-weight:bold; text-decoration:none;">${evt.gc}</a> • ${evt.location || ''}</span>
@@ -700,7 +728,7 @@ function loadEvents() {
 
                     hero.innerHTML = `
                         <h2 style="color:#D2691E; margin:0 0 10px 0; text-transform:uppercase; letter-spacing:1px;">🌟 Tänään tapahtuu! 🌟</h2>
-                        <h3 style="margin:5px 0; font-size:1.4em;">${evt.name}</h3>
+                        <h3 style="margin:5px 0; font-size:1.4em;">${displayName}</h3>
                         <p style="font-size:1.2em; color:#555; margin:5px 0 15px 0;">⏰ klo ${evt.time || '??:??'}</p>
                         <button class="btn btn-green" style="font-size:1.3em; padding:15px; width:100%; font-weight:bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);" onclick="openGuestbook('${evt.key}')">
                             📖 AVAA MIITTIKIRJA NYT
@@ -716,7 +744,7 @@ function loadEvents() {
             } else {
                 // USER MODE (Katselija)
                 div.innerHTML = `
-                    <div style="display:flex; justify-content:space-between;"><strong>${evt.name}</strong><span>${evt.date}</span></div>
+                    <div style="display:flex; justify-content:space-between;"><strong>${displayName}</strong><span>${evt.date}</span></div>
                     <div style="font-size:0.8em; color:#666; margin-bottom:5px;">🕓 ${evt.time || '-'} • ${evt.location || ''}</div>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                          <span id="${countId}" style="font-weight:bold; font-size:0.9em;">👤 0 osallistujaa</span>
@@ -724,7 +752,6 @@ function loadEvents() {
                     </div>`;
                 
                 if (isToday && noticeUser) {
-                    // Myös käyttäjälle kiva ilmoitus, mutta simppelimpi
                     const heroUser = div.cloneNode(true);
                     heroUser.style.border = "4px solid #4caf50";
                     heroUser.prepend(document.createRange().createContextualFragment('<h3 style="color:#4caf50; margin-top:0; text-align:center;">🌟 TÄNÄÄN!</h3>'));
