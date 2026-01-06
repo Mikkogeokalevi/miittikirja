@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.3.5 - Järjestysnumerot & Listajärjestys
+// Versio: 7.4.0 - Gamification, Confetti & Stats
 // ==========================================
 
-const APP_VERSION = "7.3.5";
+const APP_VERSION = "7.4.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -123,7 +123,7 @@ async function openVisitorGuestbook(uid, eventId) {
     });
 }
 
-// --- VIERAILIJAN KIRJAUS & TILASTOT ---
+// --- VIERAILIJAN KIRJAUS & PELILLISTÄMINEN ---
 const btnVisitorSign = document.getElementById('btn-visitor-sign');
 if (btnVisitorSign) {
     btnVisitorSign.onclick = async function() {
@@ -138,7 +138,7 @@ if (btnVisitorSign) {
         
         if(loadingOverlay) loadingOverlay.style.display = 'flex';
 
-        // 1. Tallennetaan
+        // 1. Tallennetaan kirjaus
         try {
             await db.ref('miitit/' + targetHost + '/logs/' + currentEventId).push({
                 nickname: nick, 
@@ -153,20 +153,37 @@ if (btnVisitorSign) {
             return;
         }
 
-        // 2. Haetaan historia (vikasietoinen)
+        // 2. Haetaan historia ja lasketaan statistiikka
         let userHistory = null;
-        let isFirstTime = false;
+        let stats = {
+            isFirstTime: false,
+            totalVisits: 0,
+            title: "Miittitulokas",
+            greeting: "Tervetuloa!",
+            streakText: "",
+            isMilestone: false
+        };
 
         try {
             const eventsSnap = await db.ref('miitit/' + targetHost + '/events').once('value');
             const logsSnap = await db.ref('miitit/' + targetHost + '/logs').once('value');
             
             const eventsMap = {};
-            eventsSnap.forEach(child => { eventsMap[child.key] = child.val(); });
+            const allHostEvents = [];
+            eventsSnap.forEach(child => { 
+                const e = child.val();
+                e.key = child.key;
+                eventsMap[child.key] = e;
+                allHostEvents.push(e);
+            });
             
+            // Järjestetään kaikki miitit aikajärjestykseen
+            allHostEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+
             userHistory = [];
             const nickLower = nick.toLowerCase();
 
+            // Etsitään käyttäjän käynnit
             logsSnap.forEach(evtLogs => {
                 const eventKey = evtLogs.key;
                 const evtData = eventsMap[eventKey];
@@ -184,8 +201,78 @@ if (btnVisitorSign) {
                 }
             });
 
+            // Järjestetään käyttäjän historia
             userHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
-            isFirstTime = (userHistory.length <= 1);
+            stats.totalVisits = userHistory.length;
+            stats.isFirstTime = (stats.totalVisits <= 1);
+            stats.isMilestone = (stats.totalVisits % 10 === 0) || stats.isFirstTime;
+
+            // --- A) TITTELIT ---
+            if (stats.totalVisits === 1) stats.title = "Miittitulokas";
+            else if (stats.totalVisits <= 10) stats.title = "Satunnainen seikkailija";
+            else if (stats.totalVisits <= 20) stats.title = "Aktiivikävijä";
+            else if (stats.totalVisits <= 35) stats.title = "Vakiokasvo";
+            else if (stats.totalVisits <= 50) stats.title = "Konkari";
+            else stats.title = "Mikkokalevi VIP";
+
+            // --- B) ARVOTAAN TERVEHDYS ---
+            const greetings = [
+                "Hei taas!", "Huomenta!", "Ilta pelastettu!", "Mahtavaa että pääsit!",
+                "Sankarimme saapui!", "Oho, löysit perille!", "Mikä meininki?",
+                "Katos kuka täällä!", "Nonii, vihdoin!", "Tervetuloa kotiin.",
+                "Parempi myöhään kuin ei milloinkaan!", "Se on hän!", "Legendaarista."
+            ];
+            // Jos ensimmäinen kerta, aina tervetuloa. Muuten arvotaan.
+            stats.greeting = stats.isFirstTime 
+                ? `🎉 Tervetuloa ${nick}! 🎉` 
+                : `${greetings[Math.floor(Math.random() * greetings.length)]} ${nick}!`;
+
+            // --- D) PUTKI & GAP ANALYYSI ---
+            if (!stats.isFirstTime && allHostEvents.length > 0) {
+                // Etsitään nykyisen miitin indeksi globaalissa listassa
+                const currentEventIndex = allHostEvents.findIndex(e => e.key === currentEventId);
+                
+                if (currentEventIndex > 0) {
+                    // Katsotaan onko käyttäjä käynyt EDELISESSÄ miitissä (joka ei ole tämä nykyinen)
+                    const previousEventKey = allHostEvents[currentEventIndex - 1].key;
+                    const attendedPrevious = userHistory.some(e => e.key === previousEventKey);
+
+                    if (attendedPrevious) {
+                        // PUTKI PÄÄLLÄ! Lasketaan kuinka monta putkeen.
+                        let streak = 0;
+                        // Käydään historiaa lopusta alkuun
+                        // userHistory on järjestetty vanhin -> uusin.
+                        // Viimeisin on nykyinen (streak 1).
+                        // Tarkistetaan onko userHistory[last-1] sama kuin allEvents[current-1]
+                        
+                        let globalIdx = currentEventIndex;
+                        let historyIdx = userHistory.length - 1;
+                        
+                        while (globalIdx >= 0 && historyIdx >= 0) {
+                            if (allHostEvents[globalIdx].key === userHistory[historyIdx].key) {
+                                streak++;
+                                globalIdx--;
+                                historyIdx--;
+                            } else {
+                                break;
+                            }
+                        }
+                        stats.streakText = `🔥 <strong>LIEKEISSÄ!</strong> ${streak}. miitti putkeen!`;
+                    } else {
+                        // GAP - Edellinen käynti oli joskus aiemmin
+                        // Etsitään userHistoryn toiseksi viimeinen (viimeinen on tämä nykyinen)
+                        const lastVisitEvent = userHistory[userHistory.length - 2];
+                        if (lastVisitEvent) {
+                            const daysDiff = Math.floor((new Date() - new Date(lastVisitEvent.date)) / (1000 * 60 * 60 * 24));
+                            // Lasketaan montako jäi väliin
+                            const lastVisitGlobalIndex = allHostEvents.findIndex(e => e.key === lastVisitEvent.key);
+                            const missedCount = (currentEventIndex - lastVisitGlobalIndex) - 1;
+                            
+                            stats.streakText = `Olikin jo ikävä! Edellinen käyntisi oli <strong>${daysDiff} päivää</strong> sitten.<br><small>(Väliin jäi ${missedCount} miittiä)</small>`;
+                        }
+                    }
+                }
+            }
 
         } catch (statsErr) {
             console.warn("Tilastohaku epäonnistui:", statsErr);
@@ -193,11 +280,11 @@ if (btnVisitorSign) {
         }
 
         if(loadingOverlay) loadingOverlay.style.display = 'none';
-        showVisitorModal(nick, isFirstTime, userHistory);
+        showVisitorModal(nick, userHistory, stats);
     };
 }
 
-function showVisitorModal(nick, isFirstTime, history) {
+function showVisitorModal(nick, history, stats) {
     const modal = document.getElementById('user-profile-modal');
     if(!modal) { proceedToGeo(); return; }
 
@@ -225,38 +312,57 @@ function showVisitorModal(nick, isFirstTime, history) {
     }
 
     if (history === null) {
-        titleEl.innerHTML = `Kiitos käynnistä, ${nick}!`;
-        titleEl.style.color = "var(--header-color)";
-        totalEl.innerText = "OK";
-        firstEl.innerHTML = "-";
-        lastEl.innerHTML = "-";
+        titleEl.innerHTML = "Kiitos käynnistä!";
         listEl.innerHTML = `<div style="text-align:center; padding:20px;">Kirjaus tallennettu!</div>`;
         modal.style.display = 'block';
         return;
     }
 
-    if (isFirstTime) {
-        titleEl.innerHTML = `🎉 Tervetuloa ${nick}! 🎉`;
-        titleEl.style.color = "#d32f2f";
-        totalEl.innerText = "1";
+    // --- RAKENNETAAN SISÄLTÖ ---
+    
+    // Tervehdys ja Titteli
+    titleEl.innerHTML = `<div style="font-size:0.8em; color:#888; margin-bottom:5px;">${stats.title}</div>${stats.greeting}`;
+    titleEl.style.color = stats.isFirstTime ? "#d32f2f" : "var(--header-color)";
+
+    // Numerotiedot
+    totalEl.innerText = stats.totalVisits;
+    
+    if (stats.isFirstTime) {
         firstEl.innerHTML = "Tänään!";
         lastEl.innerHTML = "Tänään!";
-        listEl.innerHTML = `<div style="text-align:center; padding:20px;">Tämä on ensimmäinen kirjauksesi Mikkokalevin miittikirjaan.</div>`;
+        listEl.innerHTML = `
+            <div style="text-align:center; padding:20px;">
+                <div style="font-size:3em;">🎉</div>
+                <p><strong>Onneksi olkoon!</strong></p>
+                <p>Tämä on ensimmäinen kirjauksesi Mikkokalevin miittikirjaan.</p>
+            </div>`;
     } else {
-        titleEl.innerHTML = `Hei taas, ${nick}!`;
-        titleEl.style.color = "var(--header-color)";
-        totalEl.innerText = history.length;
         const first = history[0];
-        const last = history[history.length - 1];
+        const last = history[history.length - 1]; // Tämä nykyinen
+        
         firstEl.innerHTML = `${first.date}<br><span style="font-size:0.8em; font-weight:normal;">${first.name}</span>`;
         lastEl.innerHTML = `${last.date}<br><span style="font-size:0.8em; font-weight:normal;">${last.name}</span>`;
 
+        // Putki-info listan alkuun
+        if (stats.streakText) {
+            const infoBox = document.createElement('div');
+            infoBox.style.background = "var(--highlight-bg)";
+            infoBox.style.padding = "10px";
+            infoBox.style.marginBottom = "10px";
+            infoBox.style.borderRadius = "5px";
+            infoBox.style.textAlign = "center";
+            infoBox.style.border = "1px dashed var(--secondary-color)";
+            infoBox.innerHTML = stats.streakText;
+            listEl.appendChild(infoBox);
+        }
+
+        // Itse lista
         history.forEach(evt => {
             const row = document.createElement('div');
             row.style.borderBottom = "1px dotted #555";
             row.style.padding = "5px 0";
             row.style.fontSize = "0.9em";
-            if (evt.date === history[history.length-1].date && evt.name === history[history.length-1].name) {
+            if (evt.date === last.date && evt.name === last.name) {
                 row.style.backgroundColor = "rgba(46, 125, 50, 0.2)";
                 row.innerHTML = `<strong>${evt.date}</strong> ${evt.name} (TÄMÄ)`;
             } else {
@@ -268,6 +374,14 @@ function showVisitorModal(nick, isFirstTime, history) {
     }
 
     modal.style.display = 'block';
+
+    // --- C) ILOTULITUS ---
+    // Jos eka kerta tai tasaluku -> Iso jytky. Muuten pieni.
+    if (stats.isMilestone) {
+        triggerConfetti(200, 2); // Paljon, 2 sekuntia
+    } else {
+        triggerConfetti(50, 0.5); // Vähän, lyhyesti
+    }
 }
 
 function proceedToGeo() {
@@ -1271,3 +1385,56 @@ window.toggleDetails = function(id) {
     const content = document.getElementById(id);
     if(content) content.style.display = (content.style.display === 'block') ? 'none' : 'block';
 };
+
+// ==========================================
+// 13. CONFETTI EFFECT (Simple)
+// ==========================================
+window.triggerConfetti = function(amount, durationSec) {
+    const duration = durationSec * 1000;
+    const end = Date.now() + duration;
+
+    (function frame() {
+        // Luodaan muutama partikkeli
+        for(let i=0; i<3; i++) {
+            createParticle();
+        }
+        if (Date.now() < end) {
+            requestAnimationFrame(frame);
+        }
+    }());
+};
+
+function createParticle() {
+    const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722'];
+    const p = document.createElement('div');
+    p.style.position = 'fixed';
+    p.style.zIndex = '9999';
+    p.style.top = '-10px';
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.width = Math.random() * 10 + 5 + 'px';
+    p.style.height = Math.random() * 10 + 5 + 'px';
+    p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    p.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+    p.style.opacity = Math.random() + 0.5;
+    p.style.transform = `rotate(${Math.random() * 360}deg)`;
+    
+    document.body.appendChild(p);
+
+    const speed = Math.random() * 5 + 2;
+    const angle = Math.random() * 2 - 1; // Sway
+    
+    let top = -10;
+    let left = parseFloat(p.style.left);
+
+    const anim = setInterval(() => {
+        top += speed;
+        left += angle;
+        p.style.top = top + 'px';
+        p.style.left = left + 'vw';
+        
+        if (top > window.innerHeight) {
+            clearInterval(anim);
+            document.body.removeChild(p);
+        }
+    }, 20);
+}
