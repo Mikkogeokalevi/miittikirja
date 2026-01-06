@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.4.3 - Visual Host in Guestbook
+// Versio: 7.6.0 - Cleaned for Visitor.js Separation
 // ==========================================
 
-const APP_VERSION = "7.4.3";
+const APP_VERSION = "7.6.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -85,8 +85,10 @@ window.addEventListener('load', function() {
 async function openVisitorGuestbook(uid, eventId) {
     if(loadingOverlay) loadingOverlay.style.display = 'flex';
     
-    currentEventId = eventId;
+    // Asetetaan globaalit muuttujat, joita visitor.js käyttää
+    window.currentEventId = eventId;
     window.currentVisitorTargetUid = uid; 
+    currentEventId = eventId; // Varmuuden vuoksi myös app.js:n omaan muuttujaan
     lastAttendeeCount = null;
     
     db.ref('miitit/' + uid + '/events/' + eventId).once('value', snap => {
@@ -103,9 +105,11 @@ async function openVisitorGuestbook(uid, eventId) {
         const nameEl = document.getElementById('vv-event-name');
         const infoEl = document.getElementById('vv-event-info');
         
+        // Asetetaan miitin nimi ja aika
         if(nameEl) nameEl.innerText = evt.name;
         if(infoEl) infoEl.innerText = `${evt.date} klo ${evt.time || '-'}`;
         
+        // Varmistetaan näkymät
         if(visitorView) visitorView.style.display = 'block';
         if(loginView) loginView.style.display = 'none';
         if(adminView) adminView.style.display = 'none';
@@ -123,305 +127,16 @@ async function openVisitorGuestbook(uid, eventId) {
     });
 }
 
-// --- VIERAILIJAN KIRJAUS & PELILLISTÄMINEN ---
-const btnVisitorSign = document.getElementById('btn-visitor-sign');
-if (btnVisitorSign) {
-    btnVisitorSign.onclick = async function() {
-        const nickInput = document.getElementById('vv-nickname');
-        const fromInput = document.getElementById('vv-from');
-        const msgInput = document.getElementById('vv-message');
+// HUOM: Vanha 'btnVisitorSign.onclick' poistettu täältä.
+// Logiikka on siirretty visitor.js -tiedostoon 'handleVisitorSign' -funktioon.
 
-        const nick = nickInput ? nickInput.value.trim() : "";
-        if(!nick) return alert("Kirjoita nimimerkkisi!");
-
-        const targetHost = window.currentVisitorTargetUid || HOST_UID;
-        
-        if(loadingOverlay) loadingOverlay.style.display = 'flex';
-
-        // 1. TARKISTETAAN ONKO JO LOGANNUT TÄHÄN MIITTIIN
-        try {
-            const currentLogsSnap = await db.ref('miitit/' + targetHost + '/logs/' + currentEventId).once('value');
-            let alreadyLogged = false;
-            currentLogsSnap.forEach(child => {
-                const val = child.val();
-                if (val.nickname && val.nickname.toLowerCase() === nick.toLowerCase()) {
-                    alreadyLogged = true;
-                }
-            });
-
-            if (alreadyLogged) {
-                if(loadingOverlay) loadingOverlay.style.display = 'none';
-                alert(`Hei ${nick}, olet jo kirjannut käynnin tähän miittiin!\n\nEi tarvitse kirjata uudelleen.`);
-                return;
-            }
-
-            // 2. TALLENNETAAN JOS EI OLE DUPLIKAATTI
-            await db.ref('miitit/' + targetHost + '/logs/' + currentEventId).push({
-                nickname: nick, 
-                from: fromInput ? fromInput.value.trim() : "",
-                message: msgInput ? msgInput.value.trim() : "", 
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            });
-
-        } catch (saveErr) {
-            console.error("Virhe:", saveErr);
-            if(loadingOverlay) loadingOverlay.style.display = 'none';
-            alert("Virhe tallennuksessa: " + saveErr.message);
-            return;
-        }
-
-        // 3. Haetaan historia ja lasketaan statistiikka
-        let userHistory = null;
-        let stats = {
-            isFirstTime: false,
-            totalVisits: 0,
-            title: "",
-            greeting: "",
-            streakText: "",
-            isMilestone: false
-        };
-
-        try {
-            const eventsSnap = await db.ref('miitit/' + targetHost + '/events').once('value');
-            const logsSnap = await db.ref('miitit/' + targetHost + '/logs').once('value');
-            
-            const eventsMap = {};
-            const allHostEvents = [];
-            eventsSnap.forEach(child => { 
-                const e = child.val();
-                e.key = child.key;
-                eventsMap[child.key] = e;
-                allHostEvents.push(e);
-            });
-            
-            // Järjestetään kaikki miitit aikajärjestykseen
-            allHostEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-            userHistory = [];
-            const nickLower = nick.toLowerCase();
-
-            // Etsitään käyttäjän käynnit
-            logsSnap.forEach(evtLogs => {
-                const eventKey = evtLogs.key;
-                const evtData = eventsMap[eventKey];
-                if (evtData) {
-                    let attended = false;
-                    evtLogs.forEach(log => {
-                        const val = log.val();
-                        if (val && val.nickname && val.nickname.toLowerCase() === nickLower) {
-                            attended = true;
-                        }
-                    });
-                    if (attended) {
-                        userHistory.push(evtData);
-                    }
-                }
-            });
-
-            // Järjestetään käyttäjän historia aikajärjestykseen (laskentaa varten)
-            userHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
-            stats.totalVisits = userHistory.length;
-            stats.isFirstTime = (stats.totalVisits <= 1);
-            stats.isMilestone = (stats.totalVisits % 10 === 0) || stats.isFirstTime;
-
-            // --- A & B) HAETAAN TEKSTIT ULKOISESTA TIEDOSTOSTA (messages.js) ---
-            if (window.MK_Messages) {
-                stats.title = window.MK_Messages.getRankTitle(stats.totalVisits);
-                stats.greeting = window.MK_Messages.getRandomGreeting(nick, stats.isFirstTime);
-            } else {
-                // Fallback jos messages.js puuttuu
-                stats.title = "Vieras";
-                stats.greeting = `Tervetuloa ${nick}!`;
-            }
-
-            // --- D) PUTKI & GAP ANALYYSI ---
-            if (!stats.isFirstTime && allHostEvents.length > 0) {
-                const currentEventIndex = allHostEvents.findIndex(e => e.key === currentEventId);
-                
-                if (currentEventIndex > 0) {
-                    const previousEventKey = allHostEvents[currentEventIndex - 1].key;
-                    const attendedPrevious = userHistory.some(e => e.key === previousEventKey);
-
-                    if (attendedPrevious) {
-                        // Putki laskuri
-                        let streak = 0;
-                        let globalIdx = currentEventIndex;
-                        let historyIdx = userHistory.length - 1;
-                        
-                        while (globalIdx >= 0 && historyIdx >= 0) {
-                            if (allHostEvents[globalIdx].key === userHistory[historyIdx].key) {
-                                streak++;
-                                globalIdx--;
-                                historyIdx--;
-                            } else {
-                                break;
-                            }
-                        }
-                        if(window.MK_Messages) {
-                            stats.streakText = window.MK_Messages.getStreakMessage(streak);
-                        }
-                    } else {
-                        // Tauko laskuri
-                        const lastVisitEvent = userHistory[userHistory.length - 2];
-                        if (lastVisitEvent) {
-                            const daysDiff = Math.floor((new Date() - new Date(lastVisitEvent.date)) / (1000 * 60 * 60 * 24));
-                            const lastVisitGlobalIndex = allHostEvents.findIndex(e => e.key === lastVisitEvent.key);
-                            const missedCount = (currentEventIndex - lastVisitGlobalIndex) - 1;
-                            
-                            if(window.MK_Messages) {
-                                stats.streakText = window.MK_Messages.getMissedMessage(daysDiff, missedCount);
-                            }
-                        }
-                    }
-                }
-            }
-
-        } catch (statsErr) {
-            console.warn("Tilastohaku epäonnistui:", statsErr);
-            userHistory = null;
-        }
-
-        if(loadingOverlay) loadingOverlay.style.display = 'none';
-        showVisitorModal(nick, userHistory, stats);
-    };
-}
-
-function showVisitorModal(nick, history, stats) {
-    const modal = document.getElementById('user-profile-modal');
-    if(!modal) { proceedToGeo(); return; }
-
-    const titleEl = document.getElementById('up-nickname');
-    const totalEl = document.getElementById('up-total');
-    const firstEl = document.getElementById('up-first');
-    const lastEl = document.getElementById('up-last');
-    const listEl = document.getElementById('up-history-list');
-    
-    if(listEl) listEl.innerHTML = "";
-
-    // --- NAPPIEN PÄIVITYS (Jatka Geocaching / Kirjaa toinen) ---
-    const closeBtn = modal.querySelector('button.btn-red');
-    let btnContainer = modal.querySelector('#visitor-action-buttons');
-    
-    if (!btnContainer && closeBtn) {
-        btnContainer = document.createElement('div');
-        btnContainer.id = 'visitor-action-buttons';
-        btnContainer.style.display = 'flex';
-        btnContainer.style.flexDirection = 'column';
-        btnContainer.style.gap = '10px';
-        btnContainer.style.marginTop = '15px';
-        closeBtn.parentNode.replaceChild(btnContainer, closeBtn);
-    }
-    
-    if (btnContainer) {
-        btnContainer.innerHTML = `
-            <button id="btn-visit-geo" class="btn btn-green" style="font-size:1.1em;">Jatka miittisivulle ➡</button>
-            <button id="btn-log-another" class="btn btn-blue" style="background:#555;">Kirjaa toinen kävijä 👤</button>
-        `;
-
-        document.getElementById('btn-visit-geo').onclick = function() {
-            modal.style.display = 'none';
-            resetModalButtons(btnContainer); 
-            proceedToGeo();
-        };
-
-        document.getElementById('btn-log-another').onclick = function() {
-            modal.style.display = 'none';
-            resetModalButtons(btnContainer);
-            ['vv-nickname', 'vv-from', 'vv-message'].forEach(id => {
-                const el = document.getElementById(id);
-                if(el) el.value = "";
-            });
-            setTimeout(() => { 
-                const el = document.getElementById('vv-nickname');
-                if(el) el.focus();
-            }, 300);
-        };
-    }
-
-    if (history === null) {
-        titleEl.innerHTML = "Kiitos käynnistä!";
-        listEl.innerHTML = `<div style="text-align:center; padding:20px;">Kirjaus tallennettu!</div>`;
-        modal.style.display = 'block';
-        return;
-    }
-
-    // --- RAKENNETAAN SISÄLTÖ ---
-    titleEl.innerHTML = `<div style="font-size:0.8em; color:#888; margin-bottom:5px;">${stats.title}</div>${stats.greeting}`;
-    titleEl.style.color = stats.isFirstTime ? "#d32f2f" : "var(--header-color)";
-
-    totalEl.innerText = stats.totalVisits;
-    
-    if (stats.isFirstTime) {
-        firstEl.innerHTML = "Tänään!";
-        lastEl.innerHTML = "Tänään!";
-        listEl.innerHTML = `
-            <div style="text-align:center; padding:20px;">
-                <div style="font-size:3em;">🎉</div>
-                <p><strong>Onneksi olkoon!</strong></p>
-                <p>Tämä on ensimmäinen kirjauksesi Mikkokalevin miittikirjaan.</p>
-            </div>`;
-    } else {
-        const first = history[0];
-        const last = history[history.length - 1]; // Nykyinen
-        
-        firstEl.innerHTML = `${first.date}<br><span style="font-size:0.8em; font-weight:normal;">${first.name}</span>`;
-        lastEl.innerHTML = `${last.date}<br><span style="font-size:0.8em; font-weight:normal;">${last.name}</span>`;
-
-        // Putki-info
-        if (stats.streakText) {
-            const infoBox = document.createElement('div');
-            infoBox.style.background = "var(--highlight-bg)";
-            infoBox.style.padding = "10px";
-            infoBox.style.marginBottom = "10px";
-            infoBox.style.borderRadius = "5px";
-            infoBox.style.textAlign = "center";
-            infoBox.style.border = "1px dashed var(--secondary-color)";
-            infoBox.innerHTML = stats.streakText;
-            listEl.appendChild(infoBox);
-        }
-
-        // --- LISTA KÄÄNTEISESSÄ JÄRJESTYKSESSÄ (Uusin ylös) ---
-        const displayHistory = [...history].reverse();
-
-        displayHistory.forEach(evt => {
-            const row = document.createElement('div');
-            row.style.borderBottom = "1px dotted #555";
-            row.style.padding = "5px 0";
-            row.style.fontSize = "0.9em";
-            
-            if (evt.date === last.date && evt.name === last.name) {
-                row.style.backgroundColor = "rgba(46, 125, 50, 0.2)";
-                row.style.borderLeft = "4px solid #4caf50";
-                row.style.paddingLeft = "5px";
-                row.innerHTML = `<strong>${evt.date}</strong> ${evt.name} <span style="font-size:0.8em; color:#4caf50;">(NYT)</span>`;
-            } else {
-                row.innerHTML = `<strong>${evt.date}</strong> ${evt.name}`;
-            }
-            listEl.appendChild(row);
-        });
-        setTimeout(() => { listEl.scrollTop = 0; }, 100);
-    }
-
-    modal.style.display = 'block';
-
-    if (stats.isMilestone) {
-        triggerConfetti(200, 2);
-    } else {
-        triggerConfetti(50, 0.5);
-    }
-}
-
-function resetModalButtons(container) {
-    container.outerHTML = `<button onclick="document.getElementById('user-profile-modal').style.display='none'" class="btn btn-red" style="margin-top:15px;">Sulje</button>`;
-}
-
-function proceedToGeo() {
+window.proceedToGeo = function() {
     if (currentEventGcCode && currentEventGcCode.startsWith('GC')) {
         window.location.href = "https://coord.info/" + currentEventGcCode;
     } else {
         window.location.href = "https://www.geocaching.com";
     }
-}
+};
 
 // ==========================================
 // 3. OMA VARMISTUSKYSELY
