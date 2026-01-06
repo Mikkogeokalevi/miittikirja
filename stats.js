@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.5.2 - Unique Users & Host Stats
+// Versio: 7.5.3 - Event Types & Organizer Logic
 // ==========================================
 
 let allStatsData = {
@@ -76,10 +76,32 @@ document.getElementById('btn-apply-filters').onclick = () => {
 function updateStatsView(data) {
     window.currentFilteredData = data;
 
-    // 1. Lasketaan perusluvut
+    // 1. Lasketaan perusluvut ja tyypit
     const totalEvents = data.length;
     const totalGuestVisits = data.reduce((sum, e) => sum + e.attendeeCount, 0);
     
+    let countCancelled = 0;
+    let typeCounts = { miitti: 0, cito: 0, cce: 0 };
+
+    data.forEach(e => {
+        // Tarkistetaan onko peruttu (merkkijono nimeen)
+        if (e.name && e.name.includes("/ PERUTTU /")) {
+            countCancelled++;
+        }
+        
+        // Lasketaan tyypit (myös perutut ovat jotain tyyppiä)
+        const t = (e.type || 'miitti').toLowerCase();
+        if (typeCounts[t] !== undefined) {
+            typeCounts[t]++;
+        } else {
+            // Jos tuntematon tyyppi, lasketaan miitiksi
+            typeCounts['miitti']++;
+        }
+    });
+
+    // Järjestäjän omat osallistumiset (Kaikki - Perutut)
+    const organizerAttended = totalEvents - countCancelled;
+
     // 2. Lasketaan uniikit nimimerkit
     const uniqueNames = new Set();
     data.forEach(evt => {
@@ -89,15 +111,25 @@ function updateStatsView(data) {
     });
     const uniqueCount = uniqueNames.size;
 
-    // 3. Päivitetään yhteenveto (Lisätty uniikit ja järjestäjä)
+    // 3. Päivitetään yhteenveto (UUSI LAYOUT)
     const summaryEl = document.getElementById('stats-summary-text');
     if(summaryEl) {
         summaryEl.innerHTML = `
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; text-align:left;">
-                <div>Tapahtumia:</div><div style="text-align:right;"><strong>${totalEvents}</strong> kpl</div>
-                <div>Vieraskirjauksia:</div><div style="text-align:right;"><strong>${totalGuestVisits}</strong> kpl</div>
+            <div style="display:grid; grid-template-columns: 1fr auto; gap:5px; text-align:left; font-size:0.95em;">
+                <div>Tapahtumia yhteensä:</div><div style="text-align:right;"><strong>${totalEvents}</strong> kpl</div>
+                
+                <div style="color:#aaa; padding-left:15px; font-size:0.9em;">• Miitit</div><div style="text-align:right; color:#aaa; font-size:0.9em;">${typeCounts.miitti}</div>
+                <div style="color:#aaa; padding-left:15px; font-size:0.9em;">• CITO-tapahtumat</div><div style="text-align:right; color:#aaa; font-size:0.9em;">${typeCounts.cito}</div>
+                <div style="color:#aaa; padding-left:15px; font-size:0.9em;">• Juhlat (CCE)</div><div style="text-align:right; color:#aaa; font-size:0.9em;">${typeCounts.cce}</div>
+                ${countCancelled > 0 ? `<div style="color:#e57373; padding-left:15px; font-size:0.9em;">• Perutut</div><div style="text-align:right; color:#e57373; font-size:0.9em;">${countCancelled}</div>` : ''}
+
+                <div style="margin-top:8px;">Vieraskirjauksia:</div><div style="text-align:right; margin-top:8px;"><strong>${totalGuestVisits}</strong> kpl</div>
                 <div>Uniikit vieraat:</div><div style="text-align:right; color:var(--primary-color);"><strong>${uniqueCount}</strong> hlö</div>
-                <div style="border-top:1px solid #555; padding-top:5px; margin-top:5px;">Järjestäjä (Sinä):</div><div style="border-top:1px solid #555; padding-top:5px; margin-top:5px; text-align:right; color:#888;"><strong>${totalEvents}</strong> kpl</div>
+                
+                <div style="border-top:1px solid #555; padding-top:8px; margin-top:8px;">Omat osallistumiset:</div>
+                <div style="border-top:1px solid #555; padding-top:8px; margin-top:8px; text-align:right; color:var(--header-color);">
+                    <strong>${organizerAttended}</strong> kpl <span style="font-size:0.7em; color:#888; font-weight:normal;">(Toteutuneet)</span>
+                </div>
             </div>
             <div style="margin-top:10px; border-top:1px dashed #555; padding-top:10px; text-align:center;">
                 Keskiarvo: <strong style="font-size:1.2em; color:var(--secondary-color);">${totalEvents ? (totalGuestVisits / totalEvents).toFixed(1) : 0}</strong> vierasta / miitti
