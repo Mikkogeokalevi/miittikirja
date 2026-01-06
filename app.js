@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.4.2 - Messages Extracted Safely
+// Versio: 7.4.3 - Visual Host in Guestbook
 // ==========================================
 
-const APP_VERSION = "7.4.2";
+const APP_VERSION = "7.4.3";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1042,6 +1042,20 @@ function loadAttendees(eventKey) {
         // Lajittelu: Uusin ensin
         logs.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
         
+        // --- 1. LISÄTÄÄN JÄRJESTÄJÄ VISUAALISESTI LISTAN ALKUUN ---
+        const hostRow = document.createElement('div');
+        hostRow.className = "log-item";
+        hostRow.style.backgroundColor = "rgba(255, 140, 0, 0.05)"; // Haalea oranssi tausta
+        hostRow.innerHTML = `
+            <div>
+                <strong style="color:var(--primary-color);">Mikkokalevi</strong> 
+                <span style="font-size:0.8em; background:var(--primary-color); color:#fff; border-radius:4px; padding:2px 6px; margin-left:5px; vertical-align:middle;">Järjestäjä</span>
+                <div style="font-style:italic; color:#888; font-size:0.9em;">(Paikalla aina)</div>
+            </div>
+        `;
+        listEl.appendChild(hostRow);
+        // -----------------------------------------------------------
+
         logs.forEach(log => {
             const row = document.createElement('div'); row.className = "log-item";
             let btns = (isAdminMode && !currentEventArchived && currentUser) ? `
