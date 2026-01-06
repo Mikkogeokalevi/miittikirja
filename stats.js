@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.5.4 - Host in Top Lists (FULL)
+// Versio: 7.5.5 - FIX: Full Uncompressed Code
 // ==========================================
 
 let allStatsData = {
@@ -98,7 +98,7 @@ function updateStatsView(data) {
     // Järjestäjän omat osallistumiset (Kaikki - Perutut)
     const organizerAttended = totalEvents - countCancelled;
     
-    // TALLENNETAAN GLOBAALISTI JOTTA RENDER-FUNKTIOT NÄKEVÄT SEN
+    // TALLENNETAAN GLOBAALISTI
     window.currentOrganizerStats = { count: organizerAttended };
 
     // 2. Lasketaan uniikit nimimerkit
@@ -195,7 +195,7 @@ function updateStatsView(data) {
 }
 
 // ==========================================
-// RENDERÖINTI - LISÄTTY HOST LISTOIHIN
+// RENDERÖINTI
 // ==========================================
 
 function renderUserRegistry(data) {
@@ -544,6 +544,76 @@ window.renderMap = function(data) {
     setTimeout(() => { mapInstance.invalidateSize(); }, 200);
 };
 
+function renderMapLegend(legendSet) {
+    let legendContainer = document.getElementById('map-legend-container');
+    if (!legendContainer) {
+        const mapDiv = document.getElementById('stats-map');
+        if (mapDiv) {
+            legendContainer = document.createElement('div');
+            legendContainer.id = 'map-legend-container';
+            legendContainer.style.display = 'flex';
+            legendContainer.style.flexWrap = 'wrap';
+            legendContainer.style.gap = '10px';
+            legendContainer.style.padding = '10px';
+            legendContainer.style.justifyContent = 'center';
+            legendContainer.style.fontSize = '0.9em';
+            mapDiv.parentNode.appendChild(legendContainer);
+        }
+    }
+    if (!legendContainer) return;
+    legendContainer.innerHTML = "";
+    const items = Array.from(legendSet).map(s => JSON.parse(s));
+    items.sort((a, b) => {
+        const yearA = parseInt(a.label);
+        const yearB = parseInt(b.label);
+        if (!isNaN(yearA) && !isNaN(yearB)) return yearB - yearA; 
+        if (a.label === 'Tulevat') return -1;
+        if (b.label === 'Tulevat') return 1;
+        return 0;
+    });
+    items.forEach(item => {
+        const div = document.createElement('div');
+        div.innerHTML = `<span style="display:inline-block; width:12px; height:12px; background:${item.color}; border-radius:50%; margin-right:5px; border:1px solid #333;"></span>${item.label}`;
+        legendContainer.appendChild(div);
+    });
+}
+
+function renderTimeSlots(data) {
+    const el = document.getElementById('stats-time-slots');
+    if (!el) return;
+
+    const slotCounts = {};
+    for (let h = 0; h < 24; h++) {
+        for (let m = 0; m < 60; m += 15) {
+            const key = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+            slotCounts[key] = 0;
+        }
+    }
+
+    let maxCount = 0;
+    data.forEach(evt => {
+        if (evt.time) {
+            const start = evt.time.split('-')[0].trim();
+            const normalized = start.replace('.', ':');
+            if (slotCounts.hasOwnProperty(normalized)) {
+                slotCounts[normalized]++;
+                if (slotCounts[normalized] > maxCount) maxCount = slotCounts[normalized];
+            }
+        }
+    });
+
+    let html = "";
+    Object.keys(slotCounts).sort().forEach(time => {
+        const count = slotCounts[time];
+        const isActive = count > 0;
+        const className = isActive ? "time-slot-box active" : "time-slot-box empty";
+        const content = isActive ? `${time}<br><strong>${count}</strong>` : time;
+        html += `<div class="${className}">${content}</div>`;
+    });
+
+    el.innerHTML = html;
+}
+
 window.openUserProfile = function(nickname) {
     if (!nickname) return;
     const userEvents = allStatsData.events.filter(evt => 
@@ -603,90 +673,6 @@ window.goToEventFromMap = function(key) {
     }
 };
 
-function renderCharts(data) {
-    if (!window.Chart || !data || data.length === 0) return;
-    const clearChart = (id) => { if (chartInstances[id]) { chartInstances[id].destroy(); } };
-    const colors = { primary: '#8B4513', secondary: '#D2691E', accent: '#4caf50', text: '#4E342E' };
-
-    clearChart('weekdays');
-    const dayLabels = ["Ma", "Ti", "Ke", "To", "Pe", "La", "Su"];
-    const dayData = [0,0,0,0,0,0,0];
-    data.forEach(e => { if(e.date) { const jsDay = new Date(e.date).getDay(); const fiDay = (jsDay + 6) % 7; dayData[fiDay]++; } });
-    chartInstances['weekdays'] = new Chart(document.getElementById('chart-weekdays-canvas'), {
-        type: 'bar', data: { labels: dayLabels, datasets: [{ label: 'Miitit', data: dayData, backgroundColor: colors.primary }] }
-    });
-
-    clearChart('types');
-    const typeCounts = { miitti: 0, cito: 0, cce: 0 };
-    data.forEach(e => { if(typeCounts[e.type] !== undefined) typeCounts[e.type]++; });
-    chartInstances['types'] = new Chart(document.getElementById('chart-types-canvas'), {
-        type: 'doughnut', data: { labels: ["Miitti", "CITO", "CCE"], datasets: [{ data: Object.values(typeCounts), backgroundColor: [colors.primary, colors.accent, colors.secondary] }] }
-    });
-
-    clearChart('timeline');
-    const timelineData = [...data].sort((a,b) => new Date(a.date) - new Date(b.date)).slice(-15);
-    chartInstances['timeline'] = new Chart(document.getElementById('chart-timeline-canvas'), {
-        type: 'line', data: { labels: timelineData.map(e => e.date.split('-').slice(1).reverse().join('.')), datasets: [{ label: 'Kävijät', data: timelineData.map(e => e.attendeeCount), borderColor: colors.primary, backgroundColor: 'rgba(139, 69, 19, 0.2)', fill: true, tension: 0.4 }] }
-    });
-
-    clearChart('cumulative');
-    const allEventsSorted = [...allStatsData.events].sort((a,b) => new Date(a.date) - new Date(b.date));
-    const uniqueUsersSet = new Set();
-    const cumulativePoints = [];
-    allEventsSorted.forEach(evt => {
-        if(evt.attendeeNames) evt.attendeeNames.forEach(name => uniqueUsersSet.add(name.toLowerCase()));
-        cumulativePoints.push({ x: evt.date, y: uniqueUsersSet.size });
-    });
-    chartInstances['cumulative'] = new Chart(document.getElementById('chart-cumulative-canvas'), {
-        type: 'line', data: { labels: cumulativePoints.map(p => p.x), datasets: [{ label: 'Uniikit kävijät yhteensä', data: cumulativePoints.map(p => p.y), borderColor: '#2e7d32', backgroundColor: 'rgba(46, 125, 50, 0.1)', fill: true, pointRadius: 2, tension: 0.1 }] }
-    });
-
-    clearChart('hours');
-    const hoursData = Array(24).fill(0);
-    data.forEach(e => { if(e.time) { const hour = parseInt(e.time.split(':')[0]); if(!isNaN(hour)) hoursData[hour]++; } });
-    chartInstances['hours'] = new Chart(document.getElementById('chart-hours-canvas'), {
-        type: 'bar', data: { labels: Array.from({length: 24}, (_, i) => i + ":00"), datasets: [{ label: 'Miitit', data: hoursData, backgroundColor: colors.secondary }] }
-    });
-
-    clearChart('months');
-    const monthsData = Array(12).fill(0);
-    const monthNames = ["Tam", "Hel", "Maa", "Huh", "Tou", "Kes", "Hei", "Elo", "Syy", "Lok", "Mar", "Jou"];
-    data.forEach(e => { if(e.date) { const m = new Date(e.date).getMonth(); monthsData[m] += e.attendeeCount; } });
-    chartInstances['months'] = new Chart(document.getElementById('chart-months-canvas'), {
-        type: 'bar', data: { labels: monthNames, datasets: [{ label: 'Kävijämäärä yhteensä', data: monthsData, backgroundColor: '#A0522D' }] }
-    });
-
-    clearChart('locations');
-    const locMap = {};
-    data.forEach(e => { if (e.location) locMap[e.location] = (locMap[e.location] || 0) + 1; });
-    const sortedLocs = Object.entries(locMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
-    chartInstances['locations'] = new Chart(document.getElementById('chart-locations-canvas'), {
-        type: 'bar', data: { labels: sortedLocs.map(x => x[0]), datasets: [{ label: 'Miitit', data: sortedLocs.map(x => x[1]), backgroundColor: colors.primary }] }, options: { indexAxis: 'y' }
-    });
-
-    clearChart('topAttendees');
-    const userMap = {};
-    data.forEach(e => e.attendeeNames.forEach(n => userMap[n] = (userMap[n] || 0) + 1));
-    const topUsers = Object.entries(userMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
-    chartInstances['topAttendees'] = new Chart(document.getElementById('chart-top-attendees-canvas'), {
-        type: 'bar', data: { labels: topUsers.map(x => x[0]), datasets: [{ label: 'Käynnit', data: topUsers.map(x => x[1]), backgroundColor: colors.secondary }] }, options: { indexAxis: 'y' }
-    });
-
-    clearChart('topEvents');
-    const topEvents = [...data].sort((a,b) => b.attendeeCount - a.attendeeCount).slice(0, 10);
-    chartInstances['topEvents'] = new Chart(document.getElementById('chart-top-events-canvas'), {
-        type: 'bar', data: { labels: topEvents.map(x => x.name.substring(0, 15) + "..."), datasets: [{ label: 'Osallistujat', data: topEvents.map(x => x.attendeeCount), backgroundColor: colors.accent }] }
-    });
-
-    clearChart('attrs');
-    const attrMap = {};
-    data.forEach(e => { if(e.attributes) e.attributes.forEach(a => { if(a.inc === 1) { const name = a.name || a; attrMap[name] = (attrMap[name] || 0) + 1; } }); });
-    const topAttrs = Object.entries(attrMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
-    chartInstances['attrs'] = new Chart(document.getElementById('chart-attributes-canvas'), {
-        type: 'bar', data: { labels: topAttrs.map(x => x[0]), datasets: [{ label: 'Esiintyvyys', data: topAttrs.map(x => x[1]), backgroundColor: '#A0522D' }] }, options: { indexAxis: 'y' }
-    });
-}
-
 const userSearchInput = document.getElementById('search-user-name');
 const userAutoList = document.getElementById('user-autocomplete');
 if(userSearchInput) {
@@ -708,3 +694,101 @@ window.selectUser = (name) => {
     if(userAutoList) userAutoList.style.display = 'none';
     document.getElementById('btn-apply-filters').click();
 };
+
+// ==========================================
+// GRAAFIEN PIIRTO (FULL CODE)
+// ==========================================
+
+function renderCharts(data) {
+    if (!window.Chart || !data || data.length === 0) return;
+    const clearChart = (id) => { if (chartInstances[id]) { chartInstances[id].destroy(); } };
+    const colors = { primary: '#8B4513', secondary: '#D2691E', accent: '#4caf50', text: '#4E342E' };
+
+    // 1. WEEKDAYS
+    clearChart('weekdays');
+    const dayLabels = ["Ma", "Ti", "Ke", "To", "Pe", "La", "Su"];
+    const dayData = [0,0,0,0,0,0,0];
+    data.forEach(e => { if(e.date) { const jsDay = new Date(e.date).getDay(); const fiDay = (jsDay + 6) % 7; dayData[fiDay]++; } });
+    chartInstances['weekdays'] = new Chart(document.getElementById('chart-weekdays-canvas'), {
+        type: 'bar', data: { labels: dayLabels, datasets: [{ label: 'Miitit', data: dayData, backgroundColor: colors.primary }] }
+    });
+
+    // 2. TYPES
+    clearChart('types');
+    const typeCounts = { miitti: 0, cito: 0, cce: 0 };
+    data.forEach(e => { if(typeCounts[e.type] !== undefined) typeCounts[e.type]++; });
+    chartInstances['types'] = new Chart(document.getElementById('chart-types-canvas'), {
+        type: 'doughnut', data: { labels: ["Miitti", "CITO", "CCE"], datasets: [{ data: Object.values(typeCounts), backgroundColor: [colors.primary, colors.accent, colors.secondary] }] }
+    });
+
+    // 3. TIMELINE
+    clearChart('timeline');
+    const timelineData = [...data].sort((a,b) => new Date(a.date) - new Date(b.date)).slice(-15);
+    chartInstances['timeline'] = new Chart(document.getElementById('chart-timeline-canvas'), {
+        type: 'line', data: { labels: timelineData.map(e => e.date.split('-').slice(1).reverse().join('.')), datasets: [{ label: 'Kävijät', data: timelineData.map(e => e.attendeeCount), borderColor: colors.primary, backgroundColor: 'rgba(139, 69, 19, 0.2)', fill: true, tension: 0.4 }] }
+    });
+
+    // 4. CUMULATIVE
+    clearChart('cumulative');
+    const allEventsSorted = [...allStatsData.events].sort((a,b) => new Date(a.date) - new Date(b.date));
+    const uniqueUsersSet = new Set();
+    const cumulativePoints = [];
+    allEventsSorted.forEach(evt => {
+        if(evt.attendeeNames) evt.attendeeNames.forEach(name => uniqueUsersSet.add(name.toLowerCase()));
+        cumulativePoints.push({ x: evt.date, y: uniqueUsersSet.size });
+    });
+    chartInstances['cumulative'] = new Chart(document.getElementById('chart-cumulative-canvas'), {
+        type: 'line', data: { labels: cumulativePoints.map(p => p.x), datasets: [{ label: 'Uniikit kävijät yhteensä', data: cumulativePoints.map(p => p.y), borderColor: '#2e7d32', backgroundColor: 'rgba(46, 125, 50, 0.1)', fill: true, pointRadius: 2, tension: 0.1 }] }
+    });
+
+    // 5. HOURS
+    clearChart('hours');
+    const hoursData = Array(24).fill(0);
+    data.forEach(e => { if(e.time) { const hour = parseInt(e.time.split(':')[0]); if(!isNaN(hour)) hoursData[hour]++; } });
+    chartInstances['hours'] = new Chart(document.getElementById('chart-hours-canvas'), {
+        type: 'bar', data: { labels: Array.from({length: 24}, (_, i) => i + ":00"), datasets: [{ label: 'Miitit', data: hoursData, backgroundColor: colors.secondary }] }
+    });
+
+    // 6. MONTHS
+    clearChart('months');
+    const monthsData = Array(12).fill(0);
+    const monthNames = ["Tam", "Hel", "Maa", "Huh", "Tou", "Kes", "Hei", "Elo", "Syy", "Lok", "Mar", "Jou"];
+    data.forEach(e => { if(e.date) { const m = new Date(e.date).getMonth(); monthsData[m] += e.attendeeCount; } });
+    chartInstances['months'] = new Chart(document.getElementById('chart-months-canvas'), {
+        type: 'bar', data: { labels: monthNames, datasets: [{ label: 'Kävijämäärä yhteensä', data: monthsData, backgroundColor: '#A0522D' }] }
+    });
+
+    // 7. LOCATIONS
+    clearChart('locations');
+    const locMap = {};
+    data.forEach(e => { if (e.location) locMap[e.location] = (locMap[e.location] || 0) + 1; });
+    const sortedLocs = Object.entries(locMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    chartInstances['locations'] = new Chart(document.getElementById('chart-locations-canvas'), {
+        type: 'bar', data: { labels: sortedLocs.map(x => x[0]), datasets: [{ label: 'Miitit', data: sortedLocs.map(x => x[1]), backgroundColor: colors.primary }] }, options: { indexAxis: 'y' }
+    });
+
+    // 8. TOP ATTENDEES
+    clearChart('topAttendees');
+    const userMap = {};
+    data.forEach(e => e.attendeeNames.forEach(n => userMap[n] = (userMap[n] || 0) + 1));
+    const topUsers = Object.entries(userMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
+    chartInstances['topAttendees'] = new Chart(document.getElementById('chart-top-attendees-canvas'), {
+        type: 'bar', data: { labels: topUsers.map(x => x[0]), datasets: [{ label: 'Käynnit', data: topUsers.map(x => x[1]), backgroundColor: colors.secondary }] }, options: { indexAxis: 'y' }
+    });
+
+    // 9. TOP EVENTS
+    clearChart('topEvents');
+    const topEvents = [...data].sort((a,b) => b.attendeeCount - a.attendeeCount).slice(0, 10);
+    chartInstances['topEvents'] = new Chart(document.getElementById('chart-top-events-canvas'), {
+        type: 'bar', data: { labels: topEvents.map(x => x.name.substring(0, 15) + "..."), datasets: [{ label: 'Osallistujat', data: topEvents.map(x => x.attendeeCount), backgroundColor: colors.accent }] }
+    });
+
+    // 10. ATTRIBUTES
+    clearChart('attrs');
+    const attrMap = {};
+    data.forEach(e => { if(e.attributes) e.attributes.forEach(a => { if(a.inc === 1) { const name = a.name || a; attrMap[name] = (attrMap[name] || 0) + 1; } }); });
+    const topAttrs = Object.entries(attrMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
+    chartInstances['attrs'] = new Chart(document.getElementById('chart-attributes-canvas'), {
+        type: 'bar', data: { labels: topAttrs.map(x => x[0]), datasets: [{ label: 'Esiintyvyys', data: topAttrs.map(x => x[1]), backgroundColor: '#A0522D' }] }, options: { indexAxis: 'y' }
+    });
+}
