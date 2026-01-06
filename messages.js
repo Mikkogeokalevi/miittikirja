@@ -24,24 +24,51 @@ window.MK_Messages = {
 
         // Muuten arvotaan näistä
         const greetings = [
-            "Hei taas!", 
-            "Huomenta!", 
-            "Ilta pelastettu!", 
-            "Mahtavaa että pääsit!",
-            "Sankarimme saapui!", 
-            "Oho, löysit perille!", 
-            "Mikä meininki?",
-            "Katos kuka täällä!", 
-            "Nonii, vihdoin!", 
-            "Tervetuloa kotiin.",
-            "Parempi myöhään kuin ei milloinkaan!", 
-            "Se on hän!", 
-            "Legendaarista.",
-            "Kahvit tippumaan, vieraita tuli!",
-            "Mitäs meidän suosikki?"
+            // Perussetit
+            "Hei taas", 
+            "Mahtavaa että pääsit",
+            "Kiva nähdä",
+            "Tervetuloa",
+
+            // "Väärät" ajat & Hämmennys
+            "Huomenta", 
+            "Hyvää yötä",
+            "Onko nyt joulu?",
+            "Hyvää juhannusta",
+
+            // Kehut & Hypetys
+            "Ilta pelastettu, täällä on", 
+            "Sankarimme saapui:", 
+            "Legendaarista,",
+            "Mitäs meidän suosikki",
+            "Katos kuka täällä,",
+            "Oletko se sinä,",
+            "Nimmarisi nosti miitin arvoa,",
+            "Stop the press! Se on",
+
+            // Hullunkuriset & Vitsikkäät
+            "Oho, löysit perille", 
+            "Mikä meininki", 
+            "Nonii, vihdoin", 
+            "Tervetuloa kotiin",
+            "Parempi myöhään kuin ei milloinkaan,", 
+            "Kahvit tippumaan, vieraita tuli:",
+            "Onko täällä kätköilijöitä?",
+            "Söitkö jo kaikki keksit",
+            "Varo, lattia on liukas",
+            "Tämä viesti tuhoutuu 5 sekunnissa,",
+            "Joko taas,",
+            "Missä olit eilen",
+            "Järjestysmies",
+            "System error... vitsi vitsi, moi"
         ];
 
+        // Arvotaan teksti
         const randomText = greetings[Math.floor(Math.random() * greetings.length)];
+        
+        // Palautetaan muodossa: "Teksti Nimi!"
+        // Huom: Koodi lisää automaattisesti huutomerkin nimen perään,
+        // joten tekstin ei tarvitse loppua välimerkkiin, ellei halua esim kysymysmerkkiä.
         return `${randomText} ${name}!`;
     },
 
