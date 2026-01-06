@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.3.6 - Admin User Profile Links
+// Versio: 7.5.0 - Map Grouping & Year Heatmap
 // ==========================================
 
 let allStatsData = {
@@ -110,6 +110,9 @@ function updateStatsView(data) {
     renderWordCloud(data);
     renderTimeSlots(data);
     
+    // UUSI HEATMAP
+    renderYearHeatmap(data);
+
     const todayStr = new Date().toISOString().split('T')[0];
     const filteredForLists = data.filter(e => {
         const isCancelled = e.name.includes("/ PERUTTU /");
@@ -143,7 +146,67 @@ function updateStatsView(data) {
 }
 
 // ==========================================
-// UUSI: KARTTANÄKYMÄ (YEAR COLORS & POPUP LINK)
+// UUSI: HEATMAP (Vuosikalenteri)
+// ==========================================
+function renderYearHeatmap(data) {
+    const el = document.getElementById('stats-year-heatmap');
+    if (!el) return;
+
+    // 1. Kerää data matriisiin: { "2024": [0, 2, 5, ...], "2023": ... }
+    const matrix = {};
+    const years = new Set();
+    
+    data.forEach(evt => {
+        if (!evt.date) return;
+        const [y, m] = evt.date.split('-');
+        years.add(y);
+        if (!matrix[y]) matrix[y] = new Array(12).fill(0);
+        matrix[y][parseInt(m) - 1]++;
+    });
+
+    const sortedYears = Array.from(years).sort((a,b) => b - a); // Uusin ensin
+    if (sortedYears.length === 0) { el.innerHTML = "Ei dataa."; return; }
+
+    // 2. Rakenna HTML-taulukko
+    let html = `<table style="width:100%; border-collapse:collapse; font-size:0.9em;">`;
+    
+    // Otsikkorivi (Kuukaudet)
+    const months = ["T", "H", "M", "H", "T", "K", "H", "E", "S", "L", "M", "J"];
+    html += `<tr><th style="text-align:left;">Vuosi</th>${months.map(m => `<th style="width:7%; text-align:center; color:#888;">${m}</th>`).join('')}<th style="width:10%;">Yht</th></tr>`;
+
+    sortedYears.forEach(year => {
+        const rowData = matrix[year];
+        const total = rowData.reduce((a,b) => a + b, 0);
+        
+        let rowHtml = `<tr><td style="font-weight:bold; border-bottom:1px solid #444;">${year}</td>`;
+        
+        rowData.forEach(count => {
+            // Laske väri
+            let bg = 'transparent';
+            let color = 'inherit';
+            if (count > 0) {
+                // Sävyt: 1-2 -> kevyt, 3-5 -> keski, 6+ -> tumma
+                if (count < 2) bg = 'rgba(139, 69, 19, 0.3)';
+                else if (count < 4) bg = 'rgba(139, 69, 19, 0.6)';
+                else bg = 'rgba(139, 69, 19, 1.0)';
+                
+                if (count >= 4) color = '#fff';
+            }
+            rowHtml += `<td style="text-align:center; background:${bg}; color:${color}; border-radius:3px; border:1px solid #333;" title="${count} miittiä">${count > 0 ? count : ''}</td>`;
+        });
+        
+        rowHtml += `<td style="text-align:center; font-weight:bold; color:#A0522D;">${total}</td></tr>`;
+        html += rowHtml;
+    });
+
+    html += `</table>`;
+    html += `<div style="text-align:right; font-size:0.8em; color:#666; margin-top:5px;">Luvut kertovat miittien määrän</div>`;
+    
+    el.innerHTML = html;
+}
+
+// ==========================================
+// UUSI: KARTTANÄKYMÄ (Grouping Fix)
 // ==========================================
 
 window.renderMap = function(data) {
@@ -155,7 +218,7 @@ window.renderMap = function(data) {
     }
 
     mapInstance = L.map('stats-map', {
-        tap: true // Mobiilituki
+        tap: true 
     }).setView([64.0, 26.0], 5);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -168,36 +231,60 @@ window.renderMap = function(data) {
 
     // VÄRIPALETTI VUOSILLE
     const yearColors = {
-        '2026': '#E91E63', // Pinkki
-        '2025': '#D32F2F', // Tumma punainen
-        '2024': '#FF5722', // Oranssi
-        '2023': '#FFC107', // Keltainen/Kulta
-        '2022': '#4CAF50', // Vihreä
-        '2021': '#009688', // Turkoosi
-        '2020': '#3F51B5', // Indigo
-        'default': '#795548' // Ruskea (vanhemmat)
+        '2026': '#E91E63', '2025': '#D32F2F', '2024': '#FF5722', 
+        '2023': '#FFC107', '2022': '#4CAF50', '2021': '#009688', 
+        '2020': '#3F51B5', 'default': '#795548'
     };
 
-    const getPointStyle = (evt) => {
-        // 1. PERUTTU
-        if (evt.name && evt.name.includes("/ PERUTTU /")) {
+    // 1. RYHMITTELE TAPAHTUMAT KOORDINAATTIEN MUKAAN
+    const groupedEvents = {};
+    
+    data.forEach(evt => {
+        if (!evt.coords) return;
+        // Normalisoidaan koordinaatit (poistetaan välilyönnit jne vertailua varten)
+        const key = evt.coords.replace(/\s+/g, '');
+        if (!groupedEvents[key]) {
+            groupedEvents[key] = {
+                coords: evt.coords, // Säilytetään alkuperäinen muoto parsimista varten
+                events: []
+            };
+        }
+        groupedEvents[key].events.push(evt);
+    });
+
+    const getPointStyle = (events) => {
+        // Jos ryhmässä on tulevia, väri sen mukaan. Jos peruttuja, harmaa.
+        // Muuten viimeisimmän (uusimman) vuoden mukaan.
+        const hasFuture = events.some(e => e.date > todayStr);
+        const allCancelled = events.every(e => e.name.includes("/ PERUTTU /"));
+        
+        if (allCancelled) {
             legendData.add(JSON.stringify({color: '#9E9E9E', label: 'Peruttu'}));
             return { color: '#666', fillColor: '#9E9E9E', fillOpacity: 0.8, radius: 8 };
         }
         
-        // 2. TULEVAT
-        if (evt.date > todayStr) {
+        if (hasFuture) {
             legendData.add(JSON.stringify({color: '#2196F3', label: 'Tulevat'}));
             return { color: '#0d47a1', fillColor: '#2196F3', fillOpacity: 0.9, radius: 10 }; 
         }
 
-        // 3. MENNEET (VUOSITTAIN)
-        const year = evt.date.split('-')[0];
+        // Otetaan uusin vuosi ryhmästä
+        const years = events.map(e => e.date.split('-')[0]).sort().reverse();
+        const year = years[0];
         let color = yearColors[year] || yearColors['default'];
         
         legendData.add(JSON.stringify({color: color, label: yearColors[year] ? year : '< 2020'}));
         
-        return { color: '#333', fillColor: color, fillOpacity: 0.8, radius: 8, weight: 1 };
+        // Jos samassa pisteessä on useampi (>1), tehdään vähän isompi ja paksumpi reunus
+        const isCluster = events.length > 1;
+        
+        return { 
+            color: isCluster ? '#FFF' : '#333', 
+            weight: isCluster ? 2 : 1,
+            fillColor: color, 
+            fillOpacity: 0.8, 
+            radius: isCluster ? 10 : 8 
+        };
     };
 
     const parseCoord = (coordStr) => {
@@ -214,15 +301,20 @@ window.renderMap = function(data) {
         return null;
     };
 
-    data.forEach(evt => {
-        if (evt.coords) {
-            const latLng = parseCoord(evt.coords);
-            if (latLng) {
-                const style = getPointStyle(evt);
-                const marker = L.circleMarker(latLng, style).addTo(mapInstance);
-                
-                // POPUP SISÄLTÖ (Nappi avaa miittikirjan)
-                const popupHtml = `
+    // 2. PIIRRÄ MARKERIT RYHMITTÄIN
+    Object.values(groupedEvents).forEach(group => {
+        const latLng = parseCoord(group.coords);
+        if (latLng) {
+            const style = getPointStyle(group.events);
+            const marker = L.circleMarker(latLng, style).addTo(mapInstance);
+            
+            // Rakenna Popup sisältö
+            let popupHtml = "";
+            
+            if (group.events.length === 1) {
+                // Yksi tapahtuma
+                const evt = group.events[0];
+                popupHtml = `
                     <div style="text-align:center; min-width:150px;">
                         <b style="font-size:1.1em;">${evt.name}</b><br>
                         <span style="color:#666;">${evt.date}</span><br>
@@ -230,10 +322,27 @@ window.renderMap = function(data) {
                         <button class="btn btn-small btn-green" style="margin-top:10px; width:100%;" onclick="goToEventFromMap('${evt.key}')">📖 Avaa miittikirja</button>
                     </div>
                 `;
+            } else {
+                // Useita tapahtumia samassa pisteessä
+                popupHtml = `<div style="min-width:180px;">
+                    <div style="text-align:center; font-weight:bold; border-bottom:1px solid #ccc; margin-bottom:5px;">${group.events.length} miittiä tässä:</div>
+                    <div style="max-height:150px; overflow-y:auto;">`;
                 
-                marker.bindPopup(popupHtml);
-                bounds.push(latLng);
+                // Järjestä uusin ensin
+                group.events.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(evt => {
+                    popupHtml += `
+                        <div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dotted #eee;">
+                            <div style="font-weight:bold; font-size:0.9em;">${evt.date}</div>
+                            <div style="font-size:0.9em;">${evt.name}</div>
+                            <button class="btn btn-small btn-blue" style="margin-top:2px; padding:2px 5px; font-size:0.8em;" onclick="goToEventFromMap('${evt.key}')">Avaa ➡</button>
+                        </div>
+                    `;
+                });
+                popupHtml += `</div></div>`;
             }
+            
+            marker.bindPopup(popupHtml);
+            bounds.push(latLng);
         }
     });
 
@@ -242,7 +351,6 @@ window.renderMap = function(data) {
     }
     
     renderMapLegend(legendData);
-
     setTimeout(() => { mapInstance.invalidateSize(); }, 200);
 };
 
@@ -262,12 +370,9 @@ function renderMapLegend(legendSet) {
             mapDiv.parentNode.appendChild(legendContainer);
         }
     }
-    
     if (!legendContainer) return;
     legendContainer.innerHTML = "";
-
     const items = Array.from(legendSet).map(s => JSON.parse(s));
-    
     items.sort((a, b) => {
         const yearA = parseInt(a.label);
         const yearB = parseInt(b.label);
@@ -276,7 +381,6 @@ function renderMapLegend(legendSet) {
         if (b.label === 'Tulevat') return 1;
         return 0;
     });
-
     items.forEach(item => {
         const div = document.createElement('div');
         div.innerHTML = `<span style="display:inline-block; width:12px; height:12px; background:${item.color}; border-radius:50%; margin-right:5px; border:1px solid #333;"></span>${item.label}`;
@@ -325,7 +429,7 @@ function renderTimeSlots(data) {
 }
 
 // ==========================================
-// UUSI: USER PROFILE LINKIT (VAIN ADMIN)
+// USER PROFILE LINKIT (ADMIN)
 // ==========================================
 
 window.openUserProfile = function(nickname) {
@@ -353,30 +457,22 @@ window.openUserProfile = function(nickname) {
         row.style.fontSize = "0.9em";
         row.innerHTML = `<strong>${evt.date}</strong> ${evt.name}`;
 
-        // --- TÄSSÄ ON RAJOITUS: TOIMII VAIN KIRJAUTUNEELLE KÄYTTÄJÄLLE (ADMIN) ---
         if (currentUser) {
             row.style.cursor = "pointer";
             row.title = "Siirry miittiin";
             row.style.transition = "background-color 0.2s";
             
-            // Hover efekti
             row.addEventListener('mouseenter', () => { row.style.backgroundColor = "rgba(139, 69, 19, 0.15)"; });
             row.addEventListener('mouseleave', () => { row.style.backgroundColor = "transparent"; });
 
             row.onclick = function() {
-                // Sulje käyttäjäkortti
                 const modal = document.getElementById('user-profile-modal');
                 if(modal) modal.style.display = 'none';
-                
-                // Sulje tilastonäkymä, jotta alta paljastuu miittilista/kirja
                 const stats = document.getElementById('stats-view');
                 if(stats) stats.style.display = 'none';
-
-                // Siirry miittiin
                 if(window.openGuestbook) window.openGuestbook(evt.key);
             };
         } else {
-            // Vieraille normaali teksti, ei linkkiä
             row.style.cursor = "default";
         }
 
@@ -386,7 +482,6 @@ window.openUserProfile = function(nickname) {
     document.getElementById('user-profile-modal').style.display = 'block';
 };
 
-// UUSI APUFUNKTIO KARTTALINKILLE
 window.goToEventFromMap = function(key) {
     if (typeof window.openGuestbook === 'function') {
         document.getElementById('stats-view').style.display = 'none';
