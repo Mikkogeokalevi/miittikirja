@@ -1,6 +1,6 @@
 // ==========================================
 // MK MIITTIKIRJA - VISITOR.JS
-// Versio: 1.0.0 - Monikielinen kirjausnäkymä
+// Versio: 1.1.0 - Käyttää keskitettyä konfiguraatiota (config.js)
 // ==========================================
 
 const visitorTranslations = {
@@ -63,14 +63,14 @@ window.setVisitorLanguage = function(lang) {
     
     const t = visitorTranslations[lang];
     
-    // Päivitetään tekstit ID:n perusteella (nämä lisätään index.html:ään kohta)
+    // Päivitetään tekstit ID:n perusteella
     const setTxt = (id, txt) => { const el = document.getElementById(id); if(el) el.innerText = txt; };
     const setAttr = (id, attr, txt) => { const el = document.getElementById(id); if(el) el.setAttribute(attr, txt); };
 
     setTxt('vv-ui-title', t.title);
     setTxt('vv-ui-subtitle', t.subtitle);
     setTxt('vv-ui-reminder', t.reminder);
-    setTxt('btn-visitor-sign', t.btnSign); // Nappi on textContent
+    setTxt('btn-visitor-sign', t.btnSign); 
 
     setAttr('vv-nickname', 'placeholder', t.nickPlaceholder);
     setAttr('vv-from', 'placeholder', t.fromPlaceholder);
@@ -94,8 +94,16 @@ window.handleVisitorSign = async function() {
     const nick = nickInput ? nickInput.value.trim() : "";
     if(!nick) return alert(t.alertNick);
 
-    const targetHost = window.currentVisitorTargetUid || "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; // Fallback HOST_UID
-    const eventId = window.currentEventId; // Tämä tulee app.js globaalista tilasta
+    // --- TÄSSÄ MUUTOS: Haetaan UID config.js-tiedostosta ---
+    const configUid = (window.MK_Config && window.MK_Config.HOST_UID) ? window.MK_Config.HOST_UID : null;
+    const targetHost = window.currentVisitorTargetUid || configUid; 
+    
+    if (!targetHost) {
+        return alert("Virhe: Järjestelmän asetuksia (HOST_UID) ei löytynyt.");
+    }
+    // -------------------------------------------------------
+
+    const eventId = window.currentEventId; 
 
     if (!eventId) return alert("Virhe: Tapahtuman tunnistetta ei löytynyt.");
 
@@ -134,7 +142,7 @@ window.handleVisitorSign = async function() {
         return;
     }
 
-    // 3. GAMIFICATION & MODAL (Siirretty tänne app.js:stä)
+    // 3. GAMIFICATION & MODAL
     let userHistory = null;
     let stats = { isFirstTime: false, totalVisits: 0, title: "", greeting: "", streakText: "", isMilestone: false };
 
@@ -228,7 +236,6 @@ function showVisitorModalWithLang(nick, history, stats) {
     
     if(listEl) listEl.innerHTML = "";
 
-    // Nappien päivitys käännöksillä
     const closeBtn = modal.querySelector('button.btn-red');
     let btnContainer = modal.querySelector('#visitor-action-buttons');
     
@@ -328,7 +335,6 @@ function showVisitorModalWithLang(nick, history, stats) {
     }
 }
 
-// Palauttaa alkuperäisen sulje-napin jotta admin-näkymä ei hajoa
 function resetModalButtons(container) {
     const t = visitorTranslations[currentLang] || visitorTranslations['fi'];
     container.outerHTML = `<button onclick="document.getElementById('user-profile-modal').style.display='none'" class="btn btn-red" style="margin-top:15px;">${t.closeBtn}</button>`;
