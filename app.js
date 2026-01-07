@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.6.1 - Lightweight Confetti Update
+// Versio: 7.7.0 - Config.js Integration
 // ==========================================
 
-const APP_VERSION = "7.6.1";
+const APP_VERSION = "7.7.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -39,8 +39,11 @@ let wakeLock = null;
 // Tilamuuttuja live-päivityksille
 let lastAttendeeCount = null;
 
-// OLETUS HOST_UID (Varmuuskopio)
-const HOST_UID = "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
+// --- CONFIGURATION ---
+// Haetaan HOST_UID keskitetystä config.js tiedostosta.
+// Fallback (varalla), jos config.js ei lataudu:
+const FALLBACK_UID = "T8wI16Gf67W4G4yX3Cq7U0U1H6I2";
+const HOST_UID = (window.MK_Config && window.MK_Config.HOST_UID) ? window.MK_Config.HOST_UID : FALLBACK_UID;
 
 // Käyttöliittymän elementit
 const loginView = document.getElementById('login-view');
@@ -71,6 +74,7 @@ window.addEventListener('load', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('event');
     const paramUid = urlParams.get('uid');
+    // Käytetään URL-parametria jos on, muuten configista haettua
     const targetUid = paramUid ? paramUid.trim() : HOST_UID;
 
     if (eventId) {
