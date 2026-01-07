@@ -1,6 +1,6 @@
 // ==========================================
 // MK MIITTIKIRJA - VISITOR.JS
-// Versio: 1.1.0 - Käyttää keskitettyä konfiguraatiota (config.js)
+// Versio: 1.2.0 - Toast Notifications (No more alerts!)
 // ==========================================
 
 const visitorTranslations = {
@@ -13,7 +13,7 @@ const visitorTranslations = {
         btnSign: "TALLENNA KÄYNTI ✅",
         reminder: "⚠️ Muista logata käyntisi myös virallisesti Geocaching.comiin!",
         alertNick: "Kirjoita nimimerkkisi!",
-        alertDup: "Hei {0}, olet jo kirjannut käynnin tähän miittiin!\n\nEi tarvitse kirjata uudelleen.",
+        alertDup: "Hei {0}, olet jo kirjannut käynnin tähän miittiin!\nEi tarvitse kirjata uudelleen.",
         welcomeTitle: "Kiitos käynnistä!",
         savedMsg: "Kirjaus tallennettu!",
         closeBtn: "Sulje",
@@ -29,7 +29,7 @@ const visitorTranslations = {
         btnSign: "SIGN LOGBOOK ✅",
         reminder: "⚠️ Remember to log your visit officially on Geocaching.com!",
         alertNick: "Please enter your nickname!",
-        alertDup: "Hi {0}, you have already signed this guestbook!\n\nNo need to sign again.",
+        alertDup: "Hi {0}, you have already signed this guestbook!\nNo need to sign again.",
         welcomeTitle: "Thanks for visiting!",
         savedMsg: "Entry saved!",
         closeBtn: "Close",
@@ -45,7 +45,7 @@ const visitorTranslations = {
         btnSign: "SIGNERA LOGGBOKEN ✅",
         reminder: "⚠️ Kom ihåg att logga ditt besök officiellt på Geocaching.com!",
         alertNick: "Ange ditt användarnamn!",
-        alertDup: "Hej {0}, du har redan signerat gästboken!\n\nIngen anledning att signera igen.",
+        alertDup: "Hej {0}, du har redan signerat gästboken!\nIngen anledning att signera igen.",
         welcomeTitle: "Tack för besöket!",
         savedMsg: "Loggen sparad!",
         closeBtn: "Stäng",
@@ -55,6 +55,33 @@ const visitorTranslations = {
 };
 
 let currentLang = 'fi';
+
+// TOAST-APURI (Uusi toiminto)
+function showToast(text, isError = false) {
+    const toast = document.getElementById('mk-toast');
+    if (!toast) {
+        // Varmuuskopio jos HTML-elementti puuttuu
+        alert(text);
+        return;
+    }
+    
+    // Tyylitellään virheet punertavaksi
+    if (isError) {
+        toast.style.borderColor = "#d32f2f";
+        toast.style.backgroundColor = "#4a1b1b";
+    } else {
+        toast.style.borderColor = "var(--primary-color)";
+        toast.style.backgroundColor = "#333";
+    }
+
+    toast.innerText = text; 
+    toast.className = "show"; // Tämä aktivoi CSS-animaation
+
+    // Piilotetaan 3.5 sekunnin kuluttua
+    setTimeout(function(){ 
+        toast.className = toast.className.replace("show", ""); 
+    }, 3500);
+}
 
 // Kutsutaan index.html:stä kun lippua painetaan
 window.setVisitorLanguage = function(lang) {
@@ -92,25 +119,25 @@ window.handleVisitorSign = async function() {
     const msgInput = document.getElementById('vv-message');
 
     const nick = nickInput ? nickInput.value.trim() : "";
-    if(!nick) return alert(t.alertNick);
+    
+    // 1. TARKISTUS: Nimi puuttuu -> Toast (Virhe)
+    if(!nick) return showToast(t.alertNick, true);
 
-    // --- TÄSSÄ MUUTOS: Haetaan UID config.js-tiedostosta ---
     const configUid = (window.MK_Config && window.MK_Config.HOST_UID) ? window.MK_Config.HOST_UID : null;
     const targetHost = window.currentVisitorTargetUid || configUid; 
     
     if (!targetHost) {
-        return alert("Virhe: Järjestelmän asetuksia (HOST_UID) ei löytynyt.");
+        return showToast("Virhe: Järjestelmän asetuksia (HOST_UID) ei löytynyt.", true);
     }
-    // -------------------------------------------------------
 
     const eventId = window.currentEventId; 
 
-    if (!eventId) return alert("Virhe: Tapahtuman tunnistetta ei löytynyt.");
+    if (!eventId) return showToast("Virhe: Tapahtuman tunnistetta ei löytynyt.", true);
 
     const loadOverlay = document.getElementById('loading-overlay');
     if(loadOverlay) loadOverlay.style.display = 'flex';
 
-    // 1. TARKISTETAAN DUPLIKAATIT
+    // 2. DUPLIKAATTITARKISTUS
     try {
         const currentLogsSnap = await firebase.database().ref('miitit/' + targetHost + '/logs/' + eventId).once('value');
         let alreadyLogged = false;
@@ -123,11 +150,12 @@ window.handleVisitorSign = async function() {
 
         if (alreadyLogged) {
             if(loadOverlay) loadOverlay.style.display = 'none';
-            alert(t.alertDup.replace('{0}', nick));
+            // Duplikaatti -> Toast (Info/Varoitus)
+            showToast(t.alertDup.replace('{0}', nick), true);
             return;
         }
 
-        // 2. TALLENNETAAN
+        // 3. TALLENNUS
         await firebase.database().ref('miitit/' + targetHost + '/logs/' + eventId).push({
             nickname: nick, 
             from: fromInput ? fromInput.value.trim() : "",
@@ -138,11 +166,11 @@ window.handleVisitorSign = async function() {
     } catch (saveErr) {
         console.error("Virhe:", saveErr);
         if(loadOverlay) loadOverlay.style.display = 'none';
-        alert("System Error: " + saveErr.message);
+        showToast("System Error: " + saveErr.message, true);
         return;
     }
 
-    // 3. GAMIFICATION & MODAL
+    // 4. GAMIFICATION & MODAL
     let userHistory = null;
     let stats = { isFirstTime: false, totalVisits: 0, title: "", greeting: "", streakText: "", isMilestone: false };
 
