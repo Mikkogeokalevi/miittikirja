@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.7.0 - Config.js Integration
+// Versio: 7.8.0 - ICS Calendar Export
 // ==========================================
 
-const APP_VERSION = "7.7.0";
+const APP_VERSION = "7.8.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -74,7 +74,6 @@ window.addEventListener('load', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('event');
     const paramUid = urlParams.get('uid');
-    // Käytetään URL-parametria jos on, muuten configista haettua
     const targetUid = paramUid ? paramUid.trim() : HOST_UID;
 
     if (eventId) {
@@ -571,6 +570,7 @@ function loadEvents() {
                     <div style="margin-top:10px; display:flex; gap:5px; flex-wrap: wrap;">
                         <button class="btn btn-green btn-small" onclick="openGuestbook('${evt.key}')">📖 Avaa</button>
                         <button class="btn btn-blue btn-small" onclick="openEditModal('${evt.key}')">✏️ Muokkaa</button>
+                        <button class="btn btn-gray btn-small" onclick="downloadICS('${evt.key}')">📅 Kalenteri</button>
                         ${archiveBtn}
                         <button class="btn btn-red btn-small" onclick="deleteEvent('${evt.key}')">🗑 Poista</button>
                     </div>`;
@@ -1174,4 +1174,72 @@ window.triggerConfetti = function(particleCount, durationSec) {
             confetti({ ...defaults, particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
         }, 250);
     }
+};
+
+// ==========================================
+// 14. ICS DOWNLOAD (New Feature)
+// ==========================================
+window.downloadICS = function(key) {
+    // 1. Etsitään tapahtuma globaalista listasta
+    const evt = globalEventList.find(e => e.key === key);
+    if (!evt) return;
+
+    // 2. Parsitaan päivämäärä (YYYY-MM-DD -> YYYYMMDD)
+    const dateStr = evt.date.replace(/-/g, '');
+
+    // 3. Parsitaan aika (Tekstistä -> HHMMSS)
+    // Etsitään "18:00" tai "18.00" tyyliset ajat
+    let startT = "120000"; // Oletus klo 12:00
+    let endT = "130000";   // Oletus klo 13:00
+
+    const timeMatches = evt.time.match(/(\d{1,2})[:.](\d{2})/g);
+    if (timeMatches && timeMatches.length >= 1) {
+        // Ensimmäinen osuma on aloitusaika
+        startT = timeMatches[0].replace(/[:.]/g, '') + "00";
+        // Lisätään nolla eteen tarvittaessa (900 -> 0900)
+        if (startT.length === 5) startT = "0" + startT;
+
+        if (timeMatches.length >= 2) {
+            // Toinen osuma on lopetusaika
+            endT = timeMatches[1].replace(/[:.]/g, '') + "00";
+            if (endT.length === 5) endT = "0" + endT;
+        } else {
+            // Jos vain aloitusaika, lisätään 1 tunti
+            let h = parseInt(startT.substring(0,2));
+            h = (h + 1) % 24;
+            endT = h.toString().padStart(2,'0') + startT.substring(2);
+        }
+    } else {
+        // Jos ei aikoja lainkaan, tehdään koko päivän tapahtuma (ei kellonaikoja)
+        // ICS-standardissa DTSTART;VALUE=DATE:YYYYMMDD
+        // Mutta pidetään tämä yksinkertaisena ja käytetään oletusaikoja
+    }
+
+    // 4. Luodaan ICS-sisältö
+    const icsContent = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Mikkokalevi//Miittikirja//FI",
+        "BEGIN:VEVENT",
+        `UID:${key}@miittikirja`,
+        `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
+        `DTSTART:${dateStr}T${startT}`,
+        `DTEND:${dateStr}T${endT}`,
+        `SUMMARY:${evt.name}`,
+        `DESCRIPTION:GC-Koodi: ${evt.gc}\\n\\n${evt.name}`,
+        `LOCATION:${evt.location || evt.coords || ''}`,
+        "END:VEVENT",
+        "END:VCALENDAR"
+    ].join("\r\n");
+
+    // 5. Lataa tiedosto
+    const blob = new Blob([icsContent], { type: 'text/calendar' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `miitti_${evt.date}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
 };
