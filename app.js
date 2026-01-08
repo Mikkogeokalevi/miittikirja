@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.8.0 - ICS Calendar Export
+// Versio: 7.8.1 - ICS Calendar with Google Maps Link
 // ==========================================
 
-const APP_VERSION = "7.8.0";
+const APP_VERSION = "7.8.1";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -40,8 +40,6 @@ let wakeLock = null;
 let lastAttendeeCount = null;
 
 // --- CONFIGURATION ---
-// Haetaan HOST_UID keskitetystä config.js tiedostosta.
-// Fallback (varalla), jos config.js ei lataudu:
 const FALLBACK_UID = "T8wI16Gf67W4G4yX3Cq7U0U1H6I2";
 const HOST_UID = (window.MK_Config && window.MK_Config.HOST_UID) ? window.MK_Config.HOST_UID : FALLBACK_UID;
 
@@ -1177,45 +1175,60 @@ window.triggerConfetti = function(particleCount, durationSec) {
 };
 
 // ==========================================
-// 14. ICS DOWNLOAD (New Feature)
+// 14. ICS DOWNLOAD (Standard + Google Maps Link)
 // ==========================================
 window.downloadICS = function(key) {
-    // 1. Etsitään tapahtuma globaalista listasta
+    // 1. Etsitään tapahtuma
     const evt = globalEventList.find(e => e.key === key);
     if (!evt) return;
 
-    // 2. Parsitaan päivämäärä (YYYY-MM-DD -> YYYYMMDD)
+    // 2. Parsitaan päivämäärä
     const dateStr = evt.date.replace(/-/g, '');
 
-    // 3. Parsitaan aika (Tekstistä -> HHMMSS)
-    // Etsitään "18:00" tai "18.00" tyyliset ajat
-    let startT = "120000"; // Oletus klo 12:00
-    let endT = "130000";   // Oletus klo 13:00
+    // 3. Parsitaan aika
+    let startT = "120000"; 
+    let endT = "130000";
 
     const timeMatches = evt.time.match(/(\d{1,2})[:.](\d{2})/g);
     if (timeMatches && timeMatches.length >= 1) {
-        // Ensimmäinen osuma on aloitusaika
         startT = timeMatches[0].replace(/[:.]/g, '') + "00";
-        // Lisätään nolla eteen tarvittaessa (900 -> 0900)
         if (startT.length === 5) startT = "0" + startT;
 
         if (timeMatches.length >= 2) {
-            // Toinen osuma on lopetusaika
             endT = timeMatches[1].replace(/[:.]/g, '') + "00";
             if (endT.length === 5) endT = "0" + endT;
         } else {
-            // Jos vain aloitusaika, lisätään 1 tunti
             let h = parseInt(startT.substring(0,2));
             h = (h + 1) % 24;
             endT = h.toString().padStart(2,'0') + startT.substring(2);
         }
-    } else {
-        // Jos ei aikoja lainkaan, tehdään koko päivän tapahtuma (ei kellonaikoja)
-        // ICS-standardissa DTSTART;VALUE=DATE:YYYYMMDD
-        // Mutta pidetään tämä yksinkertaisena ja käytetään oletusaikoja
     }
 
-    // 4. Luodaan ICS-sisältö
+    // 4. Käsitellään sijainti ja luodaan Google Maps -linkki
+    let locationStr = evt.location || "";
+    let mapUrl = "";
+
+    if (evt.coords) {
+        // Poistetaan aste-merkit URLia varten: "N 60 10.000 E 025 10.000"
+        const cleanCoords = evt.coords.replace(/°/g, '').trim();
+        const urlCoords = cleanCoords.replace(/\s+/g, '+'); // Korvataan välit plussilla
+        mapUrl = `https://www.google.com/maps/search/?api=1&query=${urlCoords}`;
+
+        // Lisätään koordinaatit sijaintikenttään, jotta älykalenterit tunnistavat sen
+        if (locationStr) {
+            locationStr += ` (${cleanCoords})`;
+        } else {
+            locationStr = cleanCoords;
+        }
+    }
+
+    // 5. Rakennetaan ICS-sisältö
+    // Lisätään karttalinkki kuvaukseen (Description)
+    let descriptionText = `GC-Koodi: ${evt.gc}\\n\\n${evt.name}`;
+    if (mapUrl) {
+        descriptionText += `\\n\\n🗺️ Kartta/Navigointi:\\n${mapUrl}`;
+    }
+
     const icsContent = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -1226,13 +1239,13 @@ window.downloadICS = function(key) {
         `DTSTART:${dateStr}T${startT}`,
         `DTEND:${dateStr}T${endT}`,
         `SUMMARY:${evt.name}`,
-        `DESCRIPTION:GC-Koodi: ${evt.gc}\\n\\n${evt.name}`,
-        `LOCATION:${evt.location || evt.coords || ''}`,
+        `DESCRIPTION:${descriptionText}`,
+        `LOCATION:${locationStr}`, 
         "END:VEVENT",
         "END:VCALENDAR"
     ].join("\r\n");
 
-    // 5. Lataa tiedosto
+    // 6. Lataus
     const blob = new Blob([icsContent], { type: 'text/calendar' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
