@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.8.1 - ICS Calendar with Google Maps Link
+// Versio: 7.7.0 - Config.js Integration
 // ==========================================
 
-const APP_VERSION = "7.8.1";
+const APP_VERSION = "7.7.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -40,6 +40,8 @@ let wakeLock = null;
 let lastAttendeeCount = null;
 
 // --- CONFIGURATION ---
+// Haetaan HOST_UID keskitetystä config.js tiedostosta.
+// Fallback (varalla), jos config.js ei lataudu:
 const FALLBACK_UID = "T8wI16Gf67W4G4yX3Cq7U0U1H6I2";
 const HOST_UID = (window.MK_Config && window.MK_Config.HOST_UID) ? window.MK_Config.HOST_UID : FALLBACK_UID;
 
@@ -72,6 +74,7 @@ window.addEventListener('load', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('event');
     const paramUid = urlParams.get('uid');
+    // Käytetään URL-parametria jos on, muuten configista haettua
     const targetUid = paramUid ? paramUid.trim() : HOST_UID;
 
     if (eventId) {
@@ -568,7 +571,6 @@ function loadEvents() {
                     <div style="margin-top:10px; display:flex; gap:5px; flex-wrap: wrap;">
                         <button class="btn btn-green btn-small" onclick="openGuestbook('${evt.key}')">📖 Avaa</button>
                         <button class="btn btn-blue btn-small" onclick="openEditModal('${evt.key}')">✏️ Muokkaa</button>
-                        <button class="btn btn-gray btn-small" onclick="downloadICS('${evt.key}')">📅 Kalenteri</button>
                         ${archiveBtn}
                         <button class="btn btn-red btn-small" onclick="deleteEvent('${evt.key}')">🗑 Poista</button>
                     </div>`;
@@ -1172,87 +1174,4 @@ window.triggerConfetti = function(particleCount, durationSec) {
             confetti({ ...defaults, particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
         }, 250);
     }
-};
-
-// ==========================================
-// 14. ICS DOWNLOAD (Standard + Google Maps Link)
-// ==========================================
-window.downloadICS = function(key) {
-    // 1. Etsitään tapahtuma
-    const evt = globalEventList.find(e => e.key === key);
-    if (!evt) return;
-
-    // 2. Parsitaan päivämäärä
-    const dateStr = evt.date.replace(/-/g, '');
-
-    // 3. Parsitaan aika
-    let startT = "120000"; 
-    let endT = "130000";
-
-    const timeMatches = evt.time.match(/(\d{1,2})[:.](\d{2})/g);
-    if (timeMatches && timeMatches.length >= 1) {
-        startT = timeMatches[0].replace(/[:.]/g, '') + "00";
-        if (startT.length === 5) startT = "0" + startT;
-
-        if (timeMatches.length >= 2) {
-            endT = timeMatches[1].replace(/[:.]/g, '') + "00";
-            if (endT.length === 5) endT = "0" + endT;
-        } else {
-            let h = parseInt(startT.substring(0,2));
-            h = (h + 1) % 24;
-            endT = h.toString().padStart(2,'0') + startT.substring(2);
-        }
-    }
-
-    // 4. Käsitellään sijainti ja luodaan Google Maps -linkki
-    let locationStr = evt.location || "";
-    let mapUrl = "";
-
-    if (evt.coords) {
-        // Poistetaan aste-merkit URLia varten: "N 60 10.000 E 025 10.000"
-        const cleanCoords = evt.coords.replace(/°/g, '').trim();
-        const urlCoords = cleanCoords.replace(/\s+/g, '+'); // Korvataan välit plussilla
-        mapUrl = `https://www.google.com/maps/search/?api=1&query=${urlCoords}`;
-
-        // Lisätään koordinaatit sijaintikenttään, jotta älykalenterit tunnistavat sen
-        if (locationStr) {
-            locationStr += ` (${cleanCoords})`;
-        } else {
-            locationStr = cleanCoords;
-        }
-    }
-
-    // 5. Rakennetaan ICS-sisältö
-    // Lisätään karttalinkki kuvaukseen (Description)
-    let descriptionText = `GC-Koodi: ${evt.gc}\\n\\n${evt.name}`;
-    if (mapUrl) {
-        descriptionText += `\\n\\n🗺️ Kartta/Navigointi:\\n${mapUrl}`;
-    }
-
-    const icsContent = [
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "PRODID:-//Mikkokalevi//Miittikirja//FI",
-        "BEGIN:VEVENT",
-        `UID:${key}@miittikirja`,
-        `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
-        `DTSTART:${dateStr}T${startT}`,
-        `DTEND:${dateStr}T${endT}`,
-        `SUMMARY:${evt.name}`,
-        `DESCRIPTION:${descriptionText}`,
-        `LOCATION:${locationStr}`, 
-        "END:VEVENT",
-        "END:VCALENDAR"
-    ].join("\r\n");
-
-    // 6. Lataus
-    const blob = new Blob([icsContent], { type: 'text/calendar' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `miitti_${evt.date}.ics`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
 };
