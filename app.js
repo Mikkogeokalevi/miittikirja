@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.7.0 - Config.js Integration
+// Versio: 7.6.0 - Cleaned for Visitor.js Separation
 // ==========================================
 
-const APP_VERSION = "7.7.0";
+const APP_VERSION = "7.6.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -39,11 +39,8 @@ let wakeLock = null;
 // Tilamuuttuja live-päivityksille
 let lastAttendeeCount = null;
 
-// --- CONFIGURATION ---
-// Haetaan HOST_UID keskitetystä config.js tiedostosta.
-// Fallback (varalla), jos config.js ei lataudu:
-const FALLBACK_UID = "T8wI16Gf67W4G4yX3Cq7U0U1H6I2";
-const HOST_UID = (window.MK_Config && window.MK_Config.HOST_UID) ? window.MK_Config.HOST_UID : FALLBACK_UID;
+// OLETUS HOST_UID (Varmuuskopio)
+const HOST_UID = "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
 
 // Käyttöliittymän elementit
 const loginView = document.getElementById('login-view');
@@ -74,7 +71,6 @@ window.addEventListener('load', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('event');
     const paramUid = urlParams.get('uid');
-    // Käytetään URL-parametria jos on, muuten configista haettua
     const targetUid = paramUid ? paramUid.trim() : HOST_UID;
 
     if (eventId) {
@@ -89,9 +85,10 @@ window.addEventListener('load', function() {
 async function openVisitorGuestbook(uid, eventId) {
     if(loadingOverlay) loadingOverlay.style.display = 'flex';
     
+    // Asetetaan globaalit muuttujat, joita visitor.js käyttää
     window.currentEventId = eventId;
     window.currentVisitorTargetUid = uid; 
-    currentEventId = eventId; 
+    currentEventId = eventId; // Varmuuden vuoksi myös app.js:n omaan muuttujaan
     lastAttendeeCount = null;
     
     db.ref('miitit/' + uid + '/events/' + eventId).once('value', snap => {
@@ -108,9 +105,11 @@ async function openVisitorGuestbook(uid, eventId) {
         const nameEl = document.getElementById('vv-event-name');
         const infoEl = document.getElementById('vv-event-info');
         
+        // Asetetaan miitin nimi ja aika
         if(nameEl) nameEl.innerText = evt.name;
         if(infoEl) infoEl.innerText = `${evt.date} klo ${evt.time || '-'}`;
         
+        // Varmistetaan näkymät
         if(visitorView) visitorView.style.display = 'block';
         if(loginView) loginView.style.display = 'none';
         if(adminView) adminView.style.display = 'none';
@@ -127,6 +126,9 @@ async function openVisitorGuestbook(uid, eventId) {
         if(loadingOverlay) loadingOverlay.style.display = 'none';
     });
 }
+
+// HUOM: Vanha 'btnVisitorSign.onclick' poistettu täältä.
+// Logiikka on siirretty visitor.js -tiedostoon 'handleVisitorSign' -funktioon.
 
 window.proceedToGeo = function() {
     if (currentEventGcCode && currentEventGcCode.startsWith('GC')) {
@@ -1145,33 +1147,54 @@ window.toggleDetails = function(id) {
 };
 
 // ==========================================
-// 13. CONFETTI EFFECT (Canvas-Confetti Library)
+// 13. CONFETTI EFFECT (Simple)
 // ==========================================
-window.triggerConfetti = function(particleCount, durationSec) {
-    // Varmistetaan että kirjasto on ladattu
-    if (typeof confetti === 'undefined') return;
+window.triggerConfetti = function(amount, durationSec) {
+    const duration = durationSec * 1000;
+    const end = Date.now() + duration;
 
-    // Muunnetaan parametrit kirjastolle sopiviksi
-    const defaults = {
-        origin: { y: 0.7 },
-        zIndex: 9999,
-        colors: ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722']
-    };
-
-    // Ammutaan konfettia!
-    confetti({
-        ...defaults,
-        particleCount: particleCount, // 50 tai 200
-        spread: 70,
-        startVelocity: 30,
-        origin: { y: 0.6 }
-    });
-
-    // Jos on "iso" juhla (yli 100), ammutaan lisäsarjat sivuilta viiveellä
-    if (particleCount > 100) {
-        setTimeout(() => {
-            confetti({ ...defaults, particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } });
-            confetti({ ...defaults, particleCount: 50, angle: 120, spread: 55, origin: { x: 1 } });
-        }, 250);
-    }
+    (function frame() {
+        // Luodaan muutama partikkeli
+        for(let i=0; i<3; i++) {
+            createParticle();
+        }
+        if (Date.now() < end) {
+            requestAnimationFrame(frame);
+        }
+    }());
 };
+
+function createParticle() {
+    const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722'];
+    const p = document.createElement('div');
+    p.style.position = 'fixed';
+    p.style.zIndex = '9999';
+    p.style.top = '-10px';
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.width = Math.random() * 10 + 5 + 'px';
+    p.style.height = Math.random() * 10 + 5 + 'px';
+    p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    p.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+    p.style.opacity = Math.random() + 0.5;
+    p.style.transform = `rotate(${Math.random() * 360}deg)`;
+    
+    document.body.appendChild(p);
+
+    const speed = Math.random() * 5 + 2;
+    const angle = Math.random() * 2 - 1; // Sway
+    
+    let top = -10;
+    let left = parseFloat(p.style.left);
+
+    const anim = setInterval(() => {
+        top += speed;
+        left += angle;
+        p.style.top = top + 'px';
+        p.style.left = left + 'vw';
+        
+        if (top > window.innerHeight) {
+            clearInterval(anim);
+            document.body.removeChild(p);
+        }
+    }, 20);
+}

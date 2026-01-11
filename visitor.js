@@ -1,6 +1,6 @@
 // ==========================================
 // MK MIITTIKIRJA - VISITOR.JS
-// Versio: 1.2.0 - Toast Notifications (No more alerts!)
+// Versio: 1.0.0 - Monikielinen kirjausnäkymä
 // ==========================================
 
 const visitorTranslations = {
@@ -13,7 +13,7 @@ const visitorTranslations = {
         btnSign: "TALLENNA KÄYNTI ✅",
         reminder: "⚠️ Muista logata käyntisi myös virallisesti Geocaching.comiin!",
         alertNick: "Kirjoita nimimerkkisi!",
-        alertDup: "Hei {0}, olet jo kirjannut käynnin tähän miittiin!\nEi tarvitse kirjata uudelleen.",
+        alertDup: "Hei {0}, olet jo kirjannut käynnin tähän miittiin!\n\nEi tarvitse kirjata uudelleen.",
         welcomeTitle: "Kiitos käynnistä!",
         savedMsg: "Kirjaus tallennettu!",
         closeBtn: "Sulje",
@@ -29,7 +29,7 @@ const visitorTranslations = {
         btnSign: "SIGN LOGBOOK ✅",
         reminder: "⚠️ Remember to log your visit officially on Geocaching.com!",
         alertNick: "Please enter your nickname!",
-        alertDup: "Hi {0}, you have already signed this guestbook!\nNo need to sign again.",
+        alertDup: "Hi {0}, you have already signed this guestbook!\n\nNo need to sign again.",
         welcomeTitle: "Thanks for visiting!",
         savedMsg: "Entry saved!",
         closeBtn: "Close",
@@ -45,7 +45,7 @@ const visitorTranslations = {
         btnSign: "SIGNERA LOGGBOKEN ✅",
         reminder: "⚠️ Kom ihåg att logga ditt besök officiellt på Geocaching.com!",
         alertNick: "Ange ditt användarnamn!",
-        alertDup: "Hej {0}, du har redan signerat gästboken!\nIngen anledning att signera igen.",
+        alertDup: "Hej {0}, du har redan signerat gästboken!\n\nIngen anledning att signera igen.",
         welcomeTitle: "Tack för besöket!",
         savedMsg: "Loggen sparad!",
         closeBtn: "Stäng",
@@ -56,33 +56,6 @@ const visitorTranslations = {
 
 let currentLang = 'fi';
 
-// TOAST-APURI (Uusi toiminto)
-function showToast(text, isError = false) {
-    const toast = document.getElementById('mk-toast');
-    if (!toast) {
-        // Varmuuskopio jos HTML-elementti puuttuu
-        alert(text);
-        return;
-    }
-    
-    // Tyylitellään virheet punertavaksi
-    if (isError) {
-        toast.style.borderColor = "#d32f2f";
-        toast.style.backgroundColor = "#4a1b1b";
-    } else {
-        toast.style.borderColor = "var(--primary-color)";
-        toast.style.backgroundColor = "#333";
-    }
-
-    toast.innerText = text; 
-    toast.className = "show"; // Tämä aktivoi CSS-animaation
-
-    // Piilotetaan 3.5 sekunnin kuluttua
-    setTimeout(function(){ 
-        toast.className = toast.className.replace("show", ""); 
-    }, 3500);
-}
-
 // Kutsutaan index.html:stä kun lippua painetaan
 window.setVisitorLanguage = function(lang) {
     if (!visitorTranslations[lang]) return;
@@ -90,14 +63,14 @@ window.setVisitorLanguage = function(lang) {
     
     const t = visitorTranslations[lang];
     
-    // Päivitetään tekstit ID:n perusteella
+    // Päivitetään tekstit ID:n perusteella (nämä lisätään index.html:ään kohta)
     const setTxt = (id, txt) => { const el = document.getElementById(id); if(el) el.innerText = txt; };
     const setAttr = (id, attr, txt) => { const el = document.getElementById(id); if(el) el.setAttribute(attr, txt); };
 
     setTxt('vv-ui-title', t.title);
     setTxt('vv-ui-subtitle', t.subtitle);
     setTxt('vv-ui-reminder', t.reminder);
-    setTxt('btn-visitor-sign', t.btnSign); 
+    setTxt('btn-visitor-sign', t.btnSign); // Nappi on textContent
 
     setAttr('vv-nickname', 'placeholder', t.nickPlaceholder);
     setAttr('vv-from', 'placeholder', t.fromPlaceholder);
@@ -119,25 +92,17 @@ window.handleVisitorSign = async function() {
     const msgInput = document.getElementById('vv-message');
 
     const nick = nickInput ? nickInput.value.trim() : "";
-    
-    // 1. TARKISTUS: Nimi puuttuu -> Toast (Virhe)
-    if(!nick) return showToast(t.alertNick, true);
+    if(!nick) return alert(t.alertNick);
 
-    const configUid = (window.MK_Config && window.MK_Config.HOST_UID) ? window.MK_Config.HOST_UID : null;
-    const targetHost = window.currentVisitorTargetUid || configUid; 
-    
-    if (!targetHost) {
-        return showToast("Virhe: Järjestelmän asetuksia (HOST_UID) ei löytynyt.", true);
-    }
+    const targetHost = window.currentVisitorTargetUid || "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; // Fallback HOST_UID
+    const eventId = window.currentEventId; // Tämä tulee app.js globaalista tilasta
 
-    const eventId = window.currentEventId; 
-
-    if (!eventId) return showToast("Virhe: Tapahtuman tunnistetta ei löytynyt.", true);
+    if (!eventId) return alert("Virhe: Tapahtuman tunnistetta ei löytynyt.");
 
     const loadOverlay = document.getElementById('loading-overlay');
     if(loadOverlay) loadOverlay.style.display = 'flex';
 
-    // 2. DUPLIKAATTITARKISTUS
+    // 1. TARKISTETAAN DUPLIKAATIT
     try {
         const currentLogsSnap = await firebase.database().ref('miitit/' + targetHost + '/logs/' + eventId).once('value');
         let alreadyLogged = false;
@@ -150,12 +115,11 @@ window.handleVisitorSign = async function() {
 
         if (alreadyLogged) {
             if(loadOverlay) loadOverlay.style.display = 'none';
-            // Duplikaatti -> Toast (Info/Varoitus)
-            showToast(t.alertDup.replace('{0}', nick), true);
+            alert(t.alertDup.replace('{0}', nick));
             return;
         }
 
-        // 3. TALLENNUS
+        // 2. TALLENNETAAN
         await firebase.database().ref('miitit/' + targetHost + '/logs/' + eventId).push({
             nickname: nick, 
             from: fromInput ? fromInput.value.trim() : "",
@@ -166,11 +130,11 @@ window.handleVisitorSign = async function() {
     } catch (saveErr) {
         console.error("Virhe:", saveErr);
         if(loadOverlay) loadOverlay.style.display = 'none';
-        showToast("System Error: " + saveErr.message, true);
+        alert("System Error: " + saveErr.message);
         return;
     }
 
-    // 4. GAMIFICATION & MODAL
+    // 3. GAMIFICATION & MODAL (Siirretty tänne app.js:stä)
     let userHistory = null;
     let stats = { isFirstTime: false, totalVisits: 0, title: "", greeting: "", streakText: "", isMilestone: false };
 
@@ -264,6 +228,7 @@ function showVisitorModalWithLang(nick, history, stats) {
     
     if(listEl) listEl.innerHTML = "";
 
+    // Nappien päivitys käännöksillä
     const closeBtn = modal.querySelector('button.btn-red');
     let btnContainer = modal.querySelector('#visitor-action-buttons');
     
@@ -363,6 +328,7 @@ function showVisitorModalWithLang(nick, history, stats) {
     }
 }
 
+// Palauttaa alkuperäisen sulje-napin jotta admin-näkymä ei hajoa
 function resetModalButtons(container) {
     const t = visitorTranslations[currentLang] || visitorTranslations['fi'];
     container.outerHTML = `<button onclick="document.getElementById('user-profile-modal').style.display='none'" class="btn btn-red" style="margin-top:15px;">${t.closeBtn}</button>`;
