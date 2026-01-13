@@ -1,6 +1,6 @@
 /* ==========================================
    MK MIITTIKIRJA - STYLE.CSS
-   Versio: 7.2.0
+   Versio: 7.3.0
    Teema: Multi-Theme Support + Map & Grid
    ========================================== */
 
@@ -461,7 +461,7 @@ body.theme-light .attr-tag.neg {
     z-index: 1;
 }
 
-/* --- UUSI: AIKATAULU RUUDUKKO --- */
+/* --- AIKATAULU RUUDUKKO --- */
 .time-slot-box {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
@@ -484,4 +484,18 @@ body.theme-light .time-slot-box.active {
 
 .time-slot-box.empty {
     opacity: 0.3;
+}
+
+/* --- CONFETTI (GPU OPTIMIZED) --- */
+.confetti-particle {
+    position: fixed;
+    top: -20px;
+    z-index: 9999;
+    pointer-events: none;
+    animation: confetti-fall linear forwards;
+}
+
+@keyframes confetti-fall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
 }
