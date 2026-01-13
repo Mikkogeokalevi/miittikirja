@@ -1,6 +1,6 @@
 // ==========================================
 // MK MIITTIKIRJA - VISITOR.JS
-// Versio: 1.0.0 - Monikielinen kirjausnäkymä
+// Versio: 1.1.0 - Next Event Info
 // ==========================================
 
 const visitorTranslations = {
@@ -18,7 +18,9 @@ const visitorTranslations = {
         savedMsg: "Kirjaus tallennettu!",
         closeBtn: "Sulje",
         visitGeoBtn: "Jatka miittisivulle ➡",
-        logAnotherBtn: "Kirjaa toinen kävijä 👤"
+        logAnotherBtn: "Kirjaa toinen kävijä 👤",
+        nextEventTitle: "🔮 Seuraava miitti:",
+        noNextEvent: "Ei tiedossa olevia tulevia miittejä."
     },
     en: {
         title: "Mikkokalevi's Digital Guestbook",
@@ -34,7 +36,9 @@ const visitorTranslations = {
         savedMsg: "Entry saved!",
         closeBtn: "Close",
         visitGeoBtn: "Go to Event Page ➡",
-        logAnotherBtn: "Log another person 👤"
+        logAnotherBtn: "Log another person 👤",
+        nextEventTitle: "🔮 Next Event:",
+        noNextEvent: "No upcoming events known."
     },
     sv: {
         title: "Mikkokalevis Digitala Gästbok",
@@ -50,7 +54,9 @@ const visitorTranslations = {
         savedMsg: "Loggen sparad!",
         closeBtn: "Stäng",
         visitGeoBtn: "Gå till eventsidan ➡",
-        logAnotherBtn: "Logga en annan person 👤"
+        logAnotherBtn: "Logga en annan person 👤",
+        nextEventTitle: "🔮 Nästa event:",
+        noNextEvent: "Inga kommande event kända."
     }
 };
 
@@ -134,9 +140,9 @@ window.handleVisitorSign = async function() {
         return;
     }
 
-    // 3. GAMIFICATION & MODAL (Siirretty tänne app.js:stä)
+    // 3. GAMIFICATION & MODAL
     let userHistory = null;
-    let stats = { isFirstTime: false, totalVisits: 0, title: "", greeting: "", streakText: "", isMilestone: false };
+    let stats = { isFirstTime: false, totalVisits: 0, title: "", greeting: "", streakText: "", isMilestone: false, nextEvent: null };
 
     try {
         const eventsSnap = await firebase.database().ref('miitit/' + targetHost + '/events').once('value');
@@ -149,7 +155,18 @@ window.handleVisitorSign = async function() {
             eventsMap[child.key] = e; allHostEvents.push(e);
         });
         
+        // Lajitellaan aikajärjestykseen
         allHostEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        // --- UUSI: Etsitään seuraava tuleva miitti ---
+        const todayStr = new Date().toISOString().split('T')[0];
+        // Etsitään ensimmäinen miitti, jonka päiväys on suurempi kuin tänään
+        const upcomingEvents = allHostEvents.filter(e => e.date > todayStr && !e.name.includes("/ PERUTTU /"));
+        if (upcomingEvents.length > 0) {
+            stats.nextEvent = upcomingEvents[0];
+        }
+        // ---------------------------------------------
+
         userHistory = [];
         const nickLower = nick.toLowerCase();
 
@@ -267,6 +284,35 @@ function showVisitorModalWithLang(nick, history, stats) {
             }, 300);
         };
     }
+
+    // --- UUSI: Tulevan miitin info-laatikko ---
+    // Poistetaan vanha jos on
+    const oldFuture = document.getElementById('visitor-next-event-box');
+    if(oldFuture) oldFuture.remove();
+
+    // Luodaan uusi laatikko
+    const futureBox = document.createElement('div');
+    futureBox.id = 'visitor-next-event-box';
+    futureBox.style.marginTop = "15px";
+    futureBox.style.marginBottom = "5px";
+    futureBox.style.padding = "10px";
+    futureBox.style.background = "var(--highlight-bg)";
+    futureBox.style.border = "1px solid var(--border-color)";
+    futureBox.style.borderRadius = "5px";
+    futureBox.style.textAlign = "center";
+    futureBox.style.fontSize = "0.95em";
+    
+    if (stats.nextEvent) {
+         futureBox.innerHTML = `<strong style="color:var(--secondary-color);">${t.nextEventTitle}</strong><br><span style="font-size:1.1em; font-weight:bold;">${stats.nextEvent.date}</span><br>${stats.nextEvent.name}`;
+    } else {
+         futureBox.innerHTML = `<span style="color:#888; font-style:italic;">${t.noNextEvent}</span>`;
+    }
+
+    // Lisätään laatikko listan jälkeen, mutta ennen nappeja
+    if (listEl && listEl.parentNode) {
+        listEl.parentNode.insertBefore(futureBox, listEl.nextSibling);
+    }
+    // ------------------------------------------
 
     if (history === null) {
         titleEl.innerHTML = t.welcomeTitle;
