@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.6.0 - Cleaned for Visitor.js Separation
+// Versio: 7.7.0 - GPU Optimized Confetti
 // ==========================================
 
-const APP_VERSION = "7.6.0";
+const APP_VERSION = "7.7.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1147,54 +1147,46 @@ window.toggleDetails = function(id) {
 };
 
 // ==========================================
-// 13. CONFETTI EFFECT (Simple)
+// 13. CONFETTI EFFECT (CSS GPU Optimized)
 // ==========================================
 window.triggerConfetti = function(amount, durationSec) {
-    const duration = durationSec * 1000;
-    const end = Date.now() + duration;
-
-    (function frame() {
-        // Luodaan muutama partikkeli
-        for(let i=0; i<3; i++) {
-            createParticle();
-        }
-        if (Date.now() < end) {
-            requestAnimationFrame(frame);
-        }
-    }());
+    // Luodaan hiutaleita "amount" kappaletta, mutta ei kaikkia kerralla, 
+    // vaan ripotellaan niitä durationSec-ajan kuluessa.
+    const interval = (durationSec * 1000) / amount;
+    
+    let count = 0;
+    const rain = setInterval(() => {
+        createParticle();
+        count++;
+        if (count >= amount) clearInterval(rain);
+    }, interval);
 };
 
 function createParticle() {
     const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722'];
     const p = document.createElement('div');
-    p.style.position = 'fixed';
-    p.style.zIndex = '9999';
-    p.style.top = '-10px';
+    p.classList.add('confetti-particle');
+    
+    // Satunnainen sijainti ja ominaisuudet
     p.style.left = Math.random() * 100 + 'vw';
-    p.style.width = Math.random() * 10 + 5 + 'px';
-    p.style.height = Math.random() * 10 + 5 + 'px';
     p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    
+    // Satunnainen koko (5px - 12px)
+    const size = Math.random() * 7 + 5 + 'px';
+    p.style.width = size;
+    p.style.height = size;
+    
+    // Satunnainen muoto (neliö tai pyöreä)
     p.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
-    p.style.opacity = Math.random() + 0.5;
-    p.style.transform = `rotate(${Math.random() * 360}deg)`;
+    
+    // Satunnainen putoamisnopeus (CSS animation duration) 2s - 5s
+    const fallDuration = Math.random() * 3 + 2 + 's';
+    p.style.animationDuration = fallDuration;
     
     document.body.appendChild(p);
-
-    const speed = Math.random() * 5 + 2;
-    const angle = Math.random() * 2 - 1; // Sway
     
-    let top = -10;
-    let left = parseFloat(p.style.left);
-
-    const anim = setInterval(() => {
-        top += speed;
-        left += angle;
-        p.style.top = top + 'px';
-        p.style.left = left + 'vw';
-        
-        if (top > window.innerHeight) {
-            clearInterval(anim);
-            document.body.removeChild(p);
-        }
-    }, 20);
+    // Siivous: Poistetaan elementti kun animaatio on varmasti ohi (6s varoaika)
+    setTimeout(() => {
+        if (p && p.parentNode) p.parentNode.removeChild(p);
+    }, 6000);
 }
