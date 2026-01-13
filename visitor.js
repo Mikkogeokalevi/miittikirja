@@ -1,6 +1,6 @@
 // ==========================================
 // MK MIITTIKIRJA - VISITOR.JS
-// Versio: 1.2.1 - Button & Layout Fix
+// Versio: 1.3.0 - Robust UI Reset
 // ==========================================
 
 const visitorTranslations = {
@@ -69,7 +69,6 @@ window.setVisitorLanguage = function(lang) {
     
     const t = visitorTranslations[lang];
     
-    // Päivitetään tekstit ID:n perusteella
     const setTxt = (id, txt) => { const el = document.getElementById(id); if(el) el.innerText = txt; };
     const setAttr = (id, attr, txt) => { const el = document.getElementById(id); if(el) el.setAttribute(attr, txt); };
 
@@ -82,7 +81,6 @@ window.setVisitorLanguage = function(lang) {
     setAttr('vv-from', 'placeholder', t.fromPlaceholder);
     setAttr('vv-message', 'placeholder', t.msgPlaceholder);
 
-    // Päivitetään aktiivinen lippu
     ['btn-lang-fi', 'btn-lang-en', 'btn-lang-sv'].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.style.opacity = (id === `btn-lang-${lang}`) ? "1" : "0.5";
@@ -138,6 +136,7 @@ window.handleVisitorSign = async function() {
         return;
     }
 
+    // --- TILASTOJEN LASKENTA ---
     let userHistory = null;
     let stats = { isFirstTime: false, totalVisits: 0, title: "", greeting: "", streakText: "", isMilestone: false, nextEvent: null };
 
@@ -154,7 +153,7 @@ window.handleVisitorSign = async function() {
         
         allHostEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
         
-        // --- SEURAAVA TULEVA MIITTI ---
+        // Seuraava miitti (Paikallinen aika)
         const tzOffset = (new Date()).getTimezoneOffset() * 60000; 
         const localISOTime = (new Date(Date.now() - tzOffset)).toISOString().slice(0, -1);
         const todayStr = localISOTime.split('T')[0];
@@ -189,6 +188,7 @@ window.handleVisitorSign = async function() {
             stats.title = window.MK_Messages.getRankTitle(stats.totalVisits);
             stats.greeting = window.MK_Messages.getRandomGreeting(nick, stats.isFirstTime);
             
+            // Putkilaskuri
             if (!stats.isFirstTime && allHostEvents.length > 0) {
                 const currentEventIndex = allHostEvents.findIndex(e => e.key === eventId);
                 if (currentEventIndex > 0) {
@@ -231,83 +231,25 @@ function showVisitorModalWithLang(nick, history, stats) {
     if(!modal) return;
     const t = visitorTranslations[currentLang];
 
-    // Tekstit kuntoon
+    // 1. SIIVOTAAN PÖYTÄ: Poistetaan kaikki vanhat "Visitor UI" -elementit
+    const oldFooter = document.getElementById('visitor-custom-footer');
+    if (oldFooter) oldFooter.remove();
+
+    // 2. PIILOTETAAN ALKUPERÄINEN SULJE-NAPPI (Jätetään se ehjäksi Adminia varten)
+    // Etsitään modal-contentin sisällä oleva punainen nappi
+    const modalContent = modal.querySelector('.modal-content');
+    const defaultClose = modalContent.querySelector('.btn-red');
+    if (defaultClose) defaultClose.style.display = 'none';
+
+    // 3. PÄIVITETÄÄN PERUSTIEDOT (Otsikot jne)
     document.getElementById('up-nickname').innerHTML = `<div style="font-size:0.8em; color:#888; margin-bottom:5px;">${stats.title || ""}</div>${stats.greeting}`;
     document.getElementById('up-nickname').style.color = stats.isFirstTime ? "#d32f2f" : "var(--header-color)";
     document.getElementById('up-total').innerText = stats.totalVisits;
     
-    // Listan nollaus
+    // 4. HISTORIALISTAN PÄIVITYS
     const listEl = document.getElementById('up-history-list');
     listEl.innerHTML = "";
-    
-    // 1. POISTETAAN VANHAT ELEMENTIT (Jotta ei tule tuplia tai väärää järjestystä)
-    const oldFuture = document.getElementById('visitor-next-event-box');
-    if(oldFuture) oldFuture.remove();
-    
-    const oldButtons = document.getElementById('visitor-action-buttons');
-    if(oldButtons) oldButtons.remove();
-    
-    const defaultClose = modal.querySelector('button.btn-red');
-    if(defaultClose) defaultClose.style.display = 'none'; // Piilotetaan oletus "Sulje" varmuuden vuoksi
 
-    // 2. LUODAAN SEURAAVA MIITTI -LAATIKKO
-    const futureBox = document.createElement('div');
-    futureBox.id = 'visitor-next-event-box';
-    futureBox.style.marginTop = "15px";
-    futureBox.style.marginBottom = "5px";
-    futureBox.style.padding = "10px";
-    futureBox.style.background = "var(--highlight-bg)";
-    futureBox.style.border = "1px solid var(--border-color)";
-    futureBox.style.borderRadius = "5px";
-    futureBox.style.textAlign = "center";
-    futureBox.style.fontSize = "0.95em";
-    
-    if (stats.nextEvent) {
-         futureBox.innerHTML = `<strong style="color:var(--secondary-color);">${t.nextEventTitle}</strong><br><span style="font-size:1.1em; font-weight:bold;">${stats.nextEvent.date}</span><br>${stats.nextEvent.name}`;
-    } else {
-         futureBox.innerHTML = `<span style="color:#888; font-style:italic;">${t.noNextEvent}</span>`;
-    }
-
-    // 3. LUODAAN NAPIT
-    const btnContainer = document.createElement('div');
-    btnContainer.id = 'visitor-action-buttons';
-    btnContainer.style.display = 'flex';
-    btnContainer.style.flexDirection = 'column';
-    btnContainer.style.gap = '10px';
-    btnContainer.style.marginTop = '15px';
-    btnContainer.innerHTML = `
-        <button id="btn-visit-geo" class="btn btn-green" style="font-size:1.1em;">${t.visitGeoBtn}</button>
-        <button id="btn-log-another" class="btn btn-blue" style="background:#555;">${t.logAnotherBtn}</button>
-    `;
-
-    // 4. SIJOITETAAN KAIKKI PAIKOILLEEN
-    // Ensin "Seuraava miitti" listan perään
-    if (listEl && listEl.parentNode) {
-        listEl.parentNode.appendChild(futureBox);
-        listEl.parentNode.appendChild(btnContainer);
-    }
-    
-    // Tapahtumakuuntelijat nappeihin
-    document.getElementById('btn-visit-geo').onclick = function() {
-        modal.style.display = 'none';
-        resetModalButtons(); // Palauttaa "Sulje" napin adminia varten
-        if (typeof proceedToGeo === 'function') proceedToGeo();
-    };
-
-    document.getElementById('btn-log-another').onclick = function() {
-        modal.style.display = 'none';
-        resetModalButtons(); // Palauttaa "Sulje" napin adminia varten
-        ['vv-nickname', 'vv-from', 'vv-message'].forEach(id => {
-            const el = document.getElementById(id);
-            if(el) el.value = "";
-        });
-        setTimeout(() => { 
-            const el = document.getElementById('vv-nickname');
-            if(el) el.focus();
-        }, 300);
-    };
-
-    // 5. LISTAN TÄYTTÖ
     if (history === null) {
         listEl.innerHTML = `<div style="text-align:center; padding:20px;">${t.savedMsg}</div>`;
     } else if (stats.isFirstTime) {
@@ -351,6 +293,48 @@ function showVisitorModalWithLang(nick, history, stats) {
         setTimeout(() => { listEl.scrollTop = 0; }, 100);
     }
 
+    // 5. RAKENNETAAN "VISITOR FOOTER" (Täysin uusi alue)
+    const footer = document.createElement('div');
+    footer.id = 'visitor-custom-footer';
+    footer.style.marginTop = "20px";
+
+    // A) Seuraava miitti -laatikko
+    const nextBox = document.createElement('div');
+    nextBox.style.marginBottom = "15px";
+    nextBox.style.padding = "10px";
+    nextBox.style.background = "var(--highlight-bg)";
+    nextBox.style.border = "1px solid var(--border-color)";
+    nextBox.style.borderRadius = "5px";
+    nextBox.style.textAlign = "center";
+    
+    if (stats.nextEvent) {
+         nextBox.innerHTML = `<strong style="color:var(--secondary-color);">${t.nextEventTitle}</strong><br><span style="font-size:1.1em; font-weight:bold;">${stats.nextEvent.date}</span><br>${stats.nextEvent.name}`;
+    } else {
+         nextBox.innerHTML = `<span style="color:#888; font-style:italic;">${t.noNextEvent}</span>`;
+    }
+    footer.appendChild(nextBox);
+
+    // B) Napit
+    const btnGeo = document.createElement('button');
+    btnGeo.className = "btn btn-green";
+    btnGeo.style.fontSize = "1.1em";
+    btnGeo.style.marginBottom = "10px";
+    btnGeo.innerText = t.visitGeoBtn;
+    btnGeo.onclick = function() { closeAndResetVisitorModal(true); };
+    
+    const btnNew = document.createElement('button');
+    btnNew.className = "btn btn-blue";
+    btnNew.style.background = "#555";
+    btnNew.innerText = t.logAnotherBtn;
+    btnNew.onclick = function() { closeAndResetVisitorModal(false); };
+
+    footer.appendChild(btnGeo);
+    footer.appendChild(btnNew);
+
+    // 6. LISÄTÄÄN FOOTER MODAALIIN (Aina viimeiseksi)
+    modalContent.appendChild(footer);
+
+    // 7. NÄYTETÄÄN MODAALI
     modal.style.display = 'block';
 
     if (window.triggerConfetti) {
@@ -359,17 +343,36 @@ function showVisitorModalWithLang(nick, history, stats) {
     }
 }
 
-// Palauttaa alkuperäisen tilan sulkemisen jälkeen
-function resetModalButtons() {
-    // Poistetaan visitor-elementit
-    const box = document.getElementById('visitor-next-event-box');
-    if(box) box.remove();
-    
-    const btns = document.getElementById('visitor-action-buttons');
-    if(btns) btns.remove();
-    
-    // Palautetaan oletusnappi näkyviin
+// Tämä funktio palauttaa kaiken ennalleen
+function closeAndResetVisitorModal(goToGeo) {
     const modal = document.getElementById('user-profile-modal');
-    const defaultClose = modal.querySelector('button.btn-red');
-    if(defaultClose) defaultClose.style.display = 'block';
+    if(!modal) return;
+
+    // 1. Piilotetaan modaali
+    modal.style.display = 'none';
+
+    // 2. Poistetaan luomamme Visitor Footer kokonaan
+    const footer = document.getElementById('visitor-custom-footer');
+    if (footer) footer.remove();
+
+    // 3. Palautetaan alkuperäinen Admin "Sulje"-nappi
+    const modalContent = modal.querySelector('.modal-content');
+    const defaultClose = modalContent.querySelector('.btn-red');
+    if (defaultClose) defaultClose.style.display = 'block';
+
+    // 4. Tyhjennetään inputit seuraavaa varten
+    ['vv-nickname', 'vv-from', 'vv-message'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.value = "";
+    });
+
+    // 5. Ohjaus tai fokusointi
+    if (goToGeo) {
+        if (typeof proceedToGeo === 'function') proceedToGeo();
+    } else {
+        setTimeout(() => { 
+            const el = document.getElementById('vv-nickname');
+            if(el) el.focus();
+        }, 300);
+    }
 }
