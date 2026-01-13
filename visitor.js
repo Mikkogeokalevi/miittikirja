@@ -1,6 +1,6 @@
 // ==========================================
 // MK MIITTIKIRJA - VISITOR.JS
-// Versio: 1.2.0 - Next Event Fix & Local Time
+// Versio: 1.2.1 - Button & Layout Fix
 // ==========================================
 
 const visitorTranslations = {
@@ -100,7 +100,7 @@ window.handleVisitorSign = async function() {
     const nick = nickInput ? nickInput.value.trim() : "";
     if(!nick) return alert(t.alertNick);
 
-    const targetHost = window.currentVisitorTargetUid || "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; // Fallback HOST_UID
+    const targetHost = window.currentVisitorTargetUid || "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
     const eventId = window.currentEventId;
 
     if (!eventId) return alert("Virhe: Tapahtuman tunnistetta ei löytynyt.");
@@ -108,7 +108,6 @@ window.handleVisitorSign = async function() {
     const loadOverlay = document.getElementById('loading-overlay');
     if(loadOverlay) loadOverlay.style.display = 'flex';
 
-    // 1. TARKISTETAAN DUPLIKAATIT
     try {
         const currentLogsSnap = await firebase.database().ref('miitit/' + targetHost + '/logs/' + eventId).once('value');
         let alreadyLogged = false;
@@ -125,7 +124,6 @@ window.handleVisitorSign = async function() {
             return;
         }
 
-        // 2. TALLENNETAAN
         await firebase.database().ref('miitit/' + targetHost + '/logs/' + eventId).push({
             nickname: nick, 
             from: fromInput ? fromInput.value.trim() : "",
@@ -140,7 +138,6 @@ window.handleVisitorSign = async function() {
         return;
     }
 
-    // 3. GAMIFICATION & MODAL
     let userHistory = null;
     let stats = { isFirstTime: false, totalVisits: 0, title: "", greeting: "", streakText: "", isMilestone: false, nextEvent: null };
 
@@ -155,21 +152,17 @@ window.handleVisitorSign = async function() {
             eventsMap[child.key] = e; allHostEvents.push(e);
         });
         
-        // Lajitellaan aikajärjestykseen
         allHostEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
         
-        // --- SEURAAVA TULEVA MIITTI (Korjattu aikavyöhyke) ---
-        // Haetaan paikallinen aika (Suomi/Käyttäjä) ISO-muodossa vertailua varten
+        // --- SEURAAVA TULEVA MIITTI ---
         const tzOffset = (new Date()).getTimezoneOffset() * 60000; 
         const localISOTime = (new Date(Date.now() - tzOffset)).toISOString().slice(0, -1);
         const todayStr = localISOTime.split('T')[0];
 
-        // Etsitään miitti jonka pvm on > tänään
         const upcomingEvents = allHostEvents.filter(e => e.date > todayStr && !e.name.includes("/ PERUTTU /"));
         if (upcomingEvents.length > 0) {
             stats.nextEvent = upcomingEvents[0];
         }
-        // -----------------------------------------------------
 
         userHistory = [];
         const nickLower = nick.toLowerCase();
@@ -196,7 +189,6 @@ window.handleVisitorSign = async function() {
             stats.title = window.MK_Messages.getRankTitle(stats.totalVisits);
             stats.greeting = window.MK_Messages.getRandomGreeting(nick, stats.isFirstTime);
             
-            // Putkilaskuri
             if (!stats.isFirstTime && allHostEvents.length > 0) {
                 const currentEventIndex = allHostEvents.findIndex(e => e.key === eventId);
                 if (currentEventIndex > 0) {
@@ -231,8 +223,6 @@ window.handleVisitorSign = async function() {
     }
 
     if(loadOverlay) loadOverlay.style.display = 'none';
-    
-    // Näytä modaali (Kielituki huomioitu napeissa)
     showVisitorModalWithLang(nick, userHistory, stats);
 };
 
@@ -241,71 +231,26 @@ function showVisitorModalWithLang(nick, history, stats) {
     if(!modal) return;
     const t = visitorTranslations[currentLang];
 
-    const titleEl = document.getElementById('up-nickname');
-    const totalEl = document.getElementById('up-total');
-    const firstEl = document.getElementById('up-first');
-    const lastEl = document.getElementById('up-last');
+    // Tekstit kuntoon
+    document.getElementById('up-nickname').innerHTML = `<div style="font-size:0.8em; color:#888; margin-bottom:5px;">${stats.title || ""}</div>${stats.greeting}`;
+    document.getElementById('up-nickname').style.color = stats.isFirstTime ? "#d32f2f" : "var(--header-color)";
+    document.getElementById('up-total').innerText = stats.totalVisits;
+    
+    // Listan nollaus
     const listEl = document.getElementById('up-history-list');
+    listEl.innerHTML = "";
     
-    if(listEl) listEl.innerHTML = "";
-
-    // Nappien päivitys käännöksillä (ja luodaan btnContainer jos ei ole)
-    const closeBtn = modal.querySelector('button.btn-red');
-    let btnContainer = modal.querySelector('#visitor-action-buttons');
-    
-    // Jos containeria ei ole, luodaan se ja korvataan sulje-nappi sillä
-    if (!btnContainer && closeBtn) {
-        btnContainer = document.createElement('div');
-        btnContainer.id = 'visitor-action-buttons';
-        btnContainer.style.display = 'flex';
-        btnContainer.style.flexDirection = 'column';
-        btnContainer.style.gap = '10px';
-        btnContainer.style.marginTop = '15px';
-        
-        // Lisätään napit containeriin
-        btnContainer.innerHTML = `
-            <button id="btn-visit-geo" class="btn btn-green" style="font-size:1.1em;">${t.visitGeoBtn}</button>
-            <button id="btn-log-another" class="btn btn-blue" style="background:#555;">${t.logAnotherBtn}</button>
-        `;
-        
-        // Korvataan alkuperäinen sulje-nappi containerilla
-        if(closeBtn.parentNode) {
-            closeBtn.parentNode.replaceChild(btnContainer, closeBtn);
-        }
-    } else if (btnContainer) {
-        // Päivitetään vain tekstit jos container on jo olemassa
-        const btnGeo = document.getElementById('btn-visit-geo');
-        const btnLog = document.getElementById('btn-log-another');
-        if(btnGeo) btnGeo.innerText = t.visitGeoBtn;
-        if(btnLog) btnLog.innerText = t.logAnotherBtn;
-    }
-    
-    // Lisätään event listenerit nappeihin
-    const btnGeo = document.getElementById('btn-visit-geo');
-    if(btnGeo) btnGeo.onclick = function() {
-        modal.style.display = 'none';
-        resetModalButtons(btnContainer); 
-        if (typeof proceedToGeo === 'function') proceedToGeo();
-    };
-
-    const btnLog = document.getElementById('btn-log-another');
-    if(btnLog) btnLog.onclick = function() {
-        modal.style.display = 'none';
-        resetModalButtons(btnContainer);
-        ['vv-nickname', 'vv-from', 'vv-message'].forEach(id => {
-            const el = document.getElementById(id);
-            if(el) el.value = "";
-        });
-        setTimeout(() => { 
-            const el = document.getElementById('vv-nickname');
-            if(el) el.focus();
-        }, 300);
-    };
-
-    // --- SEURAAVA MIITTI (UUSITTU LOGIIKKA) ---
+    // 1. POISTETAAN VANHAT ELEMENTIT (Jotta ei tule tuplia tai väärää järjestystä)
     const oldFuture = document.getElementById('visitor-next-event-box');
     if(oldFuture) oldFuture.remove();
+    
+    const oldButtons = document.getElementById('visitor-action-buttons');
+    if(oldButtons) oldButtons.remove();
+    
+    const defaultClose = modal.querySelector('button.btn-red');
+    if(defaultClose) defaultClose.style.display = 'none'; // Piilotetaan oletus "Sulje" varmuuden vuoksi
 
+    // 2. LUODAAN SEURAAVA MIITTI -LAATIKKO
     const futureBox = document.createElement('div');
     futureBox.id = 'visitor-next-event-box';
     futureBox.style.marginTop = "15px";
@@ -323,36 +268,57 @@ function showVisitorModalWithLang(nick, history, stats) {
          futureBox.innerHTML = `<span style="color:#888; font-style:italic;">${t.noNextEvent}</span>`;
     }
 
-    // PAKOTETTU SIJOITUS: Etsitään modaalin sisältö ja asetetaan boksi ENNEN nappeja
-    const modalContent = modal.querySelector('.modal-content');
-    if (btnContainer && modalContent) {
-        modalContent.insertBefore(futureBox, btnContainer);
-    } else if (modalContent) {
-        // Jos nappeja ei löytynyt (harvinaista), laitetaan loppuun
-        modalContent.appendChild(futureBox);
-    }
-    // ------------------------------------------
+    // 3. LUODAAN NAPIT
+    const btnContainer = document.createElement('div');
+    btnContainer.id = 'visitor-action-buttons';
+    btnContainer.style.display = 'flex';
+    btnContainer.style.flexDirection = 'column';
+    btnContainer.style.gap = '10px';
+    btnContainer.style.marginTop = '15px';
+    btnContainer.innerHTML = `
+        <button id="btn-visit-geo" class="btn btn-green" style="font-size:1.1em;">${t.visitGeoBtn}</button>
+        <button id="btn-log-another" class="btn btn-blue" style="background:#555;">${t.logAnotherBtn}</button>
+    `;
 
-    if (history === null) {
-        titleEl.innerHTML = t.welcomeTitle;
-        listEl.innerHTML = `<div style="text-align:center; padding:20px;">${t.savedMsg}</div>`;
-        modal.style.display = 'block';
-        return;
+    // 4. SIJOITETAAN KAIKKI PAIKOILLEEN
+    // Ensin "Seuraava miitti" listan perään
+    if (listEl && listEl.parentNode) {
+        listEl.parentNode.appendChild(futureBox);
+        listEl.parentNode.appendChild(btnContainer);
     }
-
-    titleEl.innerHTML = `<div style="font-size:0.8em; color:#888; margin-bottom:5px;">${stats.title || ""}</div>${stats.greeting}`;
-    titleEl.style.color = stats.isFirstTime ? "#d32f2f" : "var(--header-color)";
-    totalEl.innerText = stats.totalVisits;
     
-    if (stats.isFirstTime) {
-        firstEl.innerHTML = "Today!";
-        lastEl.innerHTML = "Today!";
+    // Tapahtumakuuntelijat nappeihin
+    document.getElementById('btn-visit-geo').onclick = function() {
+        modal.style.display = 'none';
+        resetModalButtons(); // Palauttaa "Sulje" napin adminia varten
+        if (typeof proceedToGeo === 'function') proceedToGeo();
+    };
+
+    document.getElementById('btn-log-another').onclick = function() {
+        modal.style.display = 'none';
+        resetModalButtons(); // Palauttaa "Sulje" napin adminia varten
+        ['vv-nickname', 'vv-from', 'vv-message'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.value = "";
+        });
+        setTimeout(() => { 
+            const el = document.getElementById('vv-nickname');
+            if(el) el.focus();
+        }, 300);
+    };
+
+    // 5. LISTAN TÄYTTÖ
+    if (history === null) {
+        listEl.innerHTML = `<div style="text-align:center; padding:20px;">${t.savedMsg}</div>`;
+    } else if (stats.isFirstTime) {
+        document.getElementById('up-first').innerHTML = "Today!";
+        document.getElementById('up-last').innerHTML = "Today!";
         listEl.innerHTML = `<div style="text-align:center; padding:20px;"><div style="font-size:3em;">🎉</div><p><strong>${t.welcomeTitle}</strong></p></div>`;
     } else {
         const first = history[0];
         const last = history[history.length - 1]; 
-        firstEl.innerHTML = `${first.date}<br><span style="font-size:0.8em; font-weight:normal;">${first.name}</span>`;
-        lastEl.innerHTML = `${last.date}<br><span style="font-size:0.8em; font-weight:normal;">${last.name}</span>`;
+        document.getElementById('up-first').innerHTML = `${first.date}<br><span style="font-size:0.8em; font-weight:normal;">${first.name}</span>`;
+        document.getElementById('up-last').innerHTML = `${last.date}<br><span style="font-size:0.8em; font-weight:normal;">${last.name}</span>`;
 
         if (stats.streakText) {
             const infoBox = document.createElement('div');
@@ -393,17 +359,17 @@ function showVisitorModalWithLang(nick, history, stats) {
     }
 }
 
-// Palauttaa alkuperäisen sulje-napin jotta admin-näkymä ei hajoa
-function resetModalButtons(container) {
-    const t = visitorTranslations[currentLang] || visitorTranslations['fi'];
-    // Luodaan uusi nappi
-    const newCloseBtn = document.createElement('button');
-    newCloseBtn.className = "btn btn-red";
-    newCloseBtn.style.marginTop = "15px";
-    newCloseBtn.innerText = t.closeBtn;
-    newCloseBtn.onclick = function() { document.getElementById('user-profile-modal').style.display='none'; };
+// Palauttaa alkuperäisen tilan sulkemisen jälkeen
+function resetModalButtons() {
+    // Poistetaan visitor-elementit
+    const box = document.getElementById('visitor-next-event-box');
+    if(box) box.remove();
     
-    if(container.parentNode) {
-        container.parentNode.replaceChild(newCloseBtn, container);
-    }
+    const btns = document.getElementById('visitor-action-buttons');
+    if(btns) btns.remove();
+    
+    // Palautetaan oletusnappi näkyviin
+    const modal = document.getElementById('user-profile-modal');
+    const defaultClose = modal.querySelector('button.btn-red');
+    if(defaultClose) defaultClose.style.display = 'block';
 }
