@@ -498,24 +498,18 @@ body.theme-light .attr-tag.neg {
 
 #qr-display-area { text-align: center; margin: 20px 0; padding: 15px; background: var(--card-bg); border-radius: 10px; display: none; border: 2px solid var(--border-color); }
 #qrcode-container { display: inline-block; padding: 10px; background: #fff; /* QR Aina valkoinen tausta */ }
-.qr-lang-toggle { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; }
-.qr-lang-toggle .btn { width: auto; }
-.qr-wrapper { position: relative; display: inline-block; }
+.qr-lang-toggle { display: flex; gap: 6px; justify-content: center; margin-bottom: 8px; }
+.qr-lang-toggle .btn { width: auto; font-size: 1.1em; padding: 6px 10px; }
 .qr-instructions {
-    position: absolute;
-    top: 6px;
-    left: 6px;
-    right: 6px;
-    background: rgba(0,0,0,0.65);
-    color: #fff;
-    font-size: 0.8em;
-    padding: 6px 8px;
-    border-radius: 6px;
+    margin: 8px 0 10px 0;
+    background: var(--highlight-bg);
+    border: 2px dashed var(--border-color);
+    color: var(--text-color);
+    font-size: 0.9em;
+    padding: 8px 10px;
+    border-radius: 8px;
     text-align: center;
     white-space: pre-line;
-}
-body.theme-light .qr-instructions {
-    background: rgba(0,0,0,0.75);
 }
 
 /* Versionumero */
