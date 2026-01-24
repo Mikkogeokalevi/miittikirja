@@ -21,6 +21,7 @@ const visitorTranslations = {
         logAnotherBtn: "Kirjaa toinen kävijä 👤",
         nextEventTitle: "🔮 Seuraava miitti:",
         noNextEvent: "Ei tiedossa olevia tulevia miittejä.",
+        expiryUntil: "⏳ Tämä kirjausikkuna voimassa {0} klo {1} asti.",
         expiredTitle: "⛔ Kirjaus on sulkeutunut",
         expiredBody: "Tämä QR‑koodi on voimassa vain 3 päivää tapahtuman jälkeen.",
         expiredAlert: "Kirjaus on sulkeutunut. QR‑koodi ei ole enää voimassa."
@@ -42,6 +43,7 @@ const visitorTranslations = {
         logAnotherBtn: "Log another person 👤",
         nextEventTitle: "🔮 Next Event:",
         noNextEvent: "No upcoming events known.",
+        expiryUntil: "⏳ This sign-in window is open until {0} at {1}.",
         expiredTitle: "⛔ Sign-in closed",
         expiredBody: "This QR code is valid only 3 days after the event.",
         expiredAlert: "Sign-in is closed. This QR code is no longer valid."
@@ -63,6 +65,7 @@ const visitorTranslations = {
         logAnotherBtn: "Logga en annan person 👤",
         nextEventTitle: "🔮 Nästa event:",
         noNextEvent: "Inga kommande event kända.",
+        expiryUntil: "⏳ Den här inloggningen gäller till {0} kl {1}.",
         expiredTitle: "⛔ Inskrivningen är stängd",
         expiredBody: "Den här QR‑koden gäller bara 3 dagar efter eventet.",
         expiredAlert: "Inskrivningen är stängd. Den här QR‑koden är inte längre giltig."
@@ -84,6 +87,7 @@ const visitorTranslations = {
         logAnotherBtn: "Lisa teine külastaja 👤",
         nextEventTitle: "🔮 Järgmine üritus:",
         noNextEvent: "Tulevasi üritusi ei ole teada.",
+        expiryUntil: "⏳ See registreerimisaken kehtib kuni {0} kell {1}.",
         expiredTitle: "⛔ Sisselogimine suletud",
         expiredBody: "See QR‑kood kehtib vaid 3 päeva pärast üritust.",
         expiredAlert: "Sisselogimine on suletud. See QR‑kood ei kehti enam."
@@ -116,6 +120,10 @@ window.setVisitorLanguage = function(lang) {
         const el = document.getElementById(id);
         if(el) el.style.opacity = (id === `btn-lang-${lang}`) ? "1" : "0.5";
     });
+
+    if (typeof window.updateVisitorExpiryNotice === 'function') {
+        window.updateVisitorExpiryNotice();
+    }
 
     if (window.isVisitorExpired) {
         const expiredEl = document.getElementById('vv-expired');
@@ -282,6 +290,16 @@ window.setVisitorExpiredState = function(isExpired) {
             }
         });
     }
+};
+
+window.updateVisitorExpiryNotice = function() {
+    const el = document.getElementById('vv-expiry-info');
+    if (!el || !window.visitorExpiryUntil) return;
+    const t = visitorTranslations[currentLang] || visitorTranslations.fi;
+    const dateText = window.visitorExpiryUntil.date || "";
+    const timeText = window.visitorExpiryUntil.time || "";
+    if (!t.expiryUntil || !dateText || !timeText) return;
+    el.innerText = t.expiryUntil.replace('{0}', dateText).replace('{1}', timeText);
 };
 
 function showVisitorModalWithLang(nick, history, stats) {

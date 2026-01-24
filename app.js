@@ -93,6 +93,22 @@ function isQrExpired(eventDateStr) {
     return today > expiryDate;
 }
 
+function formatDateFi(dateObj) {
+    const dd = String(dateObj.getDate()).padStart(2, '0');
+    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const yyyy = dateObj.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
+}
+
+function getEventEndTime(timeStr) {
+    if (!timeStr) return "23:59";
+    const matches = timeStr.match(/\b\d{1,2}:\d{2}\b/g);
+    if (matches && matches.length > 0) {
+        return matches[matches.length - 1];
+    }
+    return "23:59";
+}
+
 async function openVisitorGuestbook(uid, eventId) {
     if(loadingOverlay) loadingOverlay.style.display = 'flex';
     
@@ -123,6 +139,22 @@ async function openVisitorGuestbook(uid, eventId) {
         const expired = isQrExpired(evt.date);
         if (window.setVisitorExpiredState) {
             window.setVisitorExpiredState(expired);
+        }
+
+        if (evt.date) {
+            const eventDate = new Date(`${evt.date}T00:00:00`);
+            if (!isNaN(eventDate.getTime())) {
+                const expiryDate = new Date(eventDate);
+                expiryDate.setDate(expiryDate.getDate() + 3);
+                const expiryTime = getEventEndTime(evt.time);
+                window.visitorExpiryUntil = {
+                    date: formatDateFi(expiryDate),
+                    time: expiryTime
+                };
+                if (window.updateVisitorExpiryNotice) {
+                    window.updateVisitorExpiryNotice();
+                }
+            }
         }
         
         // Varmistetaan näkymät
