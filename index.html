@@ -114,20 +114,29 @@
         </div>
 
         <div id="admin-lists-container">
-            <div class="category-header">☕ Miitit</div>
-            <div id="list-miitti-future"></div>
-            <div class="sub-category-header">Menneet</div>
-            <div id="list-miitti-past"></div>
+            <details class="list-section" open>
+                <summary class="list-summary">☕ Miitit</summary>
+                <div class="sub-category-header">Tulevat</div>
+                <div id="list-miitti-future"></div>
+                <div class="sub-category-header">Menneet</div>
+                <div id="list-miitti-past"></div>
+            </details>
 
-            <div class="category-header">🎉 Yhteisöjuhlat</div>
-            <div id="list-cce-future"></div>
-            <div class="sub-category-header">Menneet</div>
-            <div id="list-cce-past"></div>
+            <details class="list-section">
+                <summary class="list-summary">🎉 Yhteisöjuhlat</summary>
+                <div class="sub-category-header">Tulevat</div>
+                <div id="list-cce-future"></div>
+                <div class="sub-category-header">Menneet</div>
+                <div id="list-cce-past"></div>
+            </details>
 
-            <div class="category-header">🗑️ CITO Tapahtumat</div>
-            <div id="list-cito-future"></div>
-            <div class="sub-category-header">Menneet</div>
-            <div id="list-cito-past"></div>
+            <details class="list-section">
+                <summary class="list-summary">🗑️ CITO Tapahtumat</summary>
+                <div class="sub-category-header">Tulevat</div>
+                <div id="list-cito-future"></div>
+                <div class="sub-category-header">Menneet</div>
+                <div id="list-cito-past"></div>
+            </details>
         </div>
     </div>
 
@@ -136,9 +145,18 @@
         <h2>📖 Miittikirjat</h2>
         <button id="btn-show-stats-user" class="btn btn-blue">📊 KATSO TILASTOT</button>
         <div id="user-lists-container">
-            <div class="category-header">☕ Miitit</div><div id="user-list-miitti"></div>
-            <div class="category-header">🎉 Yhteisöjuhlat</div><div id="user-list-cce"></div>
-            <div class="category-header">🗑️ CITO Tapahtumat</div><div id="user-list-cito"></div>
+            <details class="list-section" open>
+                <summary class="list-summary">☕ Miitit</summary>
+                <div id="user-list-miitti"></div>
+            </details>
+            <details class="list-section">
+                <summary class="list-summary">🎉 Yhteisöjuhlat</summary>
+                <div id="user-list-cce"></div>
+            </details>
+            <details class="list-section">
+                <summary class="list-summary">🗑️ CITO Tapahtumat</summary>
+                <div id="user-list-cito"></div>
+            </details>
         </div>
     </div>
 

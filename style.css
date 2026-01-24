@@ -220,6 +220,48 @@ body.theme-light .card.archived {
     letter-spacing: 1px;
 }
 
+.list-section {
+    margin-top: 15px;
+    text-align: left;
+    border: 2px dashed var(--border-color);
+    border-radius: 10px;
+    background: var(--card-bg);
+    box-shadow: 4px 4px 0px var(--shadow-color);
+    padding: 6px;
+}
+
+.list-section[open] {
+    padding-bottom: 10px;
+}
+
+.list-summary {
+    list-style: none;
+    cursor: pointer;
+    font-weight: bold;
+    color: var(--secondary-color);
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--highlight-bg);
+    border: 2px solid var(--highlight-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.list-summary::after {
+    content: "▼";
+    font-size: 0.9em;
+    opacity: 0.7;
+}
+
+.list-section[open] .list-summary::after {
+    content: "▲";
+}
+
+.list-summary::-webkit-details-marker {
+    display: none;
+}
 .sub-category-header {
     font-size: 0.8em;
     text-transform: uppercase;
