@@ -325,16 +325,25 @@ function renderLongestStreaks(data) {
     if (!el) return;
 
     const todayStr = new Date().toISOString().split('T')[0];
+    const isMiittiEvent = (evt) => {
+        const type = (evt.type || '').toLowerCase();
+        if (type) return type === 'miitti';
+        const name = (evt.name || '').toLowerCase();
+        if (name.includes('cito')) return false;
+        if (name.includes('yhteisö') || name.includes('juhla') || name.includes('cce') || name.includes('celebration')) return false;
+        return true;
+    };
     const validEvents = data
         .filter(e => e.date && e.date <= todayStr)
-        .filter(e => !(e.name && e.name.includes("/ PERUTTU /")));
+        .filter(e => !(e.name && e.name.includes("/ PERUTTU /")))
+        .filter(e => isMiittiEvent(e));
 
     if (validEvents.length === 0) {
         el.innerHTML = "Ei tietoja.";
         return;
     }
 
-    const normalizeName = (name) => (name || "").trim().toLowerCase();
+    const normalizeName = (name) => (name || "").replace(/[\s\u00A0]+/g, " ").trim().toLowerCase();
     const events = [...validEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
     const eventNameSets = events.map(evt => {
         const names = (evt.attendeeNames || [])
