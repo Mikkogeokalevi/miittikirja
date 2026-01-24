@@ -334,20 +334,36 @@ function renderLongestStreaks(data) {
         return;
     }
 
+    const normalizeName = (name) => (name || "").trim().toLowerCase();
     const events = [...validEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const eventNameSets = events.map(evt => {
+        const names = (evt.attendeeNames || [])
+            .map(n => n.trim())
+            .filter(Boolean);
+        return new Set(names.map(normalizeName));
+    });
     const allNames = new Set();
-    events.forEach(evt => (evt.attendeeNames || []).forEach(n => allNames.add(n.trim())));
+    const displayNames = new Map();
+    events.forEach(evt => {
+        (evt.attendeeNames || []).forEach(n => {
+            const trimmed = (n || "").trim();
+            if (!trimmed) return;
+            const key = normalizeName(trimmed);
+            allNames.add(key);
+            if (!displayNames.has(key)) displayNames.set(key, trimmed);
+        });
+    });
 
     const streaks = [];
-    allNames.forEach(name => {
-        if (!name) return;
+    allNames.forEach(nameKey => {
+        if (!nameKey) return;
         let current = 0;
         let max = 0;
         let currentStart = null;
         let bestStart = null;
         let bestEnd = null;
-        events.forEach(evt => {
-            const attended = (evt.attendeeNames || []).some(n => n.trim() === name);
+        events.forEach((evt, idx) => {
+            const attended = eventNameSets[idx].has(nameKey);
             if (attended) {
                 if (current === 0) currentStart = evt;
                 current += 1;
@@ -365,7 +381,8 @@ function renderLongestStreaks(data) {
             const startNum = bestStart && bestStart.seqNumber ? `#${bestStart.seqNumber}` : "?#";
             const endNum = bestEnd && bestEnd.seqNumber ? `#${bestEnd.seqNumber}` : "?#";
             const range = `${startNum}-${endNum}`;
-            streaks.push({ name, max, range });
+            const displayName = displayNames.get(nameKey) || nameKey;
+            streaks.push({ name: displayName, max, range });
         }
     });
 
