@@ -20,7 +20,10 @@ const visitorTranslations = {
         visitGeoBtn: "Jatka miittisivulle ➡",
         logAnotherBtn: "Kirjaa toinen kävijä 👤",
         nextEventTitle: "🔮 Seuraava miitti:",
-        noNextEvent: "Ei tiedossa olevia tulevia miittejä."
+        noNextEvent: "Ei tiedossa olevia tulevia miittejä.",
+        expiredTitle: "⛔ Kirjaus on sulkeutunut",
+        expiredBody: "Tämä QR‑koodi on voimassa vain 3 päivää tapahtuman jälkeen.",
+        expiredAlert: "Kirjaus on sulkeutunut. QR‑koodi ei ole enää voimassa."
     },
     en: {
         title: "Mikkokalevi's Digital Guestbook",
@@ -38,7 +41,10 @@ const visitorTranslations = {
         visitGeoBtn: "Go to Event Page ➡",
         logAnotherBtn: "Log another person 👤",
         nextEventTitle: "🔮 Next Event:",
-        noNextEvent: "No upcoming events known."
+        noNextEvent: "No upcoming events known.",
+        expiredTitle: "⛔ Sign-in closed",
+        expiredBody: "This QR code is valid only 3 days after the event.",
+        expiredAlert: "Sign-in is closed. This QR code is no longer valid."
     },
     sv: {
         title: "Mikkokalevis Digitala Gästbok",
@@ -56,11 +62,36 @@ const visitorTranslations = {
         visitGeoBtn: "Gå till eventsidan ➡",
         logAnotherBtn: "Logga en annan person 👤",
         nextEventTitle: "🔮 Nästa event:",
-        noNextEvent: "Inga kommande event kända."
+        noNextEvent: "Inga kommande event kända.",
+        expiredTitle: "⛔ Inskrivningen är stängd",
+        expiredBody: "Den här QR‑koden gäller bara 3 dagar efter eventet.",
+        expiredAlert: "Inskrivningen är stängd. Den här QR‑koden är inte längre giltig."
+    },
+    et: {
+        title: "Mikkokalevi digitaalne külalisteraamat",
+        subtitle: "Kirjuta oma külastus külalisteraamatusse",
+        nickPlaceholder: "Sinu kasutajanimi (Geocaching.com)",
+        fromPlaceholder: "Kust sa tuled? (Linn/asula)",
+        msgPlaceholder: "Tervitused Mikkokalevile",
+        btnSign: "SALVESTA KÜLASTUS ✅",
+        reminder: "⚠️ Ära unusta oma külastust ka Geocaching.com‑is logida!",
+        alertNick: "Palun sisesta oma kasutajanimi!",
+        alertDup: "Hei {0}, sa oled juba sellel üritusel kirje teinud!\n\nPole vaja uuesti.",
+        welcomeTitle: "Aitäh külastuse eest!",
+        savedMsg: "Kirje salvestatud!",
+        closeBtn: "Sulge",
+        visitGeoBtn: "Mine ürituse lehele ➡",
+        logAnotherBtn: "Lisa teine külastaja 👤",
+        nextEventTitle: "🔮 Järgmine üritus:",
+        noNextEvent: "Tulevasi üritusi ei ole teada.",
+        expiredTitle: "⛔ Sisselogimine suletud",
+        expiredBody: "See QR‑kood kehtib vaid 3 päeva pärast üritust.",
+        expiredAlert: "Sisselogimine on suletud. See QR‑kood ei kehti enam."
     }
 };
 
 let currentLang = 'fi';
+window.isVisitorExpired = false;
 
 // Kutsutaan index.html:stä kun lippua painetaan
 window.setVisitorLanguage = function(lang) {
@@ -81,15 +112,23 @@ window.setVisitorLanguage = function(lang) {
     setAttr('vv-from', 'placeholder', t.fromPlaceholder);
     setAttr('vv-message', 'placeholder', t.msgPlaceholder);
 
-    ['btn-lang-fi', 'btn-lang-en', 'btn-lang-sv'].forEach(id => {
+    ['btn-lang-fi', 'btn-lang-en', 'btn-lang-sv', 'btn-lang-et'].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.style.opacity = (id === `btn-lang-${lang}`) ? "1" : "0.5";
     });
+
+    if (window.isVisitorExpired) {
+        const expiredEl = document.getElementById('vv-expired');
+        if (expiredEl) expiredEl.innerText = `${t.expiredTitle}\n${t.expiredBody}`;
+    }
 };
 
 // Pääfunktio: Kirjauksen käsittely
 window.handleVisitorSign = async function() {
     const t = visitorTranslations[currentLang];
+    if (window.isVisitorExpired) {
+        return alert(t.expiredAlert);
+    }
     
     const nickInput = document.getElementById('vv-nickname');
     const fromInput = document.getElementById('vv-from');
@@ -224,6 +263,25 @@ window.handleVisitorSign = async function() {
 
     if(loadOverlay) loadOverlay.style.display = 'none';
     showVisitorModalWithLang(nick, userHistory, stats);
+};
+
+window.setVisitorExpiredState = function(isExpired) {
+    window.isVisitorExpired = isExpired;
+    const form = document.querySelector('#visitor-view .card-form');
+    const expiredEl = document.getElementById('vv-expired');
+    const t = visitorTranslations[currentLang] || visitorTranslations.fi;
+    if (expiredEl) {
+        expiredEl.style.display = isExpired ? 'block' : 'none';
+        expiredEl.innerText = isExpired ? `${t.expiredTitle}\n${t.expiredBody}` : '';
+    }
+    if (form) {
+        form.style.opacity = isExpired ? '0.5' : '1';
+        form.querySelectorAll('input, textarea, button').forEach(el => {
+            if (el.id !== 'btn-lang-fi' && el.id !== 'btn-lang-en' && el.id !== 'btn-lang-sv' && el.id !== 'btn-lang-et') {
+                el.disabled = isExpired;
+            }
+        });
+    }
 };
 
 function showVisitorModalWithLang(nick, history, stats) {

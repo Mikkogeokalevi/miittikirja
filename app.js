@@ -82,6 +82,17 @@ window.addEventListener('load', function() {
     }
 });
 
+function isQrExpired(eventDateStr) {
+    if (!eventDateStr) return false;
+    const eventDate = new Date(`${eventDateStr}T00:00:00`);
+    if (isNaN(eventDate.getTime())) return false;
+    const expiryDate = new Date(eventDate);
+    expiryDate.setDate(expiryDate.getDate() + 3);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today > expiryDate;
+}
+
 async function openVisitorGuestbook(uid, eventId) {
     if(loadingOverlay) loadingOverlay.style.display = 'flex';
     
@@ -108,6 +119,11 @@ async function openVisitorGuestbook(uid, eventId) {
         // Asetetaan miitin nimi ja aika
         if(nameEl) nameEl.innerText = evt.name;
         if(infoEl) infoEl.innerText = `${evt.date} klo ${evt.time || '-'}`;
+
+        const expired = isQrExpired(evt.date);
+        if (window.setVisitorExpiredState) {
+            window.setVisitorExpiredState(expired);
+        }
         
         // Varmistetaan näkymät
         if(visitorView) visitorView.style.display = 'block';
@@ -264,6 +280,21 @@ if(btnToggleMode) {
 // 6. QR-KOODI (HOST NÄKYMÄ) & AUTOCOMPLETE
 // ==========================================
 
+const qrTranslations = {
+    fi: { instruction: "Skannaa QR-koodi\nja kirjaa käynti" },
+    en: { instruction: "Scan the QR code\nand sign the guestbook" },
+    sv: { instruction: "Skanna QR-koden\noch signera gästboken" },
+    et: { instruction: "Skanni QR‑kood\nja kirjuta külalisteraamatusse" }
+};
+
+let currentQrLang = 'fi';
+window.setQrLanguage = function(lang) {
+    if (!qrTranslations[lang]) return;
+    currentQrLang = lang;
+    const instructionEl = document.getElementById('qr-instructions');
+    if (instructionEl) instructionEl.innerText = qrTranslations[lang].instruction;
+};
+
 const btnToggleQr = document.getElementById('btn-toggle-qr');
 if(btnToggleQr) {
     btnToggleQr.onclick = function() {
@@ -282,6 +313,7 @@ if(btnToggleQr) {
         const guestUrl = `${baseUrl}?event=${currentEventId}&uid=${ownerUid}`;
         
         if(linkText) linkText.innerText = guestUrl;
+        window.setQrLanguage(currentQrLang);
 
         new QRCode(container, {
             text: guestUrl,
