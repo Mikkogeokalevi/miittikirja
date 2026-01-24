@@ -503,7 +503,11 @@ function loadEvents() {
     
     db.ref('miitit/' + currentUser.uid + '/events').on('value', (snapshot) => {
         const adminContainers = ['list-miitti-future','list-miitti-past','list-cito-future','list-cito-past','list-cce-future','list-cce-past'];
-        const userContainers = ['user-list-miitti','user-list-cito','user-list-cce'];
+        const userContainers = [
+            'user-list-miitti-future','user-list-miitti-past',
+            'user-list-cito-future','user-list-cito-past',
+            'user-list-cce-future','user-list-cce-past'
+        ];
         
         adminContainers.concat(userContainers).forEach(id => {
             const el = document.getElementById(id); if(el) el.innerHTML = "";
@@ -617,7 +621,7 @@ function loadEvents() {
                     heroUser.prepend(document.createRange().createContextualFragment('<h3 style="color:#4caf50; margin-top:0; text-align:center;">🌟 TÄNÄÄN!</h3>'));
                     noticeUser.appendChild(heroUser);
                 }
-                const target = document.getElementById(`user-list-${evt.type}`);
+                const target = document.getElementById(evt.date >= todayStr ? `user-list-${evt.type}-future` : `user-list-${evt.type}-past`);
                 if (target) target.appendChild(div);
             }
 
