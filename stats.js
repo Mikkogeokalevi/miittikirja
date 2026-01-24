@@ -156,6 +156,7 @@ function updateStatsView(data) {
     renderLoyaltyPyramid(data); 
     renderWordCloud(data);
     renderTimeSlots(data);
+    renderFirstTimersPerEvent(data);
     
     renderYearHeatmap(data);
 
@@ -173,7 +174,7 @@ function updateStatsView(data) {
         if(!el) return;
         if (list.length === 0) { el.innerHTML = "Ei tietoja."; return; }
         el.innerHTML = list.map((e, i) => 
-            `<div class="stats-row"><span>${i+1}. ${e.name}</span> <strong>${e.attendeeCount}</strong></div>`
+            `<div class="stats-row clickable" onclick="openGuestbook('${e.key}')"><span>${i+1}. ${e.name}</span> <strong>${e.attendeeCount}</strong></div>`
         ).join('');
     };
 
@@ -230,6 +231,45 @@ function renderUserRegistry(data) {
     }).join('');
     
     el.innerHTML = html;
+}
+
+function renderFirstTimersPerEvent(data) {
+    const el = document.getElementById('stats-first-timers');
+    if (!el) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const validEvents = data
+        .filter(e => e.date && e.date <= todayStr)
+        .filter(e => !(e.name && e.name.includes("/ PERUTTU /")));
+
+    if (validEvents.length === 0) {
+        el.innerHTML = "Ei tietoja.";
+        return;
+    }
+
+    const sortedByDate = [...validEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const seen = new Set();
+
+    sortedByDate.forEach(evt => {
+        let count = 0;
+        const names = (evt.attendeeNames || []).map(n => n.trim().toLowerCase()).filter(Boolean);
+        const uniqueNames = new Set(names);
+        uniqueNames.forEach(name => {
+            if (!seen.has(name)) {
+                seen.add(name);
+                count++;
+            }
+        });
+        evt.firstTimersCount = count;
+    });
+
+    const renderList = [...sortedByDate].reverse();
+    el.innerHTML = renderList.map(evt => {
+        return `<div class="stats-row clickable" onclick="openGuestbook('${evt.key}')">
+            <span>${evt.date} • ${evt.name}</span>
+            <strong>${evt.firstTimersCount}</strong>
+        </div>`;
+    }).join('');
 }
 
 function renderTopUsersList(data) {

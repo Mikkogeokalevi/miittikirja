@@ -482,6 +482,8 @@ body.theme-light .attr-tag.neg {
 .char-box.empty { background: rgba(255,255,255,0.05); color: #666; }
 
 .stats-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dotted #777; font-size: 0.9em; }
+.stats-row.clickable { cursor: pointer; }
+.stats-row.clickable:hover { background: var(--highlight-bg); }
 
 .autocomplete-list {
     position: absolute;
