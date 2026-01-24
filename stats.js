@@ -252,7 +252,8 @@ function renderFirstTimersTopEvents(data) {
     const todayStr = new Date().toISOString().split('T')[0];
     const validEvents = data
         .filter(e => e.date && e.date <= todayStr)
-        .filter(e => !(e.name && e.name.includes("/ PERUTTU /")));
+        .filter(e => !(e.name && e.name.includes("/ PERUTTU /")))
+        .filter(e => (e.type || 'miitti').toLowerCase() === 'miitti');
 
     if (validEvents.length === 0) {
         el.innerHTML = "Ei tietoja.";
