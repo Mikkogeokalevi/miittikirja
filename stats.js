@@ -32,6 +32,16 @@ async function initStats() {
             evt.attendeeNames = evt.logs.map(l => l.nickname);
         });
 
+        // Lasketaan järjestysnumerot (seqNumber) tyypeittäin
+        const typeCounts = { miitti: 0, cito: 0, cce: 0 };
+        const byDate = [...events].sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+        byDate.forEach(evt => {
+            const type = (evt.type || 'miitti').toLowerCase();
+            if (typeCounts[type] === undefined) typeCounts[type] = 0;
+            typeCounts[type] += 1;
+            evt.seqNumber = typeCounts[type];
+        });
+
         allStatsData.events = events;
         populateYearFilter(events);
         updateStatsView(events);
@@ -156,7 +166,6 @@ function updateStatsView(data) {
     renderLoyaltyPyramid(data); 
     renderWordCloud(data);
     renderTimeSlots(data);
-    renderFirstTimersPerEvent(data);
     renderFirstTimersTopEvents(data);
     renderOneTimers(data);
     renderLongestStreaks(data);
@@ -236,45 +245,6 @@ function renderUserRegistry(data) {
     el.innerHTML = html;
 }
 
-function renderFirstTimersPerEvent(data) {
-    const el = document.getElementById('stats-first-timers');
-    if (!el) return;
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    const validEvents = data
-        .filter(e => e.date && e.date <= todayStr)
-        .filter(e => !(e.name && e.name.includes("/ PERUTTU /")));
-
-    if (validEvents.length === 0) {
-        el.innerHTML = "Ei tietoja.";
-        return;
-    }
-
-    const sortedByDate = [...validEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
-    const seen = new Set();
-
-    sortedByDate.forEach(evt => {
-        let count = 0;
-        const names = (evt.attendeeNames || []).map(n => n.trim().toLowerCase()).filter(Boolean);
-        const uniqueNames = new Set(names);
-        uniqueNames.forEach(name => {
-            if (!seen.has(name)) {
-                seen.add(name);
-                count++;
-            }
-        });
-        evt.firstTimersCount = count;
-    });
-
-    const renderList = [...sortedByDate].reverse();
-    el.innerHTML = renderList.map(evt => {
-        return `<div class="stats-row clickable" onclick="openGuestbook('${evt.key}')">
-            <span>${evt.date} • ${evt.name}</span>
-            <strong>${evt.firstTimersCount}</strong>
-        </div>`;
-    }).join('');
-}
-
 function renderFirstTimersTopEvents(data) {
     const el = document.getElementById('stats-first-timers-top');
     if (!el) return;
@@ -340,9 +310,13 @@ function renderOneTimers(data) {
     }
 
     const sorted = oneTimers.sort((a, b) => a.localeCompare(b));
-    el.innerHTML = sorted.map(name => {
+    const rows = sorted.map(name => {
         return `<div class="stats-row"><span>${name}</span> <strong>1</strong></div>`;
-    }).join('');
+    });
+    rows.unshift(`<div class="stats-row" style="background:var(--highlight-bg); border-left:3px solid var(--secondary-color); padding-left:5px;">
+        <span>Yhteensä</span> <strong>${sorted.length}</strong>
+    </div>`);
+    el.innerHTML = rows.join('');
 }
 
 function renderLongestStreaks(data) {
@@ -368,16 +342,30 @@ function renderLongestStreaks(data) {
         if (!name) return;
         let current = 0;
         let max = 0;
+        let currentStart = null;
+        let bestStart = null;
+        let bestEnd = null;
         events.forEach(evt => {
             const attended = (evt.attendeeNames || []).some(n => n.trim() === name);
             if (attended) {
+                if (current === 0) currentStart = evt;
                 current += 1;
-                if (current > max) max = current;
+                if (current > max) {
+                    max = current;
+                    bestStart = currentStart;
+                    bestEnd = evt;
+                }
             } else {
                 current = 0;
+                currentStart = null;
             }
         });
-        if (max > 1) streaks.push({ name, max });
+        if (max > 1) {
+            const startNum = bestStart && bestStart.seqNumber ? `#${bestStart.seqNumber}` : "?#";
+            const endNum = bestEnd && bestEnd.seqNumber ? `#${bestEnd.seqNumber}` : "?#";
+            const range = `${startNum}-${endNum}`;
+            streaks.push({ name, max, range });
+        }
     });
 
     if (streaks.length === 0) {
@@ -387,7 +375,7 @@ function renderLongestStreaks(data) {
 
     const top = streaks.sort((a, b) => b.max - a.max).slice(0, 10);
     el.innerHTML = top.map((item, i) => {
-        return `<div class="stats-row"><span>${i+1}. ${item.name}</span> <strong>${item.max}</strong></div>`;
+        return `<div class="stats-row"><span>${i+1}. ${item.name} <span style="font-size:0.8em; color:#888;">(${item.range})</span></span> <strong>${item.max}</strong></div>`;
     }).join('');
 }
 
