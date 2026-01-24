@@ -157,6 +157,9 @@ function updateStatsView(data) {
     renderWordCloud(data);
     renderTimeSlots(data);
     renderFirstTimersPerEvent(data);
+    renderFirstTimersTopEvents(data);
+    renderOneTimers(data);
+    renderLongestStreaks(data);
     
     renderYearHeatmap(data);
 
@@ -269,6 +272,122 @@ function renderFirstTimersPerEvent(data) {
             <span>${evt.date} • ${evt.name}</span>
             <strong>${evt.firstTimersCount}</strong>
         </div>`;
+    }).join('');
+}
+
+function renderFirstTimersTopEvents(data) {
+    const el = document.getElementById('stats-first-timers-top');
+    if (!el) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const validEvents = data
+        .filter(e => e.date && e.date <= todayStr)
+        .filter(e => !(e.name && e.name.includes("/ PERUTTU /")));
+
+    if (validEvents.length === 0) {
+        el.innerHTML = "Ei tietoja.";
+        return;
+    }
+
+    const sortedByDate = [...validEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const seen = new Set();
+    sortedByDate.forEach(evt => {
+        let count = 0;
+        const names = (evt.attendeeNames || []).map(n => n.trim().toLowerCase()).filter(Boolean);
+        const uniqueNames = new Set(names);
+        uniqueNames.forEach(name => {
+            if (!seen.has(name)) {
+                seen.add(name);
+                count++;
+            }
+        });
+        evt.firstTimersCount = count;
+    });
+
+    const top = [...sortedByDate].sort((a, b) => b.firstTimersCount - a.firstTimersCount).slice(0, 10);
+    if (top.length === 0) {
+        el.innerHTML = "Ei tietoja.";
+        return;
+    }
+
+    el.innerHTML = top.map((evt, i) => {
+        return `<div class="stats-row clickable" onclick="openGuestbook('${evt.key}')">
+            <span>${i+1}. ${evt.name}</span>
+            <strong>${evt.firstTimersCount}</strong>
+        </div>`;
+    }).join('');
+}
+
+function renderOneTimers(data) {
+    const el = document.getElementById('stats-one-timers');
+    if (!el) return;
+
+    const map = {};
+    data.forEach(e => {
+        if (e.attendeeNames) {
+            e.attendeeNames.forEach(n => {
+                const key = n.trim();
+                if (!key) return;
+                map[key] = (map[key] || 0) + 1;
+            });
+        }
+    });
+
+    const oneTimers = Object.entries(map).filter(([, count]) => count === 1).map(([name]) => name);
+    if (oneTimers.length === 0) {
+        el.innerHTML = "Ei tietoja.";
+        return;
+    }
+
+    const sorted = oneTimers.sort((a, b) => a.localeCompare(b));
+    el.innerHTML = sorted.map(name => {
+        return `<div class="stats-row"><span>${name}</span> <strong>1</strong></div>`;
+    }).join('');
+}
+
+function renderLongestStreaks(data) {
+    const el = document.getElementById('stats-longest-streaks');
+    if (!el) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const validEvents = data
+        .filter(e => e.date && e.date <= todayStr)
+        .filter(e => !(e.name && e.name.includes("/ PERUTTU /")));
+
+    if (validEvents.length === 0) {
+        el.innerHTML = "Ei tietoja.";
+        return;
+    }
+
+    const events = [...validEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const allNames = new Set();
+    events.forEach(evt => (evt.attendeeNames || []).forEach(n => allNames.add(n.trim())));
+
+    const streaks = [];
+    allNames.forEach(name => {
+        if (!name) return;
+        let current = 0;
+        let max = 0;
+        events.forEach(evt => {
+            const attended = (evt.attendeeNames || []).some(n => n.trim() === name);
+            if (attended) {
+                current += 1;
+                if (current > max) max = current;
+            } else {
+                current = 0;
+            }
+        });
+        if (max > 1) streaks.push({ name, max });
+    });
+
+    if (streaks.length === 0) {
+        el.innerHTML = "Ei tietoja.";
+        return;
+    }
+
+    const top = streaks.sort((a, b) => b.max - a.max).slice(0, 10);
+    el.innerHTML = top.map((item, i) => {
+        return `<div class="stats-row"><span>${i+1}. ${item.name}</span> <strong>${item.max}</strong></div>`;
     }).join('');
 }
 
