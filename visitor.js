@@ -22,6 +22,7 @@ const visitorTranslations = {
         nextEventTitle: "🔮 Seuraava miitti:",
         noNextEvent: "Ei tiedossa olevia tulevia miittejä.",
         expiryUntil: "⏳ Tämä kirjausikkuna voimassa {0} klo {1} asti.",
+        streakInfo: "Putki: {0} miittiä (alkaa {1})",
         expiredTitle: "⛔ Kirjaus on sulkeutunut",
         expiredBody: "Tämä QR‑koodi on voimassa vain 3 päivää tapahtuman jälkeen.",
         expiredAlert: "Kirjaus on sulkeutunut. QR‑koodi ei ole enää voimassa."
@@ -44,6 +45,7 @@ const visitorTranslations = {
         nextEventTitle: "🔮 Next Event:",
         noNextEvent: "No upcoming events known.",
         expiryUntil: "⏳ This sign-in window is open until {0} at {1}.",
+        streakInfo: "Streak: {0} events (starts at {1})",
         expiredTitle: "⛔ Sign-in closed",
         expiredBody: "This QR code is valid only 3 days after the event.",
         expiredAlert: "Sign-in is closed. This QR code is no longer valid."
@@ -66,6 +68,7 @@ const visitorTranslations = {
         nextEventTitle: "🔮 Nästa event:",
         noNextEvent: "Inga kommande event kända.",
         expiryUntil: "⏳ Den här inloggningen gäller till {0} kl {1}.",
+        streakInfo: "Putke: {0} miittiä (startar {1})",
         expiredTitle: "⛔ Inskrivningen är stängd",
         expiredBody: "Den här QR‑koden gäller bara 3 dagar efter eventet.",
         expiredAlert: "Inskrivningen är stängd. Den här QR‑koden är inte längre giltig."
@@ -88,6 +91,7 @@ const visitorTranslations = {
         nextEventTitle: "🔮 Järgmine üritus:",
         noNextEvent: "Tulevasi üritusi ei ole teada.",
         expiryUntil: "⏳ See registreerimisaken kehtib kuni {0} kell {1}.",
+        streakInfo: "Seeria: {0} miitti (algab {1})",
         expiredTitle: "⛔ Sisselogimine suletud",
         expiredBody: "See QR‑kood kehtib vaid 3 päeva pärast üritust.",
         expiredAlert: "Sisselogimine on suletud. See QR‑kood ei kehti enam."
@@ -185,7 +189,7 @@ window.handleVisitorSign = async function() {
 
     // --- TILASTOJEN LASKENTA ---
     let userHistory = null;
-    let stats = { isFirstTime: false, totalVisits: 0, title: "", greeting: "", streakText: "", isMilestone: false, nextEvent: null };
+    let stats = { isFirstTime: false, totalVisits: 0, title: "", greeting: "", streakText: "", isMilestone: false, nextEvent: null, streakCount: 0, streakStartLabel: "" };
 
     try {
         const eventsSnap = await firebase.database().ref('miitit/' + targetHost + '/events').once('value');
@@ -199,6 +203,20 @@ window.handleVisitorSign = async function() {
         });
         
         allHostEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        const isMiittiEvent = (evt) => {
+            const type = (evt.type || '').toLowerCase();
+            if (type) return type === 'miitti';
+            const name = (evt.name || '').toLowerCase();
+            if (name.includes('cito')) return false;
+            if (name.includes('yhteisö') || name.includes('juhla') || name.includes('cce') || name.includes('celebration')) return false;
+            return true;
+        };
+        const miittiEvents = allHostEvents
+            .filter(e => !e.name.includes("/ PERUTTU /"))
+            .filter(e => isMiittiEvent(e));
+        let seq = 0;
+        miittiEvents.forEach(e => { seq += 1; e.seqNumber = seq; });
         
         // Seuraava miitti (Paikallinen aika)
         const tzOffset = (new Date()).getTimezoneOffset() * 60000; 
@@ -235,25 +253,33 @@ window.handleVisitorSign = async function() {
             stats.title = window.MK_Messages.getRankTitle(stats.totalVisits);
             stats.greeting = window.MK_Messages.getRandomGreeting(nick, stats.isFirstTime);
             
-            // Putkilaskuri
-            if (!stats.isFirstTime && allHostEvents.length > 0) {
-                const currentEventIndex = allHostEvents.findIndex(e => e.key === eventId);
+            // Putkilaskuri (vain miitit)
+            const currentEvent = eventsMap[eventId];
+            const currentIsMiitti = currentEvent && isMiittiEvent(currentEvent);
+            if (currentIsMiitti && !stats.isFirstTime && miittiEvents.length > 0) {
+                const currentEventIndex = miittiEvents.findIndex(e => e.key === eventId);
                 if (currentEventIndex > 0) {
-                    const previousEventKey = allHostEvents[currentEventIndex - 1].key;
+                    const previousEventKey = miittiEvents[currentEventIndex - 1].key;
                     const attendedPrevious = userHistory.some(e => e.key === previousEventKey);
                     if (attendedPrevious) {
                         let streak = 0;
                         let globalIdx = currentEventIndex;
                         let historyIdx = userHistory.length - 1;
                         while (globalIdx >= 0 && historyIdx >= 0) {
-                            if (allHostEvents[globalIdx].key === userHistory[historyIdx].key) { streak++; globalIdx--; historyIdx--; } else { break; }
+                            if (miittiEvents[globalIdx].key === userHistory[historyIdx].key) { streak++; globalIdx--; historyIdx--; } else { break; }
                         }
                         stats.streakText = window.MK_Messages.getStreakMessage(streak);
+                        stats.streakCount = streak;
+                        const startEvent = miittiEvents[globalIdx + 1];
+                        if (startEvent) {
+                            const num = startEvent.seqNumber ? `#${startEvent.seqNumber}` : "";
+                            stats.streakStartLabel = `${num} ${startEvent.name}`.trim();
+                        }
                     } else {
                         const lastVisitEvent = userHistory[userHistory.length - 2];
                         if (lastVisitEvent) {
                             const daysDiff = Math.floor((new Date() - new Date(lastVisitEvent.date)) / (1000 * 60 * 60 * 24));
-                            const lastVisitGlobalIndex = allHostEvents.findIndex(e => e.key === lastVisitEvent.key);
+                            const lastVisitGlobalIndex = miittiEvents.findIndex(e => e.key === lastVisitEvent.key);
                             const missedCount = (currentEventIndex - lastVisitGlobalIndex) - 1;
                             stats.streakText = window.MK_Messages.getMissedMessage(daysDiff, missedCount);
                         }
@@ -346,7 +372,10 @@ function showVisitorModalWithLang(nick, history, stats) {
             infoBox.style.borderRadius = "5px";
             infoBox.style.textAlign = "center";
             infoBox.style.border = "1px dashed var(--secondary-color)";
-            infoBox.innerHTML = stats.streakText;
+            const streakInfo = (stats.streakCount > 1 && stats.streakStartLabel)
+                ? `<div style="margin-top:6px; font-size:0.9em; color:#888;">${t.streakInfo.replace('{0}', stats.streakCount).replace('{1}', stats.streakStartLabel)}</div>`
+                : "";
+            infoBox.innerHTML = stats.streakText + streakInfo;
             listEl.appendChild(infoBox);
         }
 
