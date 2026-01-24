@@ -11,6 +11,12 @@ echo Git-päivitysskripti GitHubiin
 echo =========================================
 echo.
 
+echo HUOM: Tämä skripti ylikirjoittaa GitHub-repon sisällön.
+echo (Force push) Tämä korvaa GitHubin nykyisen historian.
+echo.
+set /p confirm_force="Haluatko ylikirjoittaa GitHubin? (K/E): "
+if /I not "%confirm_force%"=="K" goto :eof
+
 REM Varmista että repo on alustettu
 set "LAST_STEP=git-repo tarkistus"
 git rev-parse --is-inside-work-tree >nul 2>&1
@@ -78,15 +84,9 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo Haetaan viimeisimmat muutokset GitHubista (pull --rebase)...
-set "LAST_STEP=git pull"
-git pull --rebase
-if %errorlevel% neq 0 goto :error
-
-echo.
-echo Lahetetaan muutokset GitHubiin...
+echo Lahetetaan muutokset GitHubiin (force)...
 set "LAST_STEP=git push"
-git push -u origin main
+git push -u origin main --force
 if %errorlevel% neq 0 goto :error
 
 echo.
