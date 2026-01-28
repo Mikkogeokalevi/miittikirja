@@ -93,6 +93,36 @@ function isQrExpired(eventDateStr) {
     return today > expiryDate;
 }
 
+function extractThemeColorFromDescription(descriptionHtml) {
+    if (!descriptionHtml) return null;
+    const dataMatch = descriptionHtml.match(/data-theme-color\s*=\s*["'](#?[0-9a-fA-F]{3,8})["']/);
+    if (dataMatch) {
+        const val = dataMatch[1];
+        return val.startsWith('#') ? val : `#${val}`;
+    }
+    const hexMatch = descriptionHtml.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/);
+    if (hexMatch) return `#${hexMatch[1]}`;
+    return null;
+}
+
+function applyVisitorThemeColor(color) {
+    const visitorView = document.getElementById('visitor-view');
+    if (!visitorView) return;
+    if (!color) {
+        visitorView.style.removeProperty('--primary-color');
+        visitorView.style.removeProperty('--secondary-color');
+        visitorView.style.removeProperty('--highlight-border');
+        visitorView.style.removeProperty('--border-color');
+        visitorView.style.removeProperty('--link-color');
+        return;
+    }
+    visitorView.style.setProperty('--primary-color', color);
+    visitorView.style.setProperty('--secondary-color', color);
+    visitorView.style.setProperty('--highlight-border', color);
+    visitorView.style.setProperty('--border-color', color);
+    visitorView.style.setProperty('--link-color', color);
+}
+
 function formatDateFi(dateObj) {
     const dd = String(dateObj.getDate()).padStart(2, '0');
     const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -128,6 +158,7 @@ async function openVisitorGuestbook(uid, eventId) {
         }
         
         currentEventGcCode = evt.gc || null;
+        applyVisitorThemeColor(extractThemeColorFromDescription(evt.descriptionHtml));
 
         const nameEl = document.getElementById('vv-event-name');
         const infoEl = document.getElementById('vv-event-info');

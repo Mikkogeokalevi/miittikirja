@@ -23,6 +23,10 @@ const visitorTranslations = {
         noNextEvent: "Ei tiedossa olevia tulevia miittejä.",
         expiryUntil: "⏳ Tämä kirjausikkuna voimassa {0} klo {1} asti.",
         streakInfo: "Putki: {0} miittiä (alkaa {1})",
+        badgeFirst: "Ensikertalainen!",
+        badgeStreak: "Putki käynnissä: {0}",
+        badgeMilestone: "Juhlakerta!",
+        badges: ["Hyvä meininki!", "Tervetuloa takaisin!", "Kiitos kun piipahdit!", "Legendaarinen kävijä!"],
         expiredTitle: "⛔ Kirjaus on sulkeutunut",
         expiredBody: "Tämä QR‑koodi on voimassa vain 3 päivää tapahtuman jälkeen.",
         expiredAlert: "Kirjaus on sulkeutunut. QR‑koodi ei ole enää voimassa."
@@ -46,6 +50,10 @@ const visitorTranslations = {
         noNextEvent: "No upcoming events known.",
         expiryUntil: "⏳ This sign-in window is open until {0} at {1}.",
         streakInfo: "Streak: {0} events (starts at {1})",
+        badgeFirst: "First timer!",
+        badgeStreak: "Streak active: {0}",
+        badgeMilestone: "Milestone visit!",
+        badges: ["Great to see you!", "Welcome back!", "Thanks for stopping by!", "Community star!"],
         expiredTitle: "⛔ Sign-in closed",
         expiredBody: "This QR code is valid only 3 days after the event.",
         expiredAlert: "Sign-in is closed. This QR code is no longer valid."
@@ -69,6 +77,10 @@ const visitorTranslations = {
         noNextEvent: "Inga kommande event kända.",
         expiryUntil: "⏳ Den här inloggningen gäller till {0} kl {1}.",
         streakInfo: "Putke: {0} miittiä (startar {1})",
+        badgeFirst: "Första gången!",
+        badgeStreak: "Putke på gång: {0}",
+        badgeMilestone: "Jubileumsbesök!",
+        badges: ["Kul att se dig!", "Välkommen tillbaka!", "Tack för besöket!", "Gemenskapsstjärna!"],
         expiredTitle: "⛔ Inskrivningen är stängd",
         expiredBody: "Den här QR‑koden gäller bara 3 dagar efter eventet.",
         expiredAlert: "Inskrivningen är stängd. Den här QR‑koden är inte längre giltig."
@@ -92,6 +104,10 @@ const visitorTranslations = {
         noNextEvent: "Tulevasi üritusi ei ole teada.",
         expiryUntil: "⏳ See registreerimisaken kehtib kuni {0} kell {1}.",
         streakInfo: "Seeria: {0} miitti (algab {1})",
+        badgeFirst: "Esimest korda!",
+        badgeStreak: "Seeria käib: {0}",
+        badgeMilestone: "Tähtpäeva külastus!",
+        badges: ["Hea meel sind näha!", "Tere tulemast tagasi!", "Aitäh külastamast!", "Kogukonna staar!"],
         expiredTitle: "⛔ Sisselogimine suletud",
         expiredBody: "See QR‑kood kehtib vaid 3 päeva pärast üritust.",
         expiredAlert: "Sisselogimine on suletud. See QR‑kood ei kehti enam."
@@ -347,6 +363,25 @@ function showVisitorModalWithLang(nick, history, stats) {
     document.getElementById('up-nickname').innerHTML = `<div style="font-size:0.8em; color:#888; margin-bottom:5px;">${stats.title || ""}</div>${stats.greeting}`;
     document.getElementById('up-nickname').style.color = stats.isFirstTime ? "#d32f2f" : "var(--header-color)";
     document.getElementById('up-total').innerText = stats.totalVisits;
+
+    let badgeEl = document.getElementById('up-badge');
+    if (!badgeEl) {
+        badgeEl = document.createElement('div');
+        badgeEl.id = 'up-badge';
+        badgeEl.className = 'visitor-badge';
+        document.getElementById('up-nickname').insertAdjacentElement('afterend', badgeEl);
+    }
+    let badgeText = "";
+    if (stats.isFirstTime && t.badgeFirst) {
+        badgeText = t.badgeFirst;
+    } else if (stats.streakCount > 1 && t.badgeStreak) {
+        badgeText = t.badgeStreak.replace('{0}', stats.streakCount);
+    } else if (stats.isMilestone && t.badgeMilestone) {
+        badgeText = t.badgeMilestone;
+    } else if (t.badges && t.badges.length > 0) {
+        badgeText = t.badges[Math.floor(Math.random() * t.badges.length)];
+    }
+    badgeEl.innerText = badgeText;
     
     // 4. HISTORIALISTAN PÄIVITYS
     const listEl = document.getElementById('up-history-list');
