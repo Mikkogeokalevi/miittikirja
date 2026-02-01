@@ -174,11 +174,16 @@ function parseSrvContent(content) {
         // Päivämäärä (DD.MM.YYYY)
         const dateStr = parts[0].trim().replace(/"/g, '');
         const dateMatch = dateStr.match(/(\d{2})\.(\d{2})\.(\d{4})/);
-        if (!dateMatch) return;
+        if (!dateMatch) {
+            console.log("Virheellinen päivämäärä:", dateStr, "rivi:", line);
+            return;
+        }
         
         const day = parseInt(dateMatch[1]);
         const month = parseInt(dateMatch[2]);
         const year = parseInt(dateMatch[3]);
+        
+        console.log("Päivämäärä parsittu:", { day, month, year, original: dateStr });
         
         // Log type ("Found it" tai "Attended")
         const logType = parts[1].trim().replace(/"/g, '');
@@ -192,14 +197,26 @@ function parseSrvContent(content) {
         // Tyyppi
         const cacheType = parts[4].trim().replace(/"/g, '');
         
+        console.log("Tapahtuman tiedot:", { logType, cacheType, gcCode, name });
+        
         const monthKey = String(month).padStart(2, '0');
         const dayKey = String(day).padStart(2, '0');
         const dateKey = `${monthKey}-${dayKey}`;
         
         years.add(year);
         
-        // Käsitellään VAIN miitit ja CITO-tapahtumat
-        if (logType === "Attended" && (cacheType.includes("Event") || cacheType.includes("CITO"))) {
+        const isEvent = cacheType.includes("Event");
+        const isCito = cacheType.includes("CITO") || cacheType.includes("Cache In Trash Out");
+        const isCommunity = cacheType.includes("Community Celebration");
+        
+        console.log("Suodatustulos:", { isEvent, isCito, isCommunity, dateKey });
+        
+        // Käsitellään VAIN varsinaiset miitit (ei CITO, ei Community Celebration)
+        if (logType === "Attended" && 
+            isEvent && 
+            !isCito && 
+            !isCommunity) {
+            console.log("Lisätään miitti:", dateKey, gcCode);
             if (!newEvents[dateKey]) {
                 newEvents[dateKey] = [];
             }
@@ -207,11 +224,12 @@ function parseSrvContent(content) {
                 date: `${year}-${monthKey}-${dayKey}`,
                 gcCode: gcCode,
                 name: name,
-                type: cacheType.includes("CITO") ? "cito" : "miitti"
+                type: "miitti"
             });
             totalEvents++;
+        } else {
+            console.log("Ohitetaan tapahtuma:", logType, cacheType);
         }
-        // Perinteiset geokätköt ("Found it") ohitetaan - ei lisätä kalenteriin
     });
     
     // Yhdistetään vain miittidataan
@@ -309,8 +327,7 @@ function renderCalendar() {
                 tooltip += `${eventCount} miittiä\n`;
                 // Lisätään miittien GC-koodit ja nimet
                 calendarData.events[dateKey].forEach((event, index) => {
-                    const prefix = event.type === 'cito' ? 'CITO' : 'Miitti';
-                    tooltip += `  • ${prefix}: ${event.gcCode} - ${event.name}`;
+                    tooltip += `  • Miitti: ${event.gcCode} - ${event.name}`;
                     if (index < calendarData.events[dateKey].length - 1) {
                         tooltip += '\n';
                     }
@@ -339,8 +356,7 @@ function showDayDetails(dateKey, displayDate) {
     
     let content = `<h3>${displayDate} - ${events.length} miittiä</h3><ul>`;
     events.forEach(event => {
-        const prefix = event.type === 'cito' ? 'CITO' : 'Miitti';
-        content += `<li><strong>${prefix}</strong>: ${event.gcCode} - ${event.name}</li>`;
+        content += `<li><strong>Miitti</strong>: ${event.gcCode} - ${event.name}</li>`;
     });
     content += '</ul>';
     
