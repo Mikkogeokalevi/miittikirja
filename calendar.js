@@ -1,6 +1,6 @@
 // ==========================================
 // MK MIITTIKIRJA - CALENDAR.JS
-// Versio: 1.1.0 - Firebase-integraatio + geocache.fi SRV
+// Versio: 1.1.0 - Firebase-integraatio + geocache.fi CSV
 // ==========================================
 
 let calendarData = {
@@ -90,7 +90,7 @@ async function saveCalendarData() {
 function importSrvFile() {
     const fileInput = document.getElementById('srv-file-input');
     if (!fileInput || !fileInput.files.length) {
-        alert('Valitse SRV-tiedosto ensin!');
+        alert('Valitse CSV-tiedosto ensin!');
         return;
     }
     
@@ -104,10 +104,10 @@ function importSrvFile() {
             saveCalendarData();
             renderCalendar();
             updateCalendarLegend();
-            alert('SRV-tiedosto tuotu onnistuneesti! Löytöjä: ' + calendarData.totalFinds + ', Miittejä: ' + Object.keys(calendarData.events).length);
+            alert('CSV-tiedosto tuotu onnistuneesti! Löytöjä: ' + calendarData.totalFinds + ', Miittejä: ' + Object.keys(calendarData.events).length);
         } catch (error) {
-            console.error('SRV-tiedoston käsittelyvirhe:', error);
-            alert('SRV-tiedoston käsittely epäonnistui: ' + error.message);
+            console.error('CSV-tiedoston käsittelyvirhe:', error);
+            alert('CSV-tiedoston käsittely epäonnistui: ' + error.message);
         }
     };
     
@@ -126,7 +126,7 @@ function parseSrvContent(content) {
     let totalFinds = 0;
     let totalEvents = 0;
     
-    // geocache.fi formaatti: DD.MM.YYYY,"Found it" tai "Attended",GC-koodi,"Nimi",Tyyppi,Koko,D,T,U,V
+    // geocache.fi CSV-formaatti: DD.MM.YYYY,"Found it" tai "Attended",GC-koodi,"Nimi",Tyyppi,Koko,D,T,U,V
     lines.forEach(line => {
         if (!line.trim()) return;
         
@@ -200,7 +200,7 @@ function parseSrvContent(content) {
     calendarData.totalFinds += totalFinds;
     calendarData.years = Array.from(years).sort();
     
-    console.log("SRV-data käsitelty:", { 
+    console.log("CSV-data käsitelty:", { 
         newFinds, 
         newEvents, 
         totalFinds, 
