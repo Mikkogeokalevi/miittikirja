@@ -26,6 +26,8 @@
     /* Napit */
     --btn-blue-bg: #A0522D;
     --btn-blue-text: #ffffff;
+    --btn-purple-bg: #8B4513;
+    --btn-purple-text: #ffffff;
     --btn-green-bg: #2e7d32;
     --btn-green-text: #ffffff;
     --btn-red-bg: #8B0000;
@@ -338,6 +340,7 @@ input::placeholder, textarea::placeholder { color: var(--accent-color); opacity:
     box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
 }
 .btn-blue { background-color: var(--btn-blue-bg); color: var(--btn-blue-text); } 
+.btn-purple { background-color: var(--btn-purple-bg); color: var(--btn-purple-text); } 
 .btn-green { background-color: var(--btn-green-bg); color: var(--btn-green-text); border: 1px solid var(--today-border); } 
 .btn-red { background-color: var(--btn-red-bg); color: #fff; } 
 .btn-gray { background-color: var(--btn-gray-bg); color: #fff; }
@@ -604,4 +607,211 @@ body.theme-light .time-slot-box.active {
 @keyframes confetti-fall {
     0% { transform: translateY(0) rotate(0deg); opacity: 1; }
     100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+
+/* ==========================================
+   KALENTERIN TYYLIT
+   ========================================== */
+
+.calendar-grid {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 0.85em;
+    background: var(--card-bg);
+}
+
+.calendar-header-cell {
+    background: var(--highlight-bg);
+    border: 1px solid var(--border-color);
+    padding: 8px 4px;
+    text-align: center;
+    font-weight: bold;
+    color: var(--header-color);
+}
+
+.calendar-row {
+    display: contents;
+}
+
+.calendar-day-cell {
+    background: var(--highlight-bg);
+    border: 1px solid var(--border-color);
+    padding: 8px 4px;
+    text-align: center;
+    font-weight: bold;
+    color: var(--text-color);
+    min-width: 30px;
+}
+
+.calendar-cell {
+    border: 1px solid var(--dotted-border);
+    padding: 4px 2px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 25px;
+    min-height: 20px;
+    position: relative;
+}
+
+.calendar-cell:hover {
+    border-color: var(--primary-color);
+    transform: scale(1.1);
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Väritehosteet löytömäärän mukaan */
+.calendar-cell.intensity-0 {
+    background: var(--card-bg);
+    color: var(--text-color);
+    opacity: 0.3;
+}
+
+.calendar-cell.intensity-1 {
+    background: #c6e48b;
+    color: #000;
+}
+
+.calendar-cell.intensity-2 {
+    background: #7bc96f;
+    color: #fff;
+}
+
+.calendar-cell.intensity-3 {
+    background: #239a3b;
+    color: #fff;
+}
+
+.calendar-cell.intensity-4 {
+    background: #196127;
+    color: #fff;
+}
+
+.calendar-cell.intensity-5 {
+    background: #0e4429;
+    color: #fff;
+    box-shadow: 0 0 4px rgba(255,255,255,0.3);
+}
+
+/* Teemakohtaiset säädöt */
+body.theme-light .calendar-cell.intensity-0 {
+    background: #f0f0f0;
+    opacity: 0.5;
+}
+
+body.theme-green .calendar-cell.intensity-1 {
+    background: #a8d5a8;
+}
+
+body.theme-green .calendar-cell.intensity-2 {
+    background: #7cb87c;
+}
+
+body.theme-green .calendar-cell.intensity-3 {
+    background: #5a9b5a;
+}
+
+body.theme-green .calendar-cell.intensity-4 {
+    background: #3d7d3d;
+}
+
+body.theme-green .calendar-cell.intensity-5 {
+    background: #2a5a2a;
+}
+
+body.theme-blue .calendar-cell.intensity-1 {
+    background: #b3d9f2;
+}
+
+body.theme-blue .calendar-cell.intensity-2 {
+    background: #85c1e9;
+}
+
+body.theme-blue .calendar-cell.intensity-3 {
+    background: #5dade2;
+}
+
+body.theme-blue .calendar-cell.intensity-4 {
+    background: #3498db;
+}
+
+body.theme-blue .calendar-cell.intensity-5 {
+    background: #2874a6;
+}
+
+.intensity-legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.intensity-sample {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-weight: bold;
+    border: 1px solid var(--border-color);
+    min-width: 30px;
+    text-align: center;
+}
+
+.intensity-sample.intensity-0 {
+    background: var(--card-bg);
+    opacity: 0.3;
+}
+
+.intensity-sample.intensity-1 {
+    background: #c6e48b;
+    color: #000;
+}
+
+.intensity-sample.intensity-2 {
+    background: #7bc96f;
+    color: #fff;
+}
+
+.intensity-sample.intensity-3 {
+    background: #239a3b;
+    color: #fff;
+}
+
+.intensity-sample.intensity-4 {
+    background: #196127;
+    color: #fff;
+}
+
+.intensity-sample.intensity-5 {
+    background: #0e4429;
+    color: #fff;
+}
+
+/* Responsiivisuus */
+@media (max-width: 768px) {
+    .calendar-grid {
+        font-size: 0.7em;
+    }
+    
+    .calendar-header-cell,
+    .calendar-day-cell,
+    .calendar-cell {
+        padding: 4px 2px;
+        min-width: 20px;
+    }
+    
+    .calendar-cell:hover {
+        transform: scale(1.05);
+    }
+    
+    .intensity-legend {
+        font-size: 0.8em;
+    }
+    
+    .intensity-sample {
+        padding: 2px 4px;
+        min-width: 20px;
+    }
 }

@@ -92,6 +92,7 @@
         <div style="display:flex; gap:10px; margin-bottom: 20px;">
             <button id="btn-find-today" class="btn btn-green" style="flex:2;">📅 AVAA TÄMÄ PÄIVÄ</button>
             <button id="btn-show-stats" class="btn btn-blue" style="flex:1;">📊 TILASTOT</button>
+            <button id="btn-show-calendar" class="btn btn-purple" style="flex:1;">📅 KALENTERI</button>
         </div>
         
         <div class="card-form">
@@ -224,6 +225,7 @@
             <button class="tab-btn active" onclick="switchStatsTab('tab-lists', this)">📍 Listat</button>
             <button class="tab-btn" onclick="switchStatsTab('tab-graphs', this)">📊 Graafit</button>
             <button class="tab-btn" onclick="switchStatsTab('tab-map', this)">🗺️ Kartta</button>
+            <button class="tab-btn" onclick="switchStatsTab('tab-calendar', this)">📅 Kalenteri</button>
         </div>
 
         <div id="tab-lists" class="tab-content active">
@@ -287,6 +289,19 @@
             <div class="card" style="padding:5px;">
                 <div id="stats-map" style="width:100%; border-radius:4px;"></div>
                 <div style="text-align:center; padding:10px; color:#888;">Näytetään miitit, joilla on koordinaatit.</div>
+            </div>
+        </div>
+
+        <div id="tab-calendar" class="tab-content">
+            <div class="card">
+                <h3>📅 Miittikalenteri</h3>
+                <div style="margin-bottom:15px;">
+                    <input type="file" id="srv-file-input" accept=".srv" style="margin-right:10px;">
+                    <button id="btn-import-srv" class="btn btn-blue btn-small">Tuo SRV-tiedosto</button>
+                    <button id="btn-clear-calendar" class="btn btn-gray btn-small">Tyhjennä</button>
+                </div>
+                <div id="calendar-container"></div>
+                <div id="calendar-legend" style="margin-top:15px; font-size:0.9em; color:#666;"></div>
             </div>
         </div>
     </div>
@@ -453,6 +468,7 @@
     
     <script src="app.js"></script>
     <script src="stats.js"></script>
+    <script src="calendar.js"></script>
     
     <script>
         function switchStatsTab(tabId, btn) {
@@ -466,6 +482,9 @@
             }
             if(tabId === 'tab-map' && typeof renderMap === 'function') {
                 setTimeout(() => { renderMap(window.currentFilteredData); }, 100);
+            }
+            if(tabId === 'tab-calendar' && typeof initCalendar === 'function') {
+                setTimeout(() => { initCalendar(); }, 100);
             }
         }
 

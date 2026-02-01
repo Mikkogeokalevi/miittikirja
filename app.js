@@ -1204,6 +1204,9 @@ const openStats = () => {
 const btnStats = document.getElementById('btn-show-stats');
 if(btnStats) btnStats.onclick = openStats;
 
+const btnCalendar = document.getElementById('btn-show-calendar');
+if(btnCalendar) btnCalendar.onclick = openStats; // Avaa tilastot, jossa on kalenteri-tab
+
 const btnStatsUser = document.getElementById('btn-show-stats-user');
 if(btnStatsUser) btnStatsUser.onclick = openStats;
 
