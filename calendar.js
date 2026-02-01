@@ -60,7 +60,13 @@ async function loadCalendarData() {
         const calendarSnap = await db.ref('miitit/' + currentUser.uid + '/calendar').once('value');
         const data = calendarSnap.val();
         if (data) {
-            calendarData = data;
+            // Varmistetaan, että ladattu data on kelvollista
+            calendarData = {
+                finds: (data.finds && typeof data.finds === 'object') ? data.finds : {},
+                totalFinds: Number(data.totalFinds) || 0,
+                years: Array.isArray(data.years) ? data.years : [],
+                events: (data.events && typeof data.events === 'object') ? data.events : {}
+            };
             console.log("Kalenteridata ladattu Firebasesta:", calendarData);
         } else {
             console.log("Ei kalenteridataa Firebasessa, aloitetaan tyhjällä");
@@ -76,6 +82,27 @@ async function saveCalendarData() {
     if (!currentUser || !currentUser.uid) {
         console.log("Ei kirjautunutta käyttäjää, ei tallenneta Firebaseen");
         return;
+    }
+    
+    // Varmistetaan, että kaikki arvot ovat kelvollisia ennen tallennusta
+    if (!calendarData) {
+        calendarData = { finds: {}, totalFinds: 0, years: [], events: {} };
+    }
+    
+    // Varmistetaan, että totalFinds on numero
+    calendarData.totalFinds = Number(calendarData.totalFinds) || 0;
+    
+    // Varmistetaan, että years on taulukko
+    if (!Array.isArray(calendarData.years)) {
+        calendarData.years = [];
+    }
+    
+    // Varmistetaan, että finds ja events ovat objekteja
+    if (!calendarData.finds || typeof calendarData.finds !== 'object') {
+        calendarData.finds = {};
+    }
+    if (!calendarData.events || typeof calendarData.events !== 'object') {
+        calendarData.events = {};
     }
     
     try {
@@ -208,7 +235,7 @@ function parseSrvContent(content) {
         calendarData.events[dateKey].push(...newEvents[dateKey]);
     });
     
-    calendarData.totalFinds += totalFinds;
+    calendarData.totalFinds = (calendarData.totalFinds || 0) + totalFinds;
     calendarData.years = Array.from(years).sort();
     
     console.log("CSV-data käsitelty:", { 
