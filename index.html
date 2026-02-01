@@ -249,6 +249,39 @@
             <div class="card"><h3>👥 TOP 10 Kävijät</h3><div id="stats-top-users"></div></div>
             <div class="card"><h3>🎯 Vain kerran käyneet</h3><div id="stats-one-timers" class="scroll-box"></div></div>
             <div class="card"><h3>🔥 Pisimmät putket</h3><div id="stats-longest-streaks" class="scroll-box"></div></div>
+
+            <div class="card">
+                <h3>🗓️ Miittikalenteri</h3>
+                <div class="calendar-controls">
+                    <button id="cal-prev" class="btn btn-small btn-gray">‹</button>
+                    <select id="cal-month"></select>
+                    <select id="cal-year"></select>
+                    <button id="cal-next" class="btn btn-small btn-gray">›</button>
+                </div>
+                <div class="calendar-legend">
+                    <span class="cal-legend"><span class="cal-dot own"></span>Omat tulevat</span>
+                    <span class="cal-legend"><span class="cal-dot planned"></span>Aiotut muiden</span>
+                    <span class="cal-legend"><span class="cal-dot visited"></span>Käydyt</span>
+                </div>
+                <div id="calendar-grid" class="calendar-grid"></div>
+                <div class="calendar-import">
+                    <label for="calendar-csv-input"><strong>Tuonti (käydyt miitit):</strong></label>
+                    <input type="file" id="calendar-csv-input" accept=".csv">
+                    <small>Geocache.fi CSV: käytetään Attended-rivit.</small>
+                </div>
+                <div class="calendar-plan">
+                    <div style="display:grid; grid-template-columns: 1fr 2fr; gap:6px;">
+                        <input type="date" id="plan-date">
+                        <input type="text" id="plan-name" placeholder="Aiottu miitti (muu järjestäjä)">
+                    </div>
+                    <button id="plan-add" class="btn btn-small btn-blue">Lisää aiottu</button>
+                    <div style="margin-top:8px;">
+                        <label for="plan-csv-input"><strong>Tuonti (aiotut):</strong></label>
+                        <input type="file" id="plan-csv-input" accept=".csv">
+                        <small>CSV: pvm,nimi (dd.mm.yyyy tai yyyy-mm-dd).</small>
+                    </div>
+                </div>
+            </div>
             
             <div class="card"><h3>🔺 Yhteisöuskollisuus</h3><div id="stats-loyalty"></div></div>
 

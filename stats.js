@@ -5,7 +5,9 @@
 
 let allStatsData = {
     events: [],
-    attendees: {}
+    attendees: {},
+    plans: [],
+    visited: []
 };
 
 let chartInstances = {};
@@ -25,6 +27,10 @@ async function initStats() {
         const logsSnap = await db.ref('miitit/' + currentUser.uid + '/logs').once('value');
         const logsData = logsSnap.val() || {};
 
+        const plansSnap = await db.ref('miitit/' + currentUser.uid + '/plans').once('value');
+        const plans = [];
+        plansSnap.forEach(child => { plans.push({ key: child.key, ...child.val() }); });
+
         events.forEach(evt => {
             const evtLogs = logsData[evt.key] || {};
             evt.attendeeCount = Object.keys(evtLogs).length;
@@ -43,6 +49,8 @@ async function initStats() {
         });
 
         allStatsData.events = events;
+        allStatsData.plans = plans;
+        allStatsData.visited = loadVisitedFromStorage();
         populateYearFilter(events);
         updateStatsView(events);
 
@@ -195,6 +203,7 @@ function updateStatsView(data) {
 
     renderLocationsTable(data);
     renderAttributesList(data);
+    renderCalendar();
 
     if(document.getElementById('tab-graphs').classList.contains('active')) {
         renderCharts(data);
@@ -424,7 +433,275 @@ function renderTopUsersList(data) {
     el.innerHTML = html;
 }
 
-// ... KAIKKI MUUT FUNKTIOT ENNALLAAN ...
+function parseCsvLine(line) {
+    const result = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+                current += '"';
+                i += 1;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (ch === ',' && !inQuotes) {
+            result.push(current);
+            current = "";
+        } else {
+            current += ch;
+        }
+    }
+    result.push(current);
+    return result.map(v => v.trim());
+}
+
+function parseDateToIso(dateStr) {
+    if (!dateStr) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    const match = dateStr.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (match) {
+        return `${match[3]}-${match[2]}-${match[1]}`;
+    }
+    return null;
+}
+
+function loadVisitedFromStorage() {
+    try {
+        const raw = localStorage.getItem('mk-visited-csv');
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveVisitedToStorage(entries) {
+    localStorage.setItem('mk-visited-csv', JSON.stringify(entries));
+}
+
+function importVisitedCsv(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        const entries = [];
+        lines.forEach(line => {
+            const cols = parseCsvLine(line);
+            const date = parseDateToIso(cols[0]);
+            const logType = cols[1] ? cols[1].replace(/"/g, '') : "";
+            const code = cols[2] || "";
+            const name = cols[3] ? cols[3].replace(/"/g, '') : "";
+            const cacheType = cols[4] ? cols[4].replace(/"/g, '') : "";
+            if (date && logType === "Attended") {
+                entries.push({ date, name, code, cacheType });
+            }
+        });
+        allStatsData.visited = entries;
+        saveVisitedToStorage(entries);
+        renderCalendar();
+    };
+    reader.readAsText(file);
+}
+
+function importPlannedCsv(file) {
+    if (!file || !currentUser) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        const batch = [];
+        lines.forEach(line => {
+            const cols = line.includes(';') && !line.includes(',') ? line.split(';') : parseCsvLine(line);
+            const date = parseDateToIso((cols[0] || "").trim());
+            const name = (cols[1] || "").replace(/"/g, '').trim();
+            if (date && name) {
+                batch.push({ date, name });
+            }
+        });
+        if (batch.length === 0) return;
+        const ref = db.ref('miitit/' + currentUser.uid + '/plans');
+        batch.forEach(item => ref.push(item));
+        allStatsData.plans = allStatsData.plans.concat(batch);
+        renderCalendar();
+    };
+    reader.readAsText(file);
+}
+
+function renderCalendar() {
+    const grid = document.getElementById('calendar-grid');
+    if (!grid) return;
+
+    const monthSelect = document.getElementById('cal-month');
+    const yearSelect = document.getElementById('cal-year');
+    if (!monthSelect || !yearSelect) return;
+
+    if (monthSelect.options.length === 0) {
+        const monthNames = ["Tammi","Helmi","Maalis","Huhti","Touko","Kesä","Heinä","Elo","Syys","Loka","Marras","Joulu"];
+        monthNames.forEach((m, i) => {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.text = m;
+            monthSelect.appendChild(opt);
+        });
+    }
+
+    if (yearSelect.options.length === 0) {
+        const currentYear = new Date().getFullYear();
+        for (let y = currentYear - 5; y <= currentYear + 5; y++) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.text = y;
+            yearSelect.appendChild(opt);
+        }
+        yearSelect.value = currentYear;
+    }
+
+    const currentDate = new Date();
+    if (monthSelect.value === "") monthSelect.value = currentDate.getMonth();
+    if (yearSelect.value === "") yearSelect.value = currentDate.getFullYear();
+    const month = parseInt(monthSelect.value, 10);
+    const year = parseInt(yearSelect.value, 10);
+
+    const firstDay = new Date(year, month, 1);
+    const startWeekday = (firstDay.getDay() + 6) % 7;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const ownFutureMap = {};
+    allStatsData.events.forEach(evt => {
+        if (evt.date && evt.date >= todayStr) {
+            ownFutureMap[evt.date] = ownFutureMap[evt.date] || [];
+            ownFutureMap[evt.date].push(evt);
+        }
+    });
+
+    const plannedMap = {};
+    (allStatsData.plans || []).forEach(p => {
+        if (!p.date) return;
+        plannedMap[p.date] = plannedMap[p.date] || [];
+        plannedMap[p.date].push(p);
+    });
+
+    const visitedMap = {};
+    (allStatsData.visited || []).forEach(v => {
+        if (!v.date) return;
+        visitedMap[v.date] = visitedMap[v.date] || [];
+        visitedMap[v.date].push(v);
+    });
+
+    const weekdays = ["Ma","Ti","Ke","To","Pe","La","Su"];
+    grid.innerHTML = "";
+    weekdays.forEach(d => {
+        const cell = document.createElement('div');
+        cell.className = 'cal-day cal-day-header';
+        cell.innerText = d;
+        grid.appendChild(cell);
+    });
+
+    for (let i = 0; i < startWeekday; i++) {
+        const empty = document.createElement('div');
+        empty.className = 'cal-day';
+        empty.style.opacity = '0.4';
+        grid.appendChild(empty);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        const cell = document.createElement('div');
+        cell.className = 'cal-day';
+        const number = document.createElement('div');
+        number.className = 'cal-day-number';
+        number.innerText = day;
+        cell.appendChild(number);
+
+        const dots = document.createElement('div');
+        dots.className = 'cal-dots';
+        const own = ownFutureMap[dateStr];
+        const planned = plannedMap[dateStr];
+        const visited = visitedMap[dateStr];
+
+        if (own) {
+            const dot = document.createElement('span');
+            dot.className = 'cal-dot own';
+            dots.appendChild(dot);
+        }
+        if (planned) {
+            const dot = document.createElement('span');
+            dot.className = 'cal-dot planned';
+            dots.appendChild(dot);
+        }
+        if (visited) {
+            const dot = document.createElement('span');
+            dot.className = 'cal-dot visited';
+            dots.appendChild(dot);
+        }
+
+        if (dots.childNodes.length > 0) {
+            cell.appendChild(dots);
+        }
+
+        const titles = [];
+        if (own) titles.push(`Omat tulevat: ${own.map(o => o.name).join(', ')}`);
+        if (planned) titles.push(`Aiotut: ${planned.map(p => p.name).join(', ')}`);
+        if (visited) titles.push(`Käydyt: ${visited.map(v => v.name).join(', ')}`);
+        if (titles.length > 0) cell.title = titles.join(' | ');
+
+        grid.appendChild(cell);
+    }
+}
+
+function initCalendarControls() {
+    const monthSelect = document.getElementById('cal-month');
+    const yearSelect = document.getElementById('cal-year');
+    const prevBtn = document.getElementById('cal-prev');
+    const nextBtn = document.getElementById('cal-next');
+    const csvInput = document.getElementById('calendar-csv-input');
+    const planAdd = document.getElementById('plan-add');
+    const planDate = document.getElementById('plan-date');
+    const planName = document.getElementById('plan-name');
+    const planCsv = document.getElementById('plan-csv-input');
+
+    if (monthSelect) monthSelect.onchange = renderCalendar;
+    if (yearSelect) yearSelect.onchange = renderCalendar;
+    if (prevBtn) prevBtn.onclick = () => {
+        const m = parseInt(monthSelect.value, 10);
+        const y = parseInt(yearSelect.value, 10);
+        if (m === 0) {
+            monthSelect.value = 11;
+            yearSelect.value = y - 1;
+        } else {
+            monthSelect.value = m - 1;
+        }
+        renderCalendar();
+    };
+    if (nextBtn) nextBtn.onclick = () => {
+        const m = parseInt(monthSelect.value, 10);
+        const y = parseInt(yearSelect.value, 10);
+        if (m === 11) {
+            monthSelect.value = 0;
+            yearSelect.value = y + 1;
+        } else {
+            monthSelect.value = m + 1;
+        }
+        renderCalendar();
+    };
+    if (csvInput) csvInput.onchange = (e) => importVisitedCsv(e.target.files[0]);
+    if (planCsv) planCsv.onchange = (e) => importPlannedCsv(e.target.files[0]);
+    if (planAdd) planAdd.onclick = () => {
+        if (!currentUser) return;
+        const date = planDate ? planDate.value : "";
+        const name = planName ? planName.value.trim() : "";
+        if (!date || !name) return alert("Päivämäärä ja nimi vaaditaan.");
+        db.ref('miitit/' + currentUser.uid + '/plans').push({ date, name });
+        allStatsData.plans.push({ date, name });
+        if (planName) planName.value = "";
+        renderCalendar();
+    };
+}
+
+document.addEventListener('DOMContentLoaded', initCalendarControls);
 
 function renderLoyaltyPyramid(data) {
     const el = document.getElementById('stats-loyalty');
