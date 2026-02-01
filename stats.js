@@ -593,30 +593,28 @@ function renderCalendar() {
     const yearsToRender = yearSelect.value === "all" ? years : [parseInt(yearSelect.value, 10)];
 
     grid.innerHTML = "";
+    const table = document.createElement('div');
+    table.className = 'cal-year-table';
+
+    const blankHead = document.createElement('div');
+    blankHead.className = 'cal-head';
+    blankHead.innerText = "";
+    table.appendChild(blankHead);
+
+    for (let day = 1; day <= 31; day++) {
+        const head = document.createElement('div');
+        head.className = 'cal-head';
+        head.innerText = day;
+        table.appendChild(head);
+    }
+
+    const monthNames = ["Tammi","Helmi","Maalis","Huhti","Touko","Kesä","Heinä","Elo","Syys","Loka","Marras","Joulu"];
     yearsToRender.forEach(year => {
-        const block = document.createElement('div');
-        block.className = 'cal-year-block';
-        const title = document.createElement('div');
-        title.className = 'cal-year-title';
-        title.innerText = year;
-        block.appendChild(title);
+        const yearRow = document.createElement('div');
+        yearRow.className = 'cal-year-sep';
+        yearRow.innerText = year;
+        table.appendChild(yearRow);
 
-        const table = document.createElement('div');
-        table.className = 'cal-year-table';
-
-        const blankHead = document.createElement('div');
-        blankHead.className = 'cal-head';
-        blankHead.innerText = "";
-        table.appendChild(blankHead);
-
-        for (let day = 1; day <= 31; day++) {
-            const head = document.createElement('div');
-            head.className = 'cal-head';
-            head.innerText = day;
-            table.appendChild(head);
-        }
-
-        const monthNames = ["Tammi","Helmi","Maalis","Huhti","Touko","Kesä","Heinä","Elo","Syys","Loka","Marras","Joulu"];
         for (let month = 1; month <= 12; month++) {
             const label = document.createElement('div');
             label.className = 'cal-month-label';
@@ -647,9 +645,9 @@ function renderCalendar() {
                 table.appendChild(cell);
             }
         }
-        block.appendChild(table);
-        grid.appendChild(block);
     });
+
+    grid.appendChild(table);
 }
 
 function initCalendarControls() {

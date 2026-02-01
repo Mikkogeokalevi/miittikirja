@@ -525,24 +525,8 @@ body.theme-light .attr-tag.neg {
 }
 
 .calendar-year-grid {
-    display: grid;
-    gap: 8px;
     margin-bottom: 12px;
-}
-
-.cal-year-block {
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 8px;
-    background: var(--card-bg);
     overflow-x: auto;
-}
-
-.cal-year-title {
-    font-weight: bold;
-    text-align: left;
-    margin-bottom: 6px;
-    color: var(--header-color);
 }
 
 .cal-year-table {
@@ -550,6 +534,17 @@ body.theme-light .attr-tag.neg {
     grid-template-columns: 50px repeat(31, 1fr);
     gap: 2px;
     font-size: 0.7em;
+}
+
+.cal-year-sep {
+    grid-column: 1 / -1;
+    background: var(--highlight-bg);
+    border: 1px dashed var(--border-color);
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-weight: bold;
+    color: var(--header-color);
+    margin-top: 4px;
 }
 
 .cal-head {
