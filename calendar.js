@@ -164,12 +164,33 @@ function parseSrvContent(content) {
         calendarData.events = {};
     }
     
-    // geocache.fi CSV-formaatti: DD.MM.YYYY,"Found it" tai "Attended",GC-koodi,"Nimi",Tyyppi,Koko,D,T,U,V
+    // geocache.fi CSV-formaatti: DD.MM.YYYY,"Found it" tai "Attended",GC-koodi,"Nimi","Tyyppi",Koko,D,T,U,V
+    // Huom: Nimi voi sisältää pilkkuja, joten tarvitaan parempi parsiminen
     lines.forEach(line => {
         if (!line.trim()) return;
         
-        const parts = line.split(',');
-        if (parts.length < 5) return;
+        // Parempi CSV-parsiminen - käsitellään lainausmerkit oikein
+        const parts = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                parts.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        parts.push(current.trim());
+        
+        if (parts.length < 5) {
+            console.log("Liian vähän sarakkeita:", parts, "rivi:", line);
+            return;
+        }
         
         // Päivämäärä (DD.MM.YYYY)
         const dateStr = parts[0].trim().replace(/"/g, '');
@@ -183,21 +204,24 @@ function parseSrvContent(content) {
         const month = parseInt(dateMatch[2]);
         const year = parseInt(dateMatch[3]);
         
-        console.log("Päivämäärä parsittu:", { day, month, year, original: dateStr });
-        
         // Log type ("Found it" tai "Attended")
         const logType = parts[1].trim().replace(/"/g, '');
         
         // GC-koodi
         const gcCode = parts[2].trim().replace(/"/g, '');
         
-        // Nimi
+        // Nimi (voi sisältää pilkkuja)
         const name = parts[3].trim().replace(/"/g, '');
         
-        // Tyyppi
+        // Tyyppi (oikea sarakkeindeksi)
         const cacheType = parts[4].trim().replace(/"/g, '');
         
-        console.log("Tapahtuman tiedot:", { logType, cacheType, gcCode, name });
+        // Debug: näytetään oikea cacheType
+        if (logType === "Attended") {
+            console.log("CSV-rivi:", line);
+            console.log("Parsed parts:", parts);
+            console.log("CacheType:", cacheType);
+        }
         
         const monthKey = String(month).padStart(2, '0');
         const dayKey = String(day).padStart(2, '0');
@@ -209,14 +233,12 @@ function parseSrvContent(content) {
         const isCito = cacheType.includes("CITO") || cacheType.includes("Cache In Trash Out");
         const isCommunity = cacheType.includes("Community Celebration");
         
-        console.log("Suodatustulos:", { isEvent, isCito, isCommunity, dateKey });
-        
         // Käsitellään VAIN varsinaiset miitit (ei CITO, ei Community Celebration)
         if (logType === "Attended" && 
             isEvent && 
             !isCito && 
             !isCommunity) {
-            console.log("Lisätään miitti:", dateKey, gcCode);
+            console.log("✅ Lisätään miitti:", dateKey, gcCode, cacheType);
             if (!newEvents[dateKey]) {
                 newEvents[dateKey] = [];
             }
@@ -227,8 +249,8 @@ function parseSrvContent(content) {
                 type: "miitti"
             });
             totalEvents++;
-        } else {
-            console.log("Ohitetaan tapahtuma:", logType, cacheType);
+        } else if (logType === "Attended") {
+            console.log("❌ Ohitetaan tapahtuma:", cacheType, "(Event:", isEvent, "CITO:", isCito, "Community:", isCommunity + ")");
         }
     });
     
