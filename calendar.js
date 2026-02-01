@@ -303,17 +303,26 @@ function renderCalendar() {
             const eventCount = (calendarData.events[dateKey] || []).length;
             const intensity = getIntensity(eventCount);
             
-            // Tooltip
+            // Tooltip - näytetään tarkat miittien tiedot
             let tooltip = `${monthNamesFull[month]} ${day}: `;
             if (eventCount > 0) {
-                tooltip += `${eventCount} miittiä`;
+                tooltip += `${eventCount} miittiä\n`;
+                // Lisätään miittien GC-koodit ja nimet
+                calendarData.events[dateKey].forEach((event, index) => {
+                    const prefix = event.type === 'cito' ? 'CITO' : 'Miitti';
+                    tooltip += `  • ${prefix}: ${event.gcCode} - ${event.name}`;
+                    if (index < calendarData.events[dateKey].length - 1) {
+                        tooltip += '\n';
+                    }
+                });
             } else {
                 tooltip += 'Ei miittejä';
             }
             
             const displayValue = eventCount === 0 ? 'X' : eventCount;
+            const clickHandler = eventCount > 0 ? `onclick="showDayDetails('${dateKey}', '${monthNamesFull[month]} ${day}')"` : '';
             
-            html += `<div class="calendar-cell intensity-${intensity}" data-date="${dateKey}" data-count="${eventCount}" title="${tooltip}">${displayValue}</div>`;
+            html += `<div class="calendar-cell intensity-${intensity}" data-date="${dateKey}" data-count="${eventCount}" title="${tooltip}" ${clickHandler}>${displayValue}</div>`;
         }
         
         html += '</div>';
@@ -321,6 +330,30 @@ function renderCalendar() {
     
     html += '</div>';
     container.innerHTML = html;
+}
+
+// Funktio päivän tarkkojen tietojen näyttämiseen
+function showDayDetails(dateKey, displayDate) {
+    const events = calendarData.events[dateKey] || [];
+    if (events.length === 0) return;
+    
+    let content = `<h3>${displayDate} - ${events.length} miittiä</h3><ul>`;
+    events.forEach(event => {
+        const prefix = event.type === 'cito' ? 'CITO' : 'Miitti';
+        content += `<li><strong>${prefix}</strong>: ${event.gcCode} - ${event.name}</li>`;
+    });
+    content += '</ul>';
+    
+    // Näytetään modaali-ikkuna
+    const modal = document.createElement('div');
+    modal.className = 'calendar-details-modal';
+    modal.innerHTML = `
+        <div class="calendar-details-content">
+            ${content}
+            <button onclick="this.closest('.calendar-details-modal').remove()" class="btn btn-blue">Sulje</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
 }
 
 function getIntensity(count) {

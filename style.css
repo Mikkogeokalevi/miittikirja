@@ -706,6 +706,91 @@ body.theme-light .time-slot-box.active {
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
+/* Parempi tooltip-näyttö */
+.calendar-cell[title] {
+    position: relative;
+}
+
+.calendar-cell[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 12px;
+    white-space: pre-line;
+    font-size: 0.85em;
+    font-weight: normal;
+    color: var(--text-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 1000;
+    max-width: 300px;
+    word-wrap: break-word;
+    margin-bottom: 5px;
+}
+
+/* Kalenterin tietojen modaali-ikkuna */
+.calendar-details-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.calendar-details-content {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    max-width: 500px;
+    max-height: 70vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.calendar-details-content h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--header-color);
+    font-size: 1.2em;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+.calendar-details-content ul {
+    margin: 0;
+    padding-left: 20px;
+    list-style: none;
+}
+
+.calendar-details-content li {
+    margin-bottom: 8px;
+    padding: 8px;
+    background: var(--highlight-bg);
+    border-radius: 6px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.calendar-details-content li strong {
+    color: var(--primary-color);
+    display: inline-block;
+    min-width: 60px;
+}
+
+.calendar-details-content .btn {
+    margin-top: 15px;
+    width: 100%;
+}
+
 /* Väritehosteet löytömäärän mukaan - selkeämmät värit */
 .calendar-cell.intensity-0 {
     background: var(--card-bg);
@@ -914,5 +999,25 @@ body.theme-blue .calendar-cell.intensity-5 {
     .calendar-corner-cell {
         padding: 4px 2px;
         font-size: 0.7em;
+    }
+    
+    /* Mobiili modaali-ikkuna */
+    .calendar-details-modal {
+        padding: 10px;
+    }
+    
+    .calendar-details-content {
+        max-width: 95%;
+        padding: 15px;
+        font-size: 0.9em;
+    }
+    
+    .calendar-details-content h3 {
+        font-size: 1.1em;
+    }
+    
+    .calendar-details-content li {
+        padding: 6px;
+        font-size: 0.85em;
     }
 }
