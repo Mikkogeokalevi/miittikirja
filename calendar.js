@@ -164,8 +164,10 @@ function parseSrvContent(content) {
         calendarData.events = {};
     }
     
-    // geocache.fi CSV-formaatti: DD.MM.YYYY,"Found it" tai "Attended",GC-koodi,"Nimi","Kuvaus","Tyyppi",Koko,D,T,U,V
-    // Sarakkeet: 0=päivämäärä, 1=logtype, 2=GC, 3=nimi, 4=kuvaus, 5=tyyppi, 6=koko, 7=D, 8=T, 9=U, 10=V
+    // geocache.fi CSV-formaatti on KAKSI erilaista:
+// 1) DD.MM.YYYY,"Found it" tai "Attended",GC-koodi,"Nimi","Tyyppi",Koko,D,T,U,V (ei kuvausta)
+// 2) DD.MM.YYYY,"Found it" tai "Attended",GC-koodi,"Nimi","Kuvaus","Tyyppi",Koko,D,T,U,V (kuvaus mukana)
+// Sarakkeet: 0=päivämäärä, 1=logtype, 2=GC, 3=nimi, [4=kuvaus], 5/4=tyyppi, 6/5=koko, 7/6=D, 8/7=T, 9/8=U, 10/9=V
     // Huom: Nimi ja kuvaus voivat sisältää pilkkuja, joten tarvitaan parempi parsiminen
     lines.forEach(line => {
         if (!line.trim()) return;
@@ -214,19 +216,32 @@ function parseSrvContent(content) {
         // Nimi (voi sisältää pilkkuja)
         const name = parts[3].trim().replace(/"/g, '');
         
-        // Kuvaus (voi sisältää pilkkuja) - sarake 4
-        const description = parts[4].trim().replace(/"/g, '');
+        // Tunnistetaan onko kuvaus-kenttä olemassa
+        let description = '';
+        let cacheType = '';
         
-        // Tyyppi (oikea sarakkeindeksi - cacheType on sarakkeessa 5)
-        const cacheType = parts[5].trim().replace(/"/g, '');
+        if (parts.length === 10) {
+            // Formaatti ilman kuvausta: DD.MM.YYYY,Attended,GC,"Nimi","Tyyppi",Koko,D,T,U,V
+            description = '';
+            cacheType = parts[4].trim().replace(/"/g, '');
+        } else if (parts.length === 11) {
+            // Formaatti kuvauksella: DD.MM.YYYY,Attended,GC,"Nimi","Kuvaus","Tyyppi",Koko,D,T,U,V
+            description = parts[4].trim().replace(/"/g, '');
+            cacheType = parts[5].trim().replace(/"/g, '');
+        } else {
+            console.log("Tuntematon formaatti, sarakkeita:", parts.length, "rivi:", line);
+            return;
+        }
         
         // Debug: näytetään oikea cacheType
         if (logType === "Attended") {
             console.log("CSV-rivi:", line);
             console.log("Parsed parts:", parts);
+            console.log("Sarakkeita:", parts.length);
             console.log("Nimi:", name);
             console.log("Kuvaus:", description);
-            console.log("CacheType (sarake 5):", cacheType);
+            console.log("CacheType:", cacheType);
+            console.log("Formaatti:", parts.length === 10 ? "ilman kuvausta" : "kuvauksella");
         }
         
         const monthKey = String(month).padStart(2, '0');
@@ -248,7 +263,7 @@ function parseSrvContent(content) {
             if (!newEvents[dateKey]) {
                 newEvents[dateKey] = [];
             }
-            // Yhdistetään nimi ja kuvaus
+            // Yhdistetään nimi ja kuvaus (jos kuvaus on olemassa)
             const fullName = description ? `${name} - ${description}` : name;
             newEvents[dateKey].push({
                 date: `${year}-${monthKey}-${dayKey}`,
@@ -258,7 +273,7 @@ function parseSrvContent(content) {
             });
             totalEvents++;
         } else if (logType === "Attended") {
-            console.log("❌ Ohitetaan tapahtuma:", cacheType, "(Event:", isEvent, "CITO:", isCito, "Community:", isCommunity + ")");
+            console.log("❌ Ohitetaan tapahtuma:", cacheType, "(Sarakkeita:", parts.length, "Event:", isEvent, "CITO:", isCito, "Community:", isCommunity + ")");
         }
     });
     
