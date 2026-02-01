@@ -126,6 +126,17 @@ function parseSrvContent(content) {
     let totalFinds = 0;
     let totalEvents = 0;
     
+    // Varmistetaan, että calendarData on alustettu oikein
+    if (!calendarData) {
+        calendarData = { finds: {}, totalFinds: 0, years: [], events: {} };
+    }
+    if (!calendarData.finds) {
+        calendarData.finds = {};
+    }
+    if (!calendarData.events) {
+        calendarData.events = {};
+    }
+    
     // geocache.fi CSV-formaatti: DD.MM.YYYY,"Found it" tai "Attended",GC-koodi,"Nimi",Tyyppi,Koko,D,T,U,V
     lines.forEach(line => {
         if (!line.trim()) return;
@@ -228,6 +239,17 @@ function renderCalendar() {
     const container = document.getElementById('calendar-container');
     if (!container) return;
     
+    // Varmistetaan, että calendarData on olemassa
+    if (!calendarData) {
+        calendarData = { finds: {}, totalFinds: 0, years: [], events: {} };
+    }
+    if (!calendarData.finds) {
+        calendarData.finds = {};
+    }
+    if (!calendarData.events) {
+        calendarData.events = {};
+    }
+    
     let html = '<div class="calendar-grid">';
     
     // Lisätään kuukausien otsikot
@@ -286,8 +308,19 @@ function updateCalendarLegend() {
     const legend = document.getElementById('calendar-legend');
     if (!legend) return;
     
+    // Varmistetaan, että calendarData on olemassa
+    if (!calendarData) {
+        calendarData = { finds: {}, totalFinds: 0, years: [], events: {} };
+    }
+    if (!calendarData.finds) {
+        calendarData.finds = {};
+    }
+    if (!calendarData.events) {
+        calendarData.events = {};
+    }
+    
     const years = calendarData.years.length > 0 ? calendarData.years.join(', ') : 'Ei vuosia';
-    const totalFinds = calendarData.totalFinds;
+    const totalFinds = calendarData.totalFinds || 0;
     const totalEvents = Object.values(calendarData.events).reduce((sum, events) => sum + events.length, 0);
     const uniqueDays = Object.keys(calendarData.finds).filter(key => calendarData.finds[key] > 0).length;
     const uniqueEventDays = Object.keys(calendarData.events).filter(key => calendarData.events[key].length > 0).length;
