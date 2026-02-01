@@ -613,6 +613,18 @@ body.theme-light .time-slot-box.active {
    KALENTERIN TYYLIT
    ========================================== */
 
+.calendar-import-info {
+    background: var(--highlight-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    text-align: center;
+    font-size: 0.9em;
+    color: var(--text-color);
+    font-weight: bold;
+}
+
 .calendar-grid-wrapper {
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -624,16 +636,18 @@ body.theme-light .time-slot-box.active {
 
 .calendar-header-row {
     display: grid;
-    grid-template-columns: 60px repeat(31, 1fr);
+    grid-template-columns: 60px repeat(31, 25px);
     gap: 1px;
     background: var(--dotted-border);
+    justify-items: stretch;
 }
 
 .calendar-month-row {
     display: grid;
-    grid-template-columns: 60px repeat(31, 1fr);
+    grid-template-columns: 60px repeat(31, 25px);
     gap: 1px;
     background: var(--dotted-border);
+    justify-items: stretch;
 }
 
 .calendar-corner-cell {
@@ -653,6 +667,9 @@ body.theme-light .time-slot-box.active {
     font-weight: bold;
     color: var(--header-color);
     font-size: 0.8em;
+    min-width: 25px;
+    width: 25px;
+    box-sizing: border-box;
 }
 
 .calendar-month-cell {
@@ -663,6 +680,9 @@ body.theme-light .time-slot-box.active {
     font-weight: bold;
     color: var(--header-color);
     font-size: 0.9em;
+    min-width: 60px;
+    width: 60px;
+    box-sizing: border-box;
 }
 
 .calendar-cell {
@@ -673,8 +693,10 @@ body.theme-light .time-slot-box.active {
     transition: all 0.2s ease;
     min-width: 25px;
     min-height: 25px;
+    width: 25px;
     position: relative;
     font-size: 0.8em;
+    box-sizing: border-box;
 }
 
 .calendar-cell:hover {
@@ -827,8 +849,8 @@ body.theme-blue .calendar-cell.intensity-5 {
     
     .calendar-header-row,
     .calendar-month-row {
-        grid-template-columns: 50px repeat(31, 1fr);
-        min-width: 800px;
+        grid-template-columns: 50px repeat(31, 20px);
+        min-width: 870px; /* 50px + 31*20px + 30px gap */
     }
     
     .calendar-header-cell,
@@ -836,8 +858,14 @@ body.theme-blue .calendar-cell.intensity-5 {
     .calendar-cell {
         padding: 4px 1px;
         min-width: 20px;
+        width: 20px;
         min-height: 20px;
         font-size: 0.7em;
+    }
+    
+    .calendar-month-cell {
+        min-width: 50px;
+        width: 50px;
     }
     
     .calendar-cell:hover {
@@ -864,8 +892,8 @@ body.theme-blue .calendar-cell.intensity-5 {
     
     .calendar-header-row,
     .calendar-month-row {
-        grid-template-columns: 40px repeat(31, 1fr);
-        min-width: 600px;
+        grid-template-columns: 40px repeat(31, 15px);
+        min-width: 655px; /* 40px + 31*15px + 30px gap */
     }
     
     .calendar-header-cell,
@@ -873,8 +901,14 @@ body.theme-blue .calendar-cell.intensity-5 {
     .calendar-cell {
         padding: 2px 1px;
         min-width: 15px;
+        width: 15px;
         min-height: 15px;
         font-size: 0.6em;
+    }
+    
+    .calendar-month-cell {
+        min-width: 40px;
+        width: 40px;
     }
     
     .calendar-corner-cell {

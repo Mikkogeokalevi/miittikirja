@@ -7,7 +7,8 @@ let calendarData = {
     finds: {}, // { "01-15": 3, "05-22": 1, ... }
     totalFinds: 0,
     years: [],
-    events: {} // Tallennetaan myös event-tiedot
+    events: {}, // Tallennetaan myös event-tiedot
+    lastImportDate: null // Viimeisin tuontipäivä
 };
 
 const monthNames = ['Tammi', 'Helmi', 'Maalis', 'Huhti', 'Touko', 'Kesä', 'Heinä', 'Elo', 'Syys', 'Loka', 'Marras', 'Joulu'];
@@ -52,7 +53,7 @@ function setupCalendarEventListeners() {
 async function loadCalendarData() {
     if (!currentUser || !currentUser.uid) {
         console.log("Ei kirjautunutta käyttäjää, käytetään oletusdataa");
-        calendarData = { finds: {}, totalFinds: 0, years: [], events: {} };
+        calendarData = { finds: {}, totalFinds: 0, years: [], events: {}, lastImportDate: null };
         return;
     }
     
@@ -65,16 +66,17 @@ async function loadCalendarData() {
                 finds: (data.finds && typeof data.finds === 'object') ? data.finds : {},
                 totalFinds: Number(data.totalFinds) || 0,
                 years: Array.isArray(data.years) ? data.years : [],
-                events: (data.events && typeof data.events === 'object') ? data.events : {}
+                events: (data.events && typeof data.events === 'object') ? data.events : {},
+                lastImportDate: data.lastImportDate || null
             };
             console.log("Kalenteridata ladattu Firebasesta:", calendarData);
         } else {
             console.log("Ei kalenteridataa Firebasessa, aloitetaan tyhjällä");
-            calendarData = { finds: {}, totalFinds: 0, years: [], events: {} };
+            calendarData = { finds: {}, totalFinds: 0, years: [], events: {}, lastImportDate: null };
         }
     } catch (e) {
         console.error("Kalenteridan lataus epäonnistui:", e);
-        calendarData = { finds: {}, totalFinds: 0, years: [], events: {} };
+        calendarData = { finds: {}, totalFinds: 0, years: [], events: {}, lastImportDate: null };
     }
 }
 
@@ -86,7 +88,7 @@ async function saveCalendarData() {
     
     // Varmistetaan, että kaikki arvot ovat kelvollisia ennen tallennusta
     if (!calendarData) {
-        calendarData = { finds: {}, totalFinds: 0, years: [], events: {} };
+        calendarData = { finds: {}, totalFinds: 0, years: [], events: {}, lastImportDate: null };
     }
     
     // Varmistetaan, että totalFinds on numero
@@ -131,7 +133,7 @@ function importSrvFile() {
             saveCalendarData();
             renderCalendar();
             updateCalendarLegend();
-            alert('CSV-tiedosto tuotu onnistuneesti! Löytöjä: ' + calendarData.totalFinds + ', Miittejä: ' + Object.keys(calendarData.events).length);
+            alert('CSV-tiedosto tuotu onnistuneesti! Miittejä: ' + Object.keys(calendarData.events).reduce((sum, key) => sum + calendarData.events[key].length, 0));
         } catch (error) {
             console.error('CSV-tiedoston käsittelyvirhe:', error);
             alert('CSV-tiedoston käsittely epäonnistui: ' + error.message);
@@ -147,15 +149,13 @@ function importSrvFile() {
 
 function parseSrvContent(content) {
     const lines = content.split('\n');
-    const newFinds = {};
     const newEvents = {};
     const years = new Set();
-    let totalFinds = 0;
     let totalEvents = 0;
     
     // Varmistetaan, että calendarData on alustettu oikein
     if (!calendarData) {
-        calendarData = { finds: {}, totalFinds: 0, years: [], events: {} };
+        calendarData = { finds: {}, totalFinds: 0, years: [], events: {}, lastImportDate: null };
     }
     if (!calendarData.finds) {
         calendarData.finds = {};
@@ -198,15 +198,8 @@ function parseSrvContent(content) {
         
         years.add(year);
         
-        if (logType === "Found it") {
-            // Perinteinen geokätkö
-            if (!newFinds[dateKey]) {
-                newFinds[dateKey] = 0;
-            }
-            newFinds[dateKey]++;
-            totalFinds++;
-        } else if (logType === "Attended" && (cacheType.includes("Event") || cacheType.includes("CITO"))) {
-            // Miitti tai CITO
+        // Käsitellään VAIN miitit ja CITO-tapahtumat
+        if (logType === "Attended" && (cacheType.includes("Event") || cacheType.includes("CITO"))) {
             if (!newEvents[dateKey]) {
                 newEvents[dateKey] = [];
             }
@@ -218,16 +211,10 @@ function parseSrvContent(content) {
             });
             totalEvents++;
         }
+        // Perinteiset geokätköt ("Found it") ohitetaan - ei lisätä kalenteriin
     });
     
-    // Yhdistetään vanhaan dataan
-    Object.keys(newFinds).forEach(dateKey => {
-        if (!calendarData.finds[dateKey]) {
-            calendarData.finds[dateKey] = 0;
-        }
-        calendarData.finds[dateKey] += newFinds[dateKey];
-    });
-    
+    // Yhdistetään vain miittidataan
     Object.keys(newEvents).forEach(dateKey => {
         if (!calendarData.events[dateKey]) {
             calendarData.events[dateKey] = [];
@@ -235,21 +222,23 @@ function parseSrvContent(content) {
         calendarData.events[dateKey].push(...newEvents[dateKey]);
     });
     
-    calendarData.totalFinds = (calendarData.totalFinds || 0) + totalFinds;
+    // Päivitetään vuosilista (vain miittien vuodet)
     calendarData.years = Array.from(years).sort();
     
-    console.log("CSV-data käsitelty:", { 
-        newFinds, 
+    // Tallennetaan viimeisin tuontipäivä
+    calendarData.lastImportDate = new Date().toISOString();
+    
+    console.log("CSV-data käsitelty (vain miitit):", { 
         newEvents, 
-        totalFinds, 
         totalEvents,
-        years: Array.from(years) 
+        years: Array.from(years),
+        lastImportDate: calendarData.lastImportDate
     });
 }
 
 async function clearCalendarData() {
     if (confirm('Haluatko varmasti tyhjentää kalenterin? Tämä poistaa kaikki tuodut tiedot.')) {
-        calendarData = { finds: {}, totalFinds: 0, years: [], events: {} };
+        calendarData = { finds: {}, totalFinds: 0, years: [], events: {}, lastImportDate: null };
         await saveCalendarData();
         renderCalendar();
         updateCalendarLegend();
@@ -267,7 +256,7 @@ function renderCalendar() {
     if (!container) return;
     
     if (!calendarData) {
-        calendarData = { finds: {}, totalFinds: 0, years: [], events: {} };
+        calendarData = { finds: {}, totalFinds: 0, years: [], events: {}, lastImportDate: null };
     }
     if (!calendarData.finds) {
         calendarData.finds = {};
@@ -276,7 +265,18 @@ function renderCalendar() {
         calendarData.events = {};
     }
     
-    let html = '<div class="calendar-grid-wrapper">';
+    let html = '';
+    
+    // Lisätään tuontipäivän merkintä
+    if (calendarData.lastImportDate) {
+        const importDate = new Date(calendarData.lastImportDate);
+        const formattedDate = formatDateFi(importDate) + ' klo ' + 
+                           String(importDate.getHours()).padStart(2, '0') + ':' + 
+                           String(importDate.getMinutes()).padStart(2, '0');
+        html += `<div class="calendar-import-info">📅 Viimeisin tuonti: ${formattedDate}</div>`;
+    }
+    
+    html += '<div class="calendar-grid-wrapper">';
     
     // Otsikkorivi: Päivänumerot (1-31)
     html += '<div class="calendar-header-row">';
@@ -299,23 +299,21 @@ function renderCalendar() {
             const dayKey = String(day).padStart(2, '0');
             const dateKey = `${monthKey}-${dayKey}`;
             
-            const findCount = calendarData.finds[dateKey] || 0;
+            // VAIN miittien määrä
             const eventCount = (calendarData.events[dateKey] || []).length;
-            const totalCount = findCount + eventCount;
-            const intensity = getIntensity(totalCount);
+            const intensity = getIntensity(eventCount);
             
             // Tooltip
             let tooltip = `${monthNamesFull[month]} ${day}: `;
-            if (findCount > 0) tooltip += `${findCount} löytöä`;
             if (eventCount > 0) {
-                if (findCount > 0) tooltip += ', ';
                 tooltip += `${eventCount} miittiä`;
+            } else {
+                tooltip += 'Ei miittejä';
             }
-            if (totalCount === 0) tooltip += 'Ei aktiviteettia';
             
-            const displayValue = totalCount === 0 ? 'X' : totalCount;
+            const displayValue = eventCount === 0 ? 'X' : eventCount;
             
-            html += `<div class="calendar-cell intensity-${intensity}" data-date="${dateKey}" data-count="${totalCount}" title="${tooltip}">${displayValue}</div>`;
+            html += `<div class="calendar-cell intensity-${intensity}" data-date="${dateKey}" data-count="${eventCount}" title="${tooltip}">${displayValue}</div>`;
         }
         
         html += '</div>';
@@ -340,7 +338,7 @@ function updateCalendarLegend() {
     
     // Varmistetaan, että calendarData on olemassa
     if (!calendarData) {
-        calendarData = { finds: {}, totalFinds: 0, years: [], events: {} };
+        calendarData = { finds: {}, totalFinds: 0, years: [], events: {}, lastImportDate: null };
     }
     if (!calendarData.finds) {
         calendarData.finds = {};
@@ -350,13 +348,10 @@ function updateCalendarLegend() {
     }
     
     const years = calendarData.years.length > 0 ? calendarData.years.join(', ') : 'Ei vuosia';
-    const totalFinds = calendarData.totalFinds || 0;
     const totalEvents = Object.values(calendarData.events).reduce((sum, events) => sum + events.length, 0);
-    const uniqueDays = Object.keys(calendarData.finds).filter(key => calendarData.finds[key] > 0).length;
     const uniqueEventDays = Object.keys(calendarData.events).filter(key => calendarData.events[key].length > 0).length;
     
     let html = `
-        <div><strong>Geokätköt:</strong> ${totalFinds} löytöä ${uniqueDays} eri päivänä</div>
         <div><strong>Miitit:</strong> ${totalEvents} miittiä ${uniqueEventDays} eri päivänä</div>
         <div><strong>Vuodet:</strong> ${years}</div>
         <div class="intensity-legend">
