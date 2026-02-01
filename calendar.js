@@ -13,16 +13,16 @@ let calendarData = {
 const monthNames = ['Tammi', 'Helmi', 'Maalis', 'Huhti', 'Touko', 'Kesä', 'Heinä', 'Elo', 'Syys', 'Loka', 'Marras', 'Joulu'];
 const monthNamesFull = ['Tammikuu', 'Helmikuu', 'Maaliskuu', 'Huhtikuu', 'Toukokuu', 'Kesäkuu', 'Heinäkuu', 'Elokuu', 'Syyskuu', 'Lokakuu', 'Marraskuu', 'Joulukuu'];
 
-function initCalendar() {
+async function initCalendar() {
     console.log("Alustetaan kalenteri...");
     
-    // Ladataan tallennetut kalenteridata Firebasesta
-    loadCalendarData();
+    // Ladataan tallennetut kalenteridata Firebasesta ja odotetaan sen valmistumista
+    await loadCalendarData();
     
     // Asetetaan tapahtumankäsittelijät
     setupCalendarEventListeners();
     
-    // Renderöidään kalenteri
+    // Renderöidään kalenteri vasta datan latauduttua
     renderCalendar();
     updateCalendarLegend();
 }
@@ -277,22 +277,24 @@ function renderCalendar() {
         calendarData.events = {};
     }
     
-    let html = '<div class="calendar-grid">';
+    let html = '<div class="calendar-grid-wrapper">';
     
-    // Lisätään kuukausien otsikot
-    html += '<div class="calendar-header-cell"></div>'; // Tyhjä kulmasolu
+    // Otsikkorivi
+    html += '<div class="calendar-header-row">';
+    html += '<div class="calendar-corner-cell"></div>';
     for (let month = 0; month < 12; month++) {
         html += `<div class="calendar-header-cell">${monthNames[month]}</div>`;
     }
+    html += '</div>';
     
-    // Renderöidään päivät (1-31)
+    // Päivärivit
     for (let day = 1; day <= 31; day++) {
-        html += '<div class="calendar-row">';
+        html += '<div class="calendar-day-row">';
         
         // Päivän numero
         html += `<div class="calendar-day-cell">${day}</div>`;
         
-        // Jokaisen kuukauden solut tälle päivälle
+        // Kuukausisolut tälle päivälle
         for (let month = 0; month < 12; month++) {
             const monthKey = String(month + 1).padStart(2, '0');
             const dayKey = String(day).padStart(2, '0');
@@ -303,7 +305,7 @@ function renderCalendar() {
             const totalCount = findCount + eventCount;
             const intensity = getIntensity(totalCount);
             
-            // Lisätään infot tooltipiin
+            // Tooltip
             let tooltip = `${monthNamesFull[month]} ${day}: `;
             if (findCount > 0) tooltip += `${findCount} löytöä`;
             if (eventCount > 0) {

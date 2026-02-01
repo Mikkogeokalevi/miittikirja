@@ -613,15 +613,30 @@ body.theme-light .time-slot-box.active {
    KALENTERIN TYYLIT
    ========================================== */
 
-.calendar-grid {
+.calendar-grid-wrapper {
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    overflow: hidden;
-    font-size: 0.85em;
+    overflow: auto;
+    font-size: 0.8em;
     background: var(--card-bg);
+    max-width: 100%;
 }
 
-.calendar-header-cell {
+.calendar-header-row {
+    display: grid;
+    grid-template-columns: 40px repeat(12, 1fr);
+    gap: 1px;
+    background: var(--dotted-border);
+}
+
+.calendar-day-row {
+    display: grid;
+    grid-template-columns: 40px repeat(12, 1fr);
+    gap: 1px;
+    background: var(--dotted-border);
+}
+
+.calendar-corner-cell {
     background: var(--highlight-bg);
     border: 1px solid var(--border-color);
     padding: 8px 4px;
@@ -630,8 +645,14 @@ body.theme-light .time-slot-box.active {
     color: var(--header-color);
 }
 
-.calendar-row {
-    display: contents;
+.calendar-header-cell {
+    background: var(--highlight-bg);
+    border: 1px solid var(--border-color);
+    padding: 8px 2px;
+    text-align: center;
+    font-weight: bold;
+    color: var(--header-color);
+    font-size: 0.9em;
 }
 
 .calendar-day-cell {
@@ -646,13 +667,14 @@ body.theme-light .time-slot-box.active {
 
 .calendar-cell {
     border: 1px solid var(--dotted-border);
-    padding: 4px 2px;
+    padding: 6px 2px;
     text-align: center;
     cursor: pointer;
     transition: all 0.2s ease;
     min-width: 25px;
-    min-height: 20px;
+    min-height: 25px;
     position: relative;
+    font-size: 0.8em;
 }
 
 .calendar-cell:hover {
@@ -789,17 +811,27 @@ body.theme-blue .calendar-cell.intensity-5 {
     color: #fff;
 }
 
-/* Responsiivisuus */
+/* Responsiivisuus - Mobiililaiteet */
 @media (max-width: 768px) {
-    .calendar-grid {
-        font-size: 0.7em;
+    .calendar-grid-wrapper {
+        font-size: 0.6em;
+        max-height: 400px;
+        overflow: auto;
+    }
+    
+    .calendar-header-row,
+    .calendar-day-row {
+        grid-template-columns: 30px repeat(12, 1fr);
+        min-width: 500px;
     }
     
     .calendar-header-cell,
     .calendar-day-cell,
     .calendar-cell {
-        padding: 4px 2px;
+        padding: 4px 1px;
         min-width: 20px;
+        min-height: 20px;
+        font-size: 0.7em;
     }
     
     .calendar-cell:hover {
@@ -807,11 +839,40 @@ body.theme-blue .calendar-cell.intensity-5 {
     }
     
     .intensity-legend {
-        font-size: 0.8em;
+        font-size: 0.7em;
+        gap: 4px;
     }
     
     .intensity-sample {
         padding: 2px 4px;
         min-width: 20px;
+        font-size: 0.7em;
+    }
+}
+
+@media (max-width: 480px) {
+    .calendar-grid-wrapper {
+        font-size: 0.5em;
+        max-height: 300px;
+    }
+    
+    .calendar-header-row,
+    .calendar-day-row {
+        grid-template-columns: 25px repeat(12, 1fr);
+        min-width: 400px;
+    }
+    
+    .calendar-header-cell,
+    .calendar-day-cell,
+    .calendar-cell {
+        padding: 2px 1px;
+        min-width: 15px;
+        min-height: 15px;
+        font-size: 0.6em;
+    }
+    
+    .calendar-corner-cell {
+        padding: 4px 2px;
+        font-size: 0.7em;
     }
 }
