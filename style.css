@@ -499,7 +499,7 @@ body.theme-light .attr-tag.neg {
 
 .calendar-controls {
     display: grid;
-    grid-template-columns: auto 1fr 1fr auto;
+    grid-template-columns: auto 1fr auto;
     gap: 6px;
     align-items: center;
     margin-bottom: 10px;
@@ -524,43 +524,71 @@ body.theme-light .attr-tag.neg {
     gap: 6px;
 }
 
-.calendar-grid {
+.calendar-year-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
+    gap: 8px;
     margin-bottom: 12px;
 }
 
-.cal-day {
+.cal-year-block {
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 6px;
-    min-height: 44px;
+    border-radius: 8px;
+    padding: 8px;
     background: var(--card-bg);
-    font-size: 0.8em;
-    text-align: left;
+    overflow-x: auto;
 }
 
-.cal-day-header {
+.cal-year-title {
+    font-weight: bold;
+    text-align: left;
+    margin-bottom: 6px;
+    color: var(--header-color);
+}
+
+.cal-year-table {
+    display: grid;
+    grid-template-columns: 50px repeat(31, 1fr);
+    gap: 2px;
+    font-size: 0.7em;
+}
+
+.cal-head {
     text-align: center;
     font-weight: bold;
     background: var(--highlight-bg);
+    border-radius: 4px;
+    padding: 2px 0;
 }
 
-.cal-day-number {
+.cal-month-label {
+    text-align: left;
+    padding-left: 4px;
     font-weight: bold;
+}
+
+.cal-cell {
+    border: 1px solid var(--dotted-border);
+    border-radius: 3px;
+    min-height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+}
+
+.cal-cell.empty {
+    background: rgba(255,255,255,0.03);
 }
 
 .cal-dots {
     display: flex;
-    gap: 4px;
-    margin-top: 4px;
-    flex-wrap: wrap;
+    gap: 2px;
+    align-items: center;
 }
 
 .cal-dot {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     display: inline-block;
 }

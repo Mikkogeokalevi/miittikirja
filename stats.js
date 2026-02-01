@@ -7,7 +7,8 @@ let allStatsData = {
     events: [],
     attendees: {},
     plans: [],
-    visited: []
+    visited: [],
+    visitedImportedAt: null
 };
 
 let chartInstances = {};
@@ -30,6 +31,11 @@ async function initStats() {
         const plansSnap = await db.ref('miitit/' + currentUser.uid + '/plans').once('value');
         const plans = [];
         plansSnap.forEach(child => { plans.push({ key: child.key, ...child.val() }); });
+        
+        const visitedSnap = await db.ref('miitit/' + currentUser.uid + '/calendar/visited').once('value');
+        const visitedData = visitedSnap.val() || {};
+        const visited = Array.isArray(visitedData.entries) ? visitedData.entries : [];
+        const visitedImportedAt = visitedData.importedAt || null;
 
         events.forEach(evt => {
             const evtLogs = logsData[evt.key] || {};
@@ -50,7 +56,8 @@ async function initStats() {
 
         allStatsData.events = events;
         allStatsData.plans = plans;
-        allStatsData.visited = loadVisitedFromStorage();
+        allStatsData.visited = visited;
+        allStatsData.visitedImportedAt = visitedImportedAt;
         populateYearFilter(events);
         updateStatsView(events);
 
@@ -467,21 +474,8 @@ function parseDateToIso(dateStr) {
     return null;
 }
 
-function loadVisitedFromStorage() {
-    try {
-        const raw = localStorage.getItem('mk-visited-csv');
-        return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-        return [];
-    }
-}
-
-function saveVisitedToStorage(entries) {
-    localStorage.setItem('mk-visited-csv', JSON.stringify(entries));
-}
-
 function importVisitedCsv(file) {
-    if (!file) return;
+    if (!file || !currentUser) return;
     const reader = new FileReader();
     reader.onload = (e) => {
         const text = e.target.result;
@@ -494,12 +488,17 @@ function importVisitedCsv(file) {
             const code = cols[2] || "";
             const name = cols[3] ? cols[3].replace(/"/g, '') : "";
             const cacheType = cols[4] ? cols[4].replace(/"/g, '') : "";
-            if (date && logType === "Attended") {
+            if (date && logType.toLowerCase() === "attended") {
                 entries.push({ date, name, code, cacheType });
             }
         });
+        const payload = {
+            importedAt: new Date().toISOString(),
+            entries: entries
+        };
+        db.ref('miitit/' + currentUser.uid + '/calendar/visited').set(payload);
         allStatsData.visited = entries;
-        saveVisitedToStorage(entries);
+        allStatsData.visitedImportedAt = payload.importedAt;
         renderCalendar();
     };
     reader.readAsText(file);
@@ -533,40 +532,15 @@ function renderCalendar() {
     const grid = document.getElementById('calendar-grid');
     if (!grid) return;
 
-    const monthSelect = document.getElementById('cal-month');
     const yearSelect = document.getElementById('cal-year');
-    if (!monthSelect || !yearSelect) return;
+    const importedEl = document.getElementById('calendar-imported-at');
+    if (!yearSelect) return;
 
-    if (monthSelect.options.length === 0) {
-        const monthNames = ["Tammi","Helmi","Maalis","Huhti","Touko","Kesä","Heinä","Elo","Syys","Loka","Marras","Joulu"];
-        monthNames.forEach((m, i) => {
-            const opt = document.createElement('option');
-            opt.value = i;
-            opt.text = m;
-            monthSelect.appendChild(opt);
-        });
+    if (importedEl) {
+        importedEl.innerText = allStatsData.visitedImportedAt
+            ? `Tuotu: ${new Date(allStatsData.visitedImportedAt).toLocaleString('fi-FI')}`
+            : "Ei tuontia";
     }
-
-    if (yearSelect.options.length === 0) {
-        const currentYear = new Date().getFullYear();
-        for (let y = currentYear - 5; y <= currentYear + 5; y++) {
-            const opt = document.createElement('option');
-            opt.value = y;
-            opt.text = y;
-            yearSelect.appendChild(opt);
-        }
-        yearSelect.value = currentYear;
-    }
-
-    const currentDate = new Date();
-    if (monthSelect.value === "") monthSelect.value = currentDate.getMonth();
-    if (yearSelect.value === "") yearSelect.value = currentDate.getFullYear();
-    const month = parseInt(monthSelect.value, 10);
-    const year = parseInt(yearSelect.value, 10);
-
-    const firstDay = new Date(year, month, 1);
-    const startWeekday = (firstDay.getDay() + 6) % 7;
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     const todayStr = new Date().toISOString().split('T')[0];
     const ownFutureMap = {};
@@ -591,102 +565,102 @@ function renderCalendar() {
         visitedMap[v.date].push(v);
     });
 
-    const weekdays = ["Ma","Ti","Ke","To","Pe","La","Su"];
-    grid.innerHTML = "";
-    weekdays.forEach(d => {
-        const cell = document.createElement('div');
-        cell.className = 'cal-day cal-day-header';
-        cell.innerText = d;
-        grid.appendChild(cell);
+    const yearsSet = new Set();
+    Object.keys(ownFutureMap).forEach(d => yearsSet.add(d.slice(0, 4)));
+    Object.keys(plannedMap).forEach(d => yearsSet.add(d.slice(0, 4)));
+    Object.keys(visitedMap).forEach(d => yearsSet.add(d.slice(0, 4)));
+    if (yearsSet.size === 0) yearsSet.add(String(new Date().getFullYear()));
+    const years = Array.from(yearsSet).map(y => parseInt(y, 10)).sort((a, b) => a - b);
+
+    const previous = yearSelect.value || "all";
+    yearSelect.innerHTML = "";
+    const optAll = document.createElement('option');
+    optAll.value = "all";
+    optAll.text = "Kaikki";
+    yearSelect.appendChild(optAll);
+    years.forEach(y => {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.text = y;
+        yearSelect.appendChild(opt);
     });
-
-    for (let i = 0; i < startWeekday; i++) {
-        const empty = document.createElement('div');
-        empty.className = 'cal-day';
-        empty.style.opacity = '0.4';
-        grid.appendChild(empty);
+    if ([...yearSelect.options].some(o => o.value === previous)) {
+        yearSelect.value = previous;
+    } else {
+        yearSelect.value = "all";
     }
 
-    for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-        const cell = document.createElement('div');
-        cell.className = 'cal-day';
-        const number = document.createElement('div');
-        number.className = 'cal-day-number';
-        number.innerText = day;
-        cell.appendChild(number);
+    const yearsToRender = yearSelect.value === "all" ? years : [parseInt(yearSelect.value, 10)];
 
-        const dots = document.createElement('div');
-        dots.className = 'cal-dots';
-        const own = ownFutureMap[dateStr];
-        const planned = plannedMap[dateStr];
-        const visited = visitedMap[dateStr];
+    grid.innerHTML = "";
+    yearsToRender.forEach(year => {
+        const block = document.createElement('div');
+        block.className = 'cal-year-block';
+        const title = document.createElement('div');
+        title.className = 'cal-year-title';
+        title.innerText = year;
+        block.appendChild(title);
 
-        if (own) {
-            const dot = document.createElement('span');
-            dot.className = 'cal-dot own';
-            dots.appendChild(dot);
-        }
-        if (planned) {
-            const dot = document.createElement('span');
-            dot.className = 'cal-dot planned';
-            dots.appendChild(dot);
-        }
-        if (visited) {
-            const dot = document.createElement('span');
-            dot.className = 'cal-dot visited';
-            dots.appendChild(dot);
+        const table = document.createElement('div');
+        table.className = 'cal-year-table';
+
+        const blankHead = document.createElement('div');
+        blankHead.className = 'cal-head';
+        blankHead.innerText = "";
+        table.appendChild(blankHead);
+
+        for (let day = 1; day <= 31; day++) {
+            const head = document.createElement('div');
+            head.className = 'cal-head';
+            head.innerText = day;
+            table.appendChild(head);
         }
 
-        if (dots.childNodes.length > 0) {
-            cell.appendChild(dots);
+        const monthNames = ["Tammi","Helmi","Maalis","Huhti","Touko","Kesä","Heinä","Elo","Syys","Loka","Marras","Joulu"];
+        for (let month = 1; month <= 12; month++) {
+            const label = document.createElement('div');
+            label.className = 'cal-month-label';
+            label.innerText = monthNames[month - 1];
+            table.appendChild(label);
+
+            const daysInMonth = new Date(year, month, 0).getDate();
+            for (let day = 1; day <= 31; day++) {
+                const cell = document.createElement('div');
+                cell.className = 'cal-cell' + (day > daysInMonth ? ' empty' : '');
+                if (day <= daysInMonth) {
+                    const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                    const dots = document.createElement('div');
+                    dots.className = 'cal-dots';
+                    const own = ownFutureMap[dateStr];
+                    const planned = plannedMap[dateStr];
+                    const visited = visitedMap[dateStr];
+                    if (own) { const dot = document.createElement('span'); dot.className = 'cal-dot own'; dots.appendChild(dot); }
+                    if (planned) { const dot = document.createElement('span'); dot.className = 'cal-dot planned'; dots.appendChild(dot); }
+                    if (visited) { const dot = document.createElement('span'); dot.className = 'cal-dot visited'; dots.appendChild(dot); }
+                    if (dots.childNodes.length > 0) cell.appendChild(dots);
+                    const titles = [];
+                    if (own) titles.push(`Omat tulevat: ${own.map(o => o.name).join(', ')}`);
+                    if (planned) titles.push(`Aiotut: ${planned.map(p => p.name).join(', ')}`);
+                    if (visited) titles.push(`Käydyt: ${visited.map(v => v.name).join(', ')}`);
+                    if (titles.length > 0) cell.title = titles.join(' | ');
+                }
+                table.appendChild(cell);
+            }
         }
-
-        const titles = [];
-        if (own) titles.push(`Omat tulevat: ${own.map(o => o.name).join(', ')}`);
-        if (planned) titles.push(`Aiotut: ${planned.map(p => p.name).join(', ')}`);
-        if (visited) titles.push(`Käydyt: ${visited.map(v => v.name).join(', ')}`);
-        if (titles.length > 0) cell.title = titles.join(' | ');
-
-        grid.appendChild(cell);
-    }
+        block.appendChild(table);
+        grid.appendChild(block);
+    });
 }
 
 function initCalendarControls() {
-    const monthSelect = document.getElementById('cal-month');
     const yearSelect = document.getElementById('cal-year');
-    const prevBtn = document.getElementById('cal-prev');
-    const nextBtn = document.getElementById('cal-next');
     const csvInput = document.getElementById('calendar-csv-input');
     const planAdd = document.getElementById('plan-add');
     const planDate = document.getElementById('plan-date');
     const planName = document.getElementById('plan-name');
     const planCsv = document.getElementById('plan-csv-input');
 
-    if (monthSelect) monthSelect.onchange = renderCalendar;
     if (yearSelect) yearSelect.onchange = renderCalendar;
-    if (prevBtn) prevBtn.onclick = () => {
-        const m = parseInt(monthSelect.value, 10);
-        const y = parseInt(yearSelect.value, 10);
-        if (m === 0) {
-            monthSelect.value = 11;
-            yearSelect.value = y - 1;
-        } else {
-            monthSelect.value = m - 1;
-        }
-        renderCalendar();
-    };
-    if (nextBtn) nextBtn.onclick = () => {
-        const m = parseInt(monthSelect.value, 10);
-        const y = parseInt(yearSelect.value, 10);
-        if (m === 11) {
-            monthSelect.value = 0;
-            yearSelect.value = y + 1;
-        } else {
-            monthSelect.value = m + 1;
-        }
-        renderCalendar();
-    };
     if (csvInput) csvInput.onchange = (e) => importVisitedCsv(e.target.files[0]);
     if (planCsv) planCsv.onchange = (e) => importPlannedCsv(e.target.files[0]);
     if (planAdd) planAdd.onclick = () => {
@@ -701,7 +675,11 @@ function initCalendarControls() {
     };
 }
 
-document.addEventListener('DOMContentLoaded', initCalendarControls);
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCalendarControls);
+} else {
+    initCalendarControls();
+}
 
 function renderLoyaltyPyramid(data) {
     const el = document.getElementById('stats-loyalty');
