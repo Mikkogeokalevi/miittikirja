@@ -266,7 +266,6 @@ function renderCalendar() {
     const container = document.getElementById('calendar-container');
     if (!container) return;
     
-    // Varmistetaan, että calendarData on olemassa
     if (!calendarData) {
         calendarData = { finds: {}, totalFinds: 0, years: [], events: {} };
     }
@@ -279,23 +278,23 @@ function renderCalendar() {
     
     let html = '<div class="calendar-grid-wrapper">';
     
-    // Otsikkorivi
+    // Otsikkorivi: Päivänumerot (1-31)
     html += '<div class="calendar-header-row">';
-    html += '<div class="calendar-corner-cell"></div>';
-    for (let month = 0; month < 12; month++) {
-        html += `<div class="calendar-header-cell">${monthNames[month]}</div>`;
+    html += '<div class="calendar-corner-cell"></div>'; // Tyhjä kulmasolu
+    for (let day = 1; day <= 31; day++) {
+        html += `<div class="calendar-header-cell">${day}</div>`;
     }
     html += '</div>';
     
-    // Päivärivit
-    for (let day = 1; day <= 31; day++) {
-        html += '<div class="calendar-day-row">';
+    // Kuukausirivit
+    for (let month = 0; month < 12; month++) {
+        html += '<div class="calendar-month-row">';
         
-        // Päivän numero
-        html += `<div class="calendar-day-cell">${day}</div>`;
+        // Kuukauden nimi
+        html += `<div class="calendar-month-cell">${monthNames[month]}</div>`;
         
-        // Kuukausisolut tälle päivälle
-        for (let month = 0; month < 12; month++) {
+        // Päiväsolut tälle kuukaudelle
+        for (let day = 1; day <= 31; day++) {
             const monthKey = String(month + 1).padStart(2, '0');
             const dayKey = String(day).padStart(2, '0');
             const dateKey = `${monthKey}-${dayKey}`;
@@ -314,7 +313,9 @@ function renderCalendar() {
             }
             if (totalCount === 0) tooltip += 'Ei aktiviteettia';
             
-            html += `<div class="calendar-cell intensity-${intensity}" data-date="${dateKey}" data-count="${totalCount}" title="${tooltip}"></div>`;
+            const displayValue = totalCount === 0 ? 'X' : totalCount;
+            
+            html += `<div class="calendar-cell intensity-${intensity}" data-date="${dateKey}" data-count="${totalCount}" title="${tooltip}">${displayValue}</div>`;
         }
         
         html += '</div>';

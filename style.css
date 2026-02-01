@@ -624,14 +624,14 @@ body.theme-light .time-slot-box.active {
 
 .calendar-header-row {
     display: grid;
-    grid-template-columns: 40px repeat(12, 1fr);
+    grid-template-columns: 60px repeat(31, 1fr);
     gap: 1px;
     background: var(--dotted-border);
 }
 
-.calendar-day-row {
+.calendar-month-row {
     display: grid;
-    grid-template-columns: 40px repeat(12, 1fr);
+    grid-template-columns: 60px repeat(31, 1fr);
     gap: 1px;
     background: var(--dotted-border);
 }
@@ -652,17 +652,17 @@ body.theme-light .time-slot-box.active {
     text-align: center;
     font-weight: bold;
     color: var(--header-color);
-    font-size: 0.9em;
+    font-size: 0.8em;
 }
 
-.calendar-day-cell {
+.calendar-month-cell {
     background: var(--highlight-bg);
     border: 1px solid var(--border-color);
     padding: 8px 4px;
     text-align: center;
     font-weight: bold;
-    color: var(--text-color);
-    min-width: 30px;
+    color: var(--header-color);
+    font-size: 0.9em;
 }
 
 .calendar-cell {
@@ -684,37 +684,43 @@ body.theme-light .time-slot-box.active {
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
-/* Väritehosteet löytömäärän mukaan */
+/* Väritehosteet löytömäärän mukaan - selkeämmät värit */
 .calendar-cell.intensity-0 {
     background: var(--card-bg);
     color: var(--text-color);
     opacity: 0.3;
+    font-weight: normal;
 }
 
 .calendar-cell.intensity-1 {
-    background: #c6e48b;
-    color: #000;
+    background: #e8f5e8;
+    color: #2d5016;
+    font-weight: bold;
 }
 
 .calendar-cell.intensity-2 {
-    background: #7bc96f;
-    color: #fff;
+    background: #c3e6c3;
+    color: #1a3409;
+    font-weight: bold;
 }
 
 .calendar-cell.intensity-3 {
-    background: #239a3b;
-    color: #fff;
+    background: #90d790;
+    color: #ffffff;
+    font-weight: bold;
 }
 
 .calendar-cell.intensity-4 {
-    background: #196127;
-    color: #fff;
+    background: #5cb85c;
+    color: #ffffff;
+    font-weight: bold;
 }
 
 .calendar-cell.intensity-5 {
-    background: #0e4429;
-    color: #fff;
-    box-shadow: 0 0 4px rgba(255,255,255,0.3);
+    background: #28a745;
+    color: #ffffff;
+    font-weight: bold;
+    box-shadow: 0 0 6px rgba(40, 167, 69, 0.4);
 }
 
 /* Teemakohtaiset säädöt */
@@ -787,28 +793,28 @@ body.theme-blue .calendar-cell.intensity-5 {
 }
 
 .intensity-sample.intensity-1 {
-    background: #c6e48b;
-    color: #000;
+    background: #e8f5e8;
+    color: #2d5016;
 }
 
 .intensity-sample.intensity-2 {
-    background: #7bc96f;
-    color: #fff;
+    background: #c3e6c3;
+    color: #1a3409;
 }
 
 .intensity-sample.intensity-3 {
-    background: #239a3b;
-    color: #fff;
+    background: #90d790;
+    color: #ffffff;
 }
 
 .intensity-sample.intensity-4 {
-    background: #196127;
-    color: #fff;
+    background: #5cb85c;
+    color: #ffffff;
 }
 
 .intensity-sample.intensity-5 {
-    background: #0e4429;
-    color: #fff;
+    background: #28a745;
+    color: #ffffff;
 }
 
 /* Responsiivisuus - Mobiililaiteet */
@@ -820,13 +826,13 @@ body.theme-blue .calendar-cell.intensity-5 {
     }
     
     .calendar-header-row,
-    .calendar-day-row {
-        grid-template-columns: 30px repeat(12, 1fr);
-        min-width: 500px;
+    .calendar-month-row {
+        grid-template-columns: 50px repeat(31, 1fr);
+        min-width: 800px;
     }
     
     .calendar-header-cell,
-    .calendar-day-cell,
+    .calendar-month-cell,
     .calendar-cell {
         padding: 4px 1px;
         min-width: 20px;
@@ -857,13 +863,13 @@ body.theme-blue .calendar-cell.intensity-5 {
     }
     
     .calendar-header-row,
-    .calendar-day-row {
-        grid-template-columns: 25px repeat(12, 1fr);
-        min-width: 400px;
+    .calendar-month-row {
+        grid-template-columns: 40px repeat(31, 1fr);
+        min-width: 600px;
     }
     
     .calendar-header-cell,
-    .calendar-day-cell,
+    .calendar-month-cell,
     .calendar-cell {
         padding: 2px 1px;
         min-width: 15px;
