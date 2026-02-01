@@ -164,8 +164,9 @@ function parseSrvContent(content) {
         calendarData.events = {};
     }
     
-    // geocache.fi CSV-formaatti: DD.MM.YYYY,"Found it" tai "Attended",GC-koodi,"Nimi","Tyyppi",Koko,D,T,U,V
-    // Huom: Nimi voi sisältää pilkkuja, joten tarvitaan parempi parsiminen
+    // geocache.fi CSV-formaatti: DD.MM.YYYY,"Found it" tai "Attended",GC-koodi,"Nimi","Kuvaus","Tyyppi",Koko,D,T,U,V
+    // Sarakkeet: 0=päivämäärä, 1=logtype, 2=GC, 3=nimi, 4=kuvaus, 5=tyyppi, 6=koko, 7=D, 8=T, 9=U, 10=V
+    // Huom: Nimi ja kuvaus voivat sisältää pilkkuja, joten tarvitaan parempi parsiminen
     lines.forEach(line => {
         if (!line.trim()) return;
         
@@ -213,14 +214,19 @@ function parseSrvContent(content) {
         // Nimi (voi sisältää pilkkuja)
         const name = parts[3].trim().replace(/"/g, '');
         
-        // Tyyppi (oikea sarakkeindeksi)
-        const cacheType = parts[4].trim().replace(/"/g, '');
+        // Kuvaus (voi sisältää pilkkuja) - sarake 4
+        const description = parts[4].trim().replace(/"/g, '');
+        
+        // Tyyppi (oikea sarakkeindeksi - cacheType on sarakkeessa 5)
+        const cacheType = parts[5].trim().replace(/"/g, '');
         
         // Debug: näytetään oikea cacheType
         if (logType === "Attended") {
             console.log("CSV-rivi:", line);
             console.log("Parsed parts:", parts);
-            console.log("CacheType:", cacheType);
+            console.log("Nimi:", name);
+            console.log("Kuvaus:", description);
+            console.log("CacheType (sarake 5):", cacheType);
         }
         
         const monthKey = String(month).padStart(2, '0');
@@ -242,10 +248,12 @@ function parseSrvContent(content) {
             if (!newEvents[dateKey]) {
                 newEvents[dateKey] = [];
             }
+            // Yhdistetään nimi ja kuvaus
+            const fullName = description ? `${name} - ${description}` : name;
             newEvents[dateKey].push({
                 date: `${year}-${monthKey}-${dayKey}`,
                 gcCode: gcCode,
-                name: name,
+                name: fullName,
                 type: "miitti"
             });
             totalEvents++;
