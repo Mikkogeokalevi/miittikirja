@@ -5,10 +5,7 @@
 
 let allStatsData = {
     events: [],
-    attendees: {},
-    plans: [],
-    visited: [],
-    visitedImportedAt: null
+    attendees: {}
 };
 
 let chartInstances = {};
@@ -28,15 +25,6 @@ async function initStats() {
         const logsSnap = await db.ref('miitit/' + currentUser.uid + '/logs').once('value');
         const logsData = logsSnap.val() || {};
 
-        const plansSnap = await db.ref('miitit/' + currentUser.uid + '/plans').once('value');
-        const plans = [];
-        plansSnap.forEach(child => { plans.push({ key: child.key, ...child.val() }); });
-        
-        const visitedSnap = await db.ref('miitit/' + currentUser.uid + '/calendar/visited').once('value');
-        const visitedData = visitedSnap.val() || {};
-        const visited = Array.isArray(visitedData.entries) ? visitedData.entries : [];
-        const visitedImportedAt = visitedData.importedAt || null;
-
         events.forEach(evt => {
             const evtLogs = logsData[evt.key] || {};
             evt.attendeeCount = Object.keys(evtLogs).length;
@@ -55,9 +43,6 @@ async function initStats() {
         });
 
         allStatsData.events = events;
-        allStatsData.plans = plans;
-        allStatsData.visited = visited;
-        allStatsData.visitedImportedAt = visitedImportedAt;
         populateYearFilter(events);
         updateStatsView(events);
 
@@ -210,7 +195,6 @@ function updateStatsView(data) {
 
     renderLocationsTable(data);
     renderAttributesList(data);
-    renderCalendar();
 
     if(document.getElementById('tab-graphs').classList.contains('active')) {
         renderCharts(data);
@@ -440,244 +424,7 @@ function renderTopUsersList(data) {
     el.innerHTML = html;
 }
 
-function parseCsvLine(line) {
-    const result = [];
-    let current = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-        const ch = line[i];
-        if (ch === '"') {
-            if (inQuotes && line[i + 1] === '"') {
-                current += '"';
-                i += 1;
-            } else {
-                inQuotes = !inQuotes;
-            }
-        } else if (ch === ',' && !inQuotes) {
-            result.push(current);
-            current = "";
-        } else {
-            current += ch;
-        }
-    }
-    result.push(current);
-    return result.map(v => v.trim());
-}
-
-function parseDateToIso(dateStr) {
-    if (!dateStr) return null;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-    const match = dateStr.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-    if (match) {
-        return `${match[3]}-${match[2]}-${match[1]}`;
-    }
-    return null;
-}
-
-function importVisitedCsv(file) {
-    if (!file || !currentUser) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const text = e.target.result;
-        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-        const entries = [];
-        lines.forEach(line => {
-            const cols = parseCsvLine(line);
-            const date = parseDateToIso(cols[0]);
-            const logType = cols[1] ? cols[1].replace(/"/g, '') : "";
-            const code = cols[2] || "";
-            const name = cols[3] ? cols[3].replace(/"/g, '') : "";
-            const cacheType = cols[4] ? cols[4].replace(/"/g, '') : "";
-            if (date && logType.toLowerCase() === "attended") {
-                entries.push({ date, name, code, cacheType });
-            }
-        });
-        const payload = {
-            importedAt: new Date().toISOString(),
-            entries: entries
-        };
-        db.ref('miitit/' + currentUser.uid + '/calendar/visited').set(payload);
-        allStatsData.visited = entries;
-        allStatsData.visitedImportedAt = payload.importedAt;
-        renderCalendar();
-    };
-    reader.readAsText(file);
-}
-
-function importPlannedCsv(file) {
-    if (!file || !currentUser) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const text = e.target.result;
-        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-        const batch = [];
-        lines.forEach(line => {
-            const cols = line.includes(';') && !line.includes(',') ? line.split(';') : parseCsvLine(line);
-            const date = parseDateToIso((cols[0] || "").trim());
-            const name = (cols[1] || "").replace(/"/g, '').trim();
-            if (date && name) {
-                batch.push({ date, name });
-            }
-        });
-        if (batch.length === 0) return;
-        const ref = db.ref('miitit/' + currentUser.uid + '/plans');
-        batch.forEach(item => ref.push(item));
-        allStatsData.plans = allStatsData.plans.concat(batch);
-        renderCalendar();
-    };
-    reader.readAsText(file);
-}
-
-function renderCalendar() {
-    const grid = document.getElementById('calendar-grid');
-    if (!grid) return;
-
-    const yearSelect = document.getElementById('cal-year');
-    const importedEl = document.getElementById('calendar-imported-at');
-    if (!yearSelect) return;
-
-    if (importedEl) {
-        importedEl.innerText = allStatsData.visitedImportedAt
-            ? `Tuotu: ${new Date(allStatsData.visitedImportedAt).toLocaleString('fi-FI')}`
-            : "Ei tuontia";
-    }
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    const ownFutureMap = {};
-    allStatsData.events.forEach(evt => {
-        if (evt.date && evt.date >= todayStr) {
-            ownFutureMap[evt.date] = ownFutureMap[evt.date] || [];
-            ownFutureMap[evt.date].push(evt);
-        }
-    });
-
-    const plannedMap = {};
-    (allStatsData.plans || []).forEach(p => {
-        if (!p.date) return;
-        plannedMap[p.date] = plannedMap[p.date] || [];
-        plannedMap[p.date].push(p);
-    });
-
-    const visitedMap = {};
-    (allStatsData.visited || []).forEach(v => {
-        if (!v.date) return;
-        visitedMap[v.date] = visitedMap[v.date] || [];
-        visitedMap[v.date].push(v);
-    });
-
-    const yearsSet = new Set();
-    Object.keys(ownFutureMap).forEach(d => yearsSet.add(d.slice(0, 4)));
-    Object.keys(plannedMap).forEach(d => yearsSet.add(d.slice(0, 4)));
-    Object.keys(visitedMap).forEach(d => yearsSet.add(d.slice(0, 4)));
-    if (yearsSet.size === 0) yearsSet.add(String(new Date().getFullYear()));
-    const years = Array.from(yearsSet).map(y => parseInt(y, 10)).sort((a, b) => a - b);
-
-    const previous = yearSelect.value || "all";
-    yearSelect.innerHTML = "";
-    const optAll = document.createElement('option');
-    optAll.value = "all";
-    optAll.text = "Kaikki";
-    yearSelect.appendChild(optAll);
-    years.forEach(y => {
-        const opt = document.createElement('option');
-        opt.value = y;
-        opt.text = y;
-        yearSelect.appendChild(opt);
-    });
-    if ([...yearSelect.options].some(o => o.value === previous)) {
-        yearSelect.value = previous;
-    } else {
-        yearSelect.value = "all";
-    }
-
-    const yearsToRender = yearSelect.value === "all" ? years : [parseInt(yearSelect.value, 10)];
-
-    grid.innerHTML = "";
-    const table = document.createElement('div');
-    table.className = 'cal-year-table';
-
-    const blankHead = document.createElement('div');
-    blankHead.className = 'cal-head';
-    blankHead.innerText = "";
-    table.appendChild(blankHead);
-
-    for (let day = 1; day <= 31; day++) {
-        const head = document.createElement('div');
-        head.className = 'cal-head';
-        head.innerText = day;
-        table.appendChild(head);
-    }
-
-    const monthNames = ["Tammi","Helmi","Maalis","Huhti","Touko","Kesä","Heinä","Elo","Syys","Loka","Marras","Joulu"];
-    yearsToRender.forEach(year => {
-        const yearRow = document.createElement('div');
-        yearRow.className = 'cal-year-sep';
-        yearRow.innerText = year;
-        table.appendChild(yearRow);
-
-        for (let month = 1; month <= 12; month++) {
-            const label = document.createElement('div');
-            label.className = 'cal-month-label';
-            label.innerText = monthNames[month - 1];
-            table.appendChild(label);
-
-            const daysInMonth = new Date(year, month, 0).getDate();
-            for (let day = 1; day <= 31; day++) {
-                const cell = document.createElement('div');
-                cell.className = 'cal-cell' + (day > daysInMonth ? ' empty' : '');
-                if (day <= daysInMonth) {
-                    const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-                    const dots = document.createElement('div');
-                    dots.className = 'cal-dots';
-                    const own = ownFutureMap[dateStr];
-                    const planned = plannedMap[dateStr];
-                    const visited = visitedMap[dateStr];
-                    if (own) { const dot = document.createElement('span'); dot.className = 'cal-dot own'; dots.appendChild(dot); }
-                    if (planned) { const dot = document.createElement('span'); dot.className = 'cal-dot planned'; dots.appendChild(dot); }
-                    if (visited) { const dot = document.createElement('span'); dot.className = 'cal-dot visited'; dots.appendChild(dot); }
-                    if (dots.childNodes.length > 0) cell.appendChild(dots);
-                    const titles = [];
-                    if (own) titles.push(`Omat tulevat: ${own.map(o => o.name).join(', ')}`);
-                    if (planned) titles.push(`Aiotut: ${planned.map(p => p.name).join(', ')}`);
-                    if (visited) titles.push(`Käydyt: ${visited.map(v => v.name).join(', ')}`);
-                    if (titles.length > 0) cell.title = titles.join(' | ');
-                }
-                table.appendChild(cell);
-            }
-        }
-    });
-
-    grid.appendChild(table);
-}
-
-function initCalendarControls() {
-    const yearSelect = document.getElementById('cal-year');
-    const csvInput = document.getElementById('calendar-csv-input');
-    const planAdd = document.getElementById('plan-add');
-    const planDate = document.getElementById('plan-date');
-    const planName = document.getElementById('plan-name');
-    const planCsv = document.getElementById('plan-csv-input');
-
-    if (yearSelect) yearSelect.onchange = renderCalendar;
-    if (csvInput) csvInput.onchange = (e) => importVisitedCsv(e.target.files[0]);
-    if (planCsv) planCsv.onchange = (e) => importPlannedCsv(e.target.files[0]);
-    if (planAdd) planAdd.onclick = () => {
-        if (!currentUser) return;
-        const date = planDate ? planDate.value : "";
-        const name = planName ? planName.value.trim() : "";
-        if (!date || !name) return alert("Päivämäärä ja nimi vaaditaan.");
-        db.ref('miitit/' + currentUser.uid + '/plans').push({ date, name });
-        allStatsData.plans.push({ date, name });
-        if (planName) planName.value = "";
-        renderCalendar();
-    };
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initCalendarControls);
-} else {
-    initCalendarControls();
-}
+// ... KAIKKI MUUT FUNKTIOT ENNALLAAN ...
 
 function renderLoyaltyPyramid(data) {
     const el = document.getElementById('stats-loyalty');
