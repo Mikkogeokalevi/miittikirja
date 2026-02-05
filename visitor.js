@@ -496,7 +496,20 @@ function showVisitorModalWithLang(nick, history, stats) {
     // 7. NÄYTETÄÄN MODAALI
     modal.style.display = 'block';
 
-    if (window.triggerConfetti) {
+    if (window.triggerSpecialEffect) {
+            if (stats.isMilestone) {
+                // Juhlakerrat - satunnainen erikoistehoste
+                const effects = ['fireworks', 'matrix', 'hearts', 'stars', 'coins'];
+                const randomEffect = effects[Math.floor(Math.random() * effects.length)];
+                window.triggerSpecialEffect(randomEffect, 150, 2);
+            } else {
+                // Normaalit kirjaukset - pieni efektien sekoitus
+                const effects = ['hearts', 'stars', 'snow', 'normal'];
+                const randomEffect = effects[Math.floor(Math.random() * effects.length)];
+                window.triggerSpecialEffect(randomEffect, 50, 1);
+            }
+    } else if (window.triggerConfetti) {
+        // Fallback vanhaan systeemiin
         if (stats.isMilestone) window.triggerConfetti(200, 2);
         else window.triggerConfetti(50, 0.5);
     }

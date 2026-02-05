@@ -609,6 +609,24 @@ body.theme-light .time-slot-box.active {
     100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
 }
 
+/* --- MATRIX EFFECT --- */
+@keyframes matrix-fall {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(110vh); opacity: 0.3; }
+}
+
+/* --- FIREWORKS EFFECT --- */
+@keyframes firework-burst {
+    0% { 
+        transform: translate(0, 0) scale(1); 
+        opacity: 1; 
+    }
+    100% { 
+        transform: translate(var(--vx), var(--vy)) scale(0); 
+        opacity: 0; 
+    }
+}
+
 /* ==========================================
    KALENTERIN TYYLIT
    ========================================== */

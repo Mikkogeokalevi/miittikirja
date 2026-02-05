@@ -1251,35 +1251,93 @@ window.toggleDetails = function(id) {
 // ==========================================
 // 13. CONFETTI EFFECT (CSS GPU Optimized)
 // ==========================================
-window.triggerConfetti = function(amount, durationSec) {
+window.triggerConfetti = function(amount, durationSec, type = 'normal') {
     // Luodaan hiutaleita "amount" kappaletta, mutta ei kaikkia kerralla, 
     // vaan ripotellaan niitä durationSec-ajan kuluessa.
     const interval = (durationSec * 1000) / amount;
     
     let count = 0;
     const rain = setInterval(() => {
-        createParticle();
+        createParticle(type);
         count++;
         if (count >= amount) clearInterval(rain);
     }, interval);
 };
 
-function createParticle() {
-    const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722'];
+// Uusi funktio erikoistehosteille
+window.triggerSpecialEffect = function(effectName, amount = 100, duration = 2) {
+    switch(effectName) {
+        case 'matrix':
+            triggerMatrixRain(amount, duration);
+            break;
+        case 'hearts':
+            triggerConfetti(amount, duration, 'hearts');
+            break;
+        case 'stars':
+            triggerConfetti(amount, duration, 'stars');
+            break;
+        case 'snow':
+            triggerConfetti(amount, duration, 'snow');
+            break;
+        case 'fireworks':
+            triggerFireworks(amount, duration);
+            break;
+        case 'coins':
+            triggerConfetti(amount, duration, 'coins');
+            break;
+        default:
+            triggerConfetti(amount, duration, 'normal');
+    }
+};
+
+function createParticle(type = 'normal') {
     const p = document.createElement('div');
     p.classList.add('confetti-particle');
     
-    // Satunnainen sijainti ja ominaisuudet
+    // Satunnainen sijainti
     p.style.left = Math.random() * 100 + 'vw';
-    p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    
+    // Tyypin mukaan värit ja muodot
+    switch(type) {
+        case 'hearts':
+            p.style.backgroundColor = '#e91e63';
+            p.style.borderRadius = '0 0 50% 50%';
+            p.style.transform = 'rotate(-45deg)';
+            break;
+        case 'stars':
+            p.style.backgroundColor = '#FFD700';
+            p.style.borderRadius = '0';
+            p.innerHTML = '⭐';
+            p.style.fontSize = '16px';
+            p.style.color = '#FFD700';
+            p.style.backgroundColor = 'transparent';
+            break;
+        case 'snow':
+            p.style.backgroundColor = '#ffffff';
+            p.style.borderRadius = '50%';
+            p.style.opacity = '0.8';
+            break;
+        case 'coins':
+            p.style.backgroundColor = '#FFD700';
+            p.style.borderRadius = '50%';
+            p.style.border = '2px solid #FFA500';
+            p.innerHTML = '€';
+            p.style.fontSize = '12px';
+            p.style.color = '#8B4513';
+            p.style.backgroundColor = '#FFD700';
+            break;
+        default: // normal
+            const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722'];
+            p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            p.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+    }
     
     // Satunnainen koko (5px - 12px)
-    const size = Math.random() * 7 + 5 + 'px';
-    p.style.width = size;
-    p.style.height = size;
-    
-    // Satunnainen muoto (neliö tai pyöreä)
-    p.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+    if (type !== 'stars') {
+        const size = Math.random() * 7 + 5 + 'px';
+        p.style.width = size;
+        p.style.height = size;
+    }
     
     // Satunnainen putoamisnopeus (CSS animation duration) 2s - 5s
     const fallDuration = Math.random() * 3 + 2 + 's';
@@ -1291,4 +1349,77 @@ function createParticle() {
     setTimeout(() => {
         if (p && p.parentNode) p.parentNode.removeChild(p);
     }, 6000);
+}
+
+// Matrix-sade efekti
+function triggerMatrixRain(amount, duration) {
+    const matrixChars = ['0', '1', 'メ', 'カ', 'ナ', 'タ', 'ム', 'コ', 'ト', 'ミ', 'ッ', 'キ'];
+    
+    for (let i = 0; i < amount; i++) {
+        setTimeout(() => {
+            const char = document.createElement('div');
+            char.style.position = 'fixed';
+            char.style.top = '-20px';
+            char.style.left = Math.random() * 100 + 'vw';
+            char.style.color = '#00ff00';
+            char.style.fontSize = '20px';
+            char.style.fontFamily = 'monospace';
+            char.style.zIndex = '9999';
+            char.style.pointerEvents = 'none';
+            char.style.animation = 'matrix-fall linear forwards';
+            char.style.animationDuration = (Math.random() * 2 + 1) + 's';
+            char.textContent = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+            
+            document.body.appendChild(char);
+            
+            setTimeout(() => {
+                if (char && char.parentNode) char.parentNode.removeChild(char);
+            }, 3000);
+        }, (duration * 1000 / amount) * i);
+    }
+}
+
+// Ilotulitus efekti
+function triggerFireworks(amount, duration) {
+    for (let i = 0; i < amount; i++) {
+        setTimeout(() => {
+            const x = Math.random() * 80 + 10; // 10-90% leveydestä
+            const y = Math.random() * 30 + 20; // 20-50% korkeudesta
+            
+            createFireworkExplosion(x, y);
+        }, (duration * 1000 / amount) * i);
+    }
+}
+
+function createFireworkExplosion(x, y) {
+    const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffffff'];
+    const particles = 20;
+    
+    for (let i = 0; i < particles; i++) {
+        const particle = document.createElement('div');
+        particle.style.position = 'fixed';
+        particle.style.left = x + '%';
+        particle.style.top = y + '%';
+        particle.style.width = '4px';
+        particle.style.height = '4px';
+        particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        particle.style.borderRadius = '50%';
+        particle.style.zIndex = '9999';
+        particle.style.pointerEvents = 'none';
+        
+        const angle = (Math.PI * 2 * i) / particles;
+        const velocity = Math.random() * 100 + 50;
+        const vx = Math.cos(angle) * velocity;
+        const vy = Math.sin(angle) * velocity;
+        
+        particle.style.animation = 'firework-burst 1s ease-out forwards';
+        particle.style.setProperty('--vx', vx + 'px');
+        particle.style.setProperty('--vy', vy + 'px');
+        
+        document.body.appendChild(particle);
+        
+        setTimeout(() => {
+            if (particle && particle.parentNode) particle.parentNode.removeChild(particle);
+        }, 1000);
+    }
 }
