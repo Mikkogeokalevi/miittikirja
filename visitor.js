@@ -267,7 +267,26 @@ window.handleVisitorSign = async function() {
 
         if (window.MK_Messages) {
             stats.title = window.MK_Messages.getRankTitle(stats.totalVisits);
-            stats.greeting = window.MK_Messages.getRandomGreeting(nick, stats.isFirstTime);
+            
+            // Valitaan viestityyppi satunnaisesti
+            const greetingType = Math.random();
+            let greeting;
+            
+            if (stats.isFirstTime) {
+                // Ensikertalaisille - 15 vaihtoehtoa
+                greeting = window.MK_Messages.getRandomGreeting(nick, stats.isFirstTime);
+            } else if (greetingType < 0.3) {
+                // 30%: Päivän mukaan vaihtuva viesti
+                greeting = window.MK_Messages.getDailyGreeting(nick);
+            } else if (greetingType < 0.6) {
+                // 30%: Ajan mukaan vaihtuva viesti  
+                greeting = window.MK_Messages.getTimeBasedGreeting(nick);
+            } else {
+                // 40%: Perinteinen satunnainen viesti
+                greeting = window.MK_Messages.getRandomGreeting(nick, false);
+            }
+            
+            stats.greeting = greeting;
             
             // Putkilaskuri (vain miitit)
             const currentEvent = eventsMap[eventId];
