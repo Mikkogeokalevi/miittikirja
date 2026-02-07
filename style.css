@@ -28,8 +28,6 @@
     --btn-blue-text: #ffffff;
     --btn-purple-bg: #8B4513;
     --btn-purple-text: #ffffff;
-    --btn-orange-bg: #FF8C00;
-    --btn-orange-text: #ffffff;
     --btn-green-bg: #2e7d32;
     --btn-green-text: #ffffff;
     --btn-red-bg: #8B0000;
@@ -60,7 +58,6 @@ body.theme-light {
     /* Napit (vaalea) */
     --btn-blue-bg: #8B4513;
     --btn-purple-bg: #8B4513;
-    --btn-orange-bg: #FF8C00;
     --btn-green-bg: #4caf50;
     --btn-red-bg: #B22222;
     --btn-gray-bg: #A0522D;
@@ -90,7 +87,6 @@ body.theme-green {
     /* Napit (forest) */
     --btn-blue-bg: #2e7d32;
     --btn-purple-bg: #2e7d32;
-    --btn-orange-bg: #FF8C00;
     --btn-green-bg: #558b2f;
     --btn-red-bg: #c62828;
     --btn-gray-bg: #455a64;
@@ -120,7 +116,6 @@ body.theme-blue {
     /* Napit (ocean) */
     --btn-blue-bg: #1d4ed8;
     --btn-purple-bg: #1d4ed8;
-    --btn-orange-bg: #FF8C00;
     --btn-green-bg: #059669;
     --btn-red-bg: #991b1b;
     --btn-gray-bg: #475569;
@@ -349,7 +344,6 @@ input::placeholder, textarea::placeholder { color: var(--accent-color); opacity:
 }
 .btn-blue { background-color: var(--btn-blue-bg); color: var(--btn-blue-text); } 
 .btn-purple { background-color: var(--btn-purple-bg); color: var(--btn-purple-text); } 
-.btn-orange { background-color: var(--btn-orange-bg); color: var(--btn-orange-text); } 
 .btn-green { background-color: var(--btn-green-bg); color: var(--btn-green-text); border: 1px solid var(--today-border); } 
 .btn-red { background-color: var(--btn-red-bg); color: #fff; } 
 .btn-gray { background-color: var(--btn-gray-bg); color: #fff; }
