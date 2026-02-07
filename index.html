@@ -12,6 +12,77 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
+    <!-- Estää näytön sammuttumisen iPadissa -->
+    <meta name="apple-mobile-web-app-title" content="MK Miittikirja">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- PWA näytön herätys -->
+    <meta name="apple-itunes-app" content="app-id=myAppStoreID, affiliate-data=myAffiliateData, app-argument=myURL">
+    
+    <!-- Estää automaattisen sammutuksen -->
+    <script>
+        // Estää näytön sammuttamisen iOS-laitteissa
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // Näyttö sammui - yritä herättää
+                setTimeout(() => {
+                    if ('wakeLock' in navigator) {
+                        navigator.wakeLock.request('screen');
+                    }
+                }, 100);
+            }
+        });
+        
+        // Screen Wake Lock API
+        let wakeLock = null;
+        
+        async function requestWakeLock() {
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                console.log('Screen Wake Lock active');
+                
+                wakeLock.addEventListener('release', () => {
+                    console.log('Screen Wake Lock released');
+                    wakeLock = null;
+                });
+            } catch (err) {
+                console.log(`Wake Lock error: ${err.name}, ${err.message}`);
+            }
+        }
+        
+        // Pyydä wake lock kun sivu ladataan
+        window.addEventListener('load', requestWakeLock);
+        
+        // Pyydä uudelleen kun sivu aktivoituu
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && !wakeLock) {
+                requestWakeLock();
+            }
+        });
+        
+        // Pyydä uudelleen kun käyttäjä klikkaa
+        document.addEventListener('click', () => {
+            if (!wakeLock) {
+                requestWakeLock();
+            }
+        });
+        
+        // Manuaalinen "Pidä näyttö päällä" -painike
+        function toggleScreenLock() {
+            if (wakeLock) {
+                wakeLock.release();
+                wakeLock = null;
+                console.log('Screen lock released manually');
+            } else {
+                requestWakeLock();
+            }
+        }
+        
+        // Globaali funktio käytettäväksi muualla
+        window.toggleScreenLock = toggleScreenLock;
+    </script>
+    
     <!-- Favicon selaimen välilehdelle -->
     <link rel="icon" type="image/png" sizes="32x32" href="icon.png">
     <link rel="icon" type="image/png" sizes="16x16" href="icon.png">
@@ -99,6 +170,7 @@
             <button id="btn-find-today" class="btn btn-green" style="flex:2;">📅 AVAA TÄMÄ PÄIVÄ</button>
             <button id="btn-show-stats" class="btn btn-blue" style="flex:1;">📊 TILASTOT</button>
             <button id="btn-show-calendar" class="btn btn-purple" style="flex:1;">📅 KALENTERI</button>
+            <button id="btn-screen-lock" class="btn btn-orange" style="flex:1;" onclick="toggleScreenLock()">📱 PIDÄ NÄYTTÖ PÄÄLLÄ</button>
         </div>
         
         <div class="card-form">
