@@ -19,6 +19,41 @@
     
     <link rel="apple-touch-icon" href="icon.png"> 
 
+    <!-- Näytön herätys iPadille (ei häiritse muita toimintoja) -->
+    <script>
+        // Screen Wake Lock API - vain näytön pitäminen päällä
+        let wakeLock = null;
+        
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator && !wakeLock) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Screen Wake Lock active');
+                    
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Screen Wake Lock released');
+                        wakeLock = null;
+                    });
+                }
+            } catch (err) {
+                // Jos API ei ole tuettu, ei haittaa
+                console.log(`Wake Lock not supported: ${err.name}`);
+            }
+        }
+        
+        // Pyydä wake lock vain kun sivu on täysin ladattu
+        window.addEventListener('load', () => {
+            setTimeout(requestWakeLock, 1000); // Pieni viive varmuuden vuoksi
+        });
+        
+        // Pyydä uudelleen jos sivu palaa aktiiviseksi
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && !wakeLock) {
+                requestWakeLock();
+            }
+        });
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     
