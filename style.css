@@ -204,6 +204,40 @@ body.theme-light .card.archived {
     margin-bottom: 15px;
 }
 
+/* --- VISITOR VIEW: inline error & status (UI only) --- */
+#vv-error {
+    background: rgba(178, 34, 34, 0.12);
+    border: 1px solid rgba(178, 34, 34, 0.5);
+    color: #B22222;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 10px 0;
+    font-weight: bold;
+    text-align: center;
+}
+
+#vv-status {
+    background: rgba(46, 125, 50, 0.12);
+    border: 1px solid rgba(46, 125, 50, 0.5);
+    color: var(--text-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 10px 0 0 0;
+    text-align: center;
+    font-weight: bold;
+}
+
+.input-error {
+    border-color: #B22222 !important;
+    box-shadow: 0 0 0 2px rgba(178, 34, 34, 0.15);
+}
+
+#btn-visitor-sign.is-loading {
+    opacity: 0.75;
+    transform: none;
+    box-shadow: none !important;
+}
+
 #new-event-toggle {
     cursor: pointer;
     user-select: none;

@@ -157,21 +157,72 @@ window.handleVisitorSign = async function() {
     if (window.isVisitorExpired) {
         return alert(t.expiredAlert);
     }
-    
+    const errorEl = document.getElementById('vv-error');
+    const statusEl = document.getElementById('vv-status');
+    const signBtn = document.getElementById('btn-visitor-sign');
+    const setError = (msg) => {
+        if (errorEl) {
+            errorEl.innerText = msg || '';
+            errorEl.style.display = msg ? 'block' : 'none';
+        }
+    };
+    const setStatus = (msg) => {
+        if (statusEl) {
+            statusEl.innerText = msg || '';
+            statusEl.style.display = msg ? 'block' : 'none';
+        }
+    };
+    const setLoading = (isLoading) => {
+        if (signBtn) {
+            signBtn.disabled = isLoading;
+            signBtn.classList.toggle('is-loading', isLoading);
+        }
+        const loadOverlay = document.getElementById('loading-overlay');
+        if (loadOverlay) loadOverlay.style.display = isLoading ? 'flex' : 'none';
+    };
+    const clearFieldErrors = () => {
+        ['vv-nickname', 'vv-from', 'vv-message'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.remove('input-error');
+        });
+    };
+    const markFieldError = (id) => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('input-error');
+    };
+    const focusField = (id) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.focus();
+            if (typeof el.select === 'function') el.select();
+        }
+    };
+
+    clearFieldErrors();
+    setError('');
+    setStatus('');
+
     const nickInput = document.getElementById('vv-nickname');
     const fromInput = document.getElementById('vv-from');
     const msgInput = document.getElementById('vv-message');
 
     const nick = nickInput ? nickInput.value.trim() : "";
-    if(!nick) return alert(t.alertNick);
+    if(!nick) {
+        markFieldError('vv-nickname');
+        setError(t.alertNick);
+        focusField('vv-nickname');
+        return;
+    }
 
     const targetHost = window.currentVisitorTargetUid || "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
     const eventId = window.currentEventId;
 
     if (!eventId) return alert("Virhe: Tapahtuman tunnistetta ei löytynyt.");
 
-    const loadOverlay = document.getElementById('loading-overlay');
-    if(loadOverlay) loadOverlay.style.display = 'flex';
+    // Estä tuplapainallukset
+    if (signBtn && signBtn.disabled) return;
+    setLoading(true);
+    setStatus('Tallennetaan...');
 
     try {
         const currentLogsSnap = await firebase.database().ref('miitit/' + targetHost + '/logs/' + eventId).once('value');
@@ -184,8 +235,11 @@ window.handleVisitorSign = async function() {
         });
 
         if (alreadyLogged) {
-            if(loadOverlay) loadOverlay.style.display = 'none';
-            alert(t.alertDup.replace('{0}', nick));
+            setLoading(false);
+            setError(t.alertDup.replace('{0}', nick));
+            setStatus('');
+            markFieldError('vv-nickname');
+            focusField('vv-nickname');
             return;
         }
 
@@ -198,8 +252,9 @@ window.handleVisitorSign = async function() {
 
     } catch (saveErr) {
         console.error("Virhe:", saveErr);
-        if(loadOverlay) loadOverlay.style.display = 'none';
-        alert("System Error: " + saveErr.message);
+        setLoading(false);
+        setStatus('');
+        setError("System Error: " + saveErr.message);
         return;
     }
 
@@ -330,7 +385,9 @@ window.handleVisitorSign = async function() {
         userHistory = null;
     }
 
-    if(loadOverlay) loadOverlay.style.display = 'none';
+    setLoading(false);
+    setError('');
+    setStatus(t.savedMsg || 'Tallennettu');
     showVisitorModalWithLang(nick, userHistory, stats);
 };
 

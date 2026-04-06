@@ -72,6 +72,8 @@
         
         <div class="card-form">
             <h3 id="vv-ui-subtitle" style="text-align:center; color:#B22222;">✍️ Kirjaa käyntisi vieraskirjaan</h3>
+
+            <div id="vv-error" style="display:none;"></div>
             
             <div style="position:relative;">
                 <input type="text" id="vv-nickname" placeholder="Nimimerkkisi (kuten Geocaching.com)" style="font-size: 1.2em; border: 2px solid #8B4513;">
@@ -84,6 +86,8 @@
             <input type="text" id="vv-message" placeholder="Terveiset Mikkokaleville">
             
             <button id="btn-visitor-sign" class="btn btn-green" onclick="handleVisitorSign()" style="font-size: 1.2em; box-shadow: 4px 4px 0px #2e7d32;">TALLENNA KÄYNTI ✅</button>
+
+            <div id="vv-status" style="display:none;" aria-live="polite"></div>
             
             <p id="vv-ui-reminder" style="color:#d32f2f; font-weight:bold; text-align:center; margin-top:15px; border-top:1px dashed #ccc; padding-top:10px;">⚠️ Muista logata käyntisi myös virallisesti Geocaching.comiin!</p>
         </div>
