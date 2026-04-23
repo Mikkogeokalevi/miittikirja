@@ -204,6 +204,47 @@ body.theme-light .card.archived {
     margin-bottom: 15px;
 }
 
+/* --- VISITOR VIEW: oma pehmeämpi teema (riippumatta pääteemasta) --- */
+#visitor-view {
+    background: linear-gradient(180deg, #f8fbff 0%, #f2f7ff 100%);
+    border: 3px solid #c7d7ef;
+    box-shadow: 0 10px 28px rgba(24, 58, 112, 0.14);
+}
+
+#visitor-view h2,
+#visitor-view h3 {
+    text-shadow: none;
+    color: #1f3d66;
+}
+
+#visitor-view .card {
+    background: #ffffff;
+    border: 1px solid #d7e3f2;
+    box-shadow: 0 4px 14px rgba(25, 58, 112, 0.08);
+}
+
+#visitor-view .card-form {
+    background: #ffffff;
+    border: 1px solid #cfdcf0;
+}
+
+#visitor-view #vv-event-info,
+#visitor-view #vv-expiry-info {
+    color: #2b3f5c;
+}
+
+#visitor-view input,
+#visitor-view textarea {
+    background: #ffffff;
+    border-color: #b9cce7;
+    color: #22344d;
+}
+
+#visitor-view input::placeholder,
+#visitor-view textarea::placeholder {
+    color: #7a8da8;
+}
+
 /* --- VISITOR VIEW: inline error & status (UI only) --- */
 #vv-error {
     background: rgba(178, 34, 34, 0.12);
@@ -239,35 +280,50 @@ body.theme-light .card.archived {
 }
 
 .visitor-pre-sign-message {
-    margin: 0 0 10px 0;
-    padding: 10px 12px;
-    border: 2px dashed var(--secondary-color);
+    margin: 0 0 12px 0;
+    padding: 12px 14px;
+    border: 2px solid #f1b15f;
+    border-left: 6px solid #e67e22;
     border-radius: 10px;
-    background: var(--highlight-bg);
+    background: linear-gradient(180deg, #fff9ef 0%, #fff3dd 100%);
     text-align: center;
-    color: var(--text-color);
+    color: #4a3725;
+    box-shadow: 0 3px 12px rgba(230, 126, 34, 0.12);
 }
 
 .visitor-pre-sign-message-title {
     font-weight: bold;
-    color: var(--secondary-color);
+    color: #b85d09;
+    letter-spacing: 0.2px;
     margin-bottom: 6px;
 }
 
 .visitor-special-message {
     margin: 10px 0 14px 0;
     padding: 12px;
-    border: 2px solid var(--secondary-color);
+    border: 2px solid #76a7e8;
     border-radius: 10px;
-    background: var(--highlight-bg);
+    background: linear-gradient(180deg, #eef6ff 0%, #e7f1ff 100%);
     text-align: center;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+    color: #1f3d66;
+    box-shadow: 0 3px 10px rgba(40, 90, 160, 0.15);
 }
 
 .visitor-special-message-title {
     font-weight: bold;
-    color: var(--secondary-color);
+    color: #2e64aa;
     margin-bottom: 6px;
+}
+
+/* Kirjauksen jälkeinen profiilimodaali (visitor) */
+#user-profile-modal .modal-content {
+    background: linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
+    border: 3px solid #c7d7ef;
+    color: #1f3656;
+}
+
+#user-profile-modal .modal-content .btn-red {
+    filter: saturate(0.9);
 }
 
 #new-event-toggle {
