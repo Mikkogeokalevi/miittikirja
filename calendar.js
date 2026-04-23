@@ -14,8 +14,17 @@ let calendarData = {
 const monthNames = ['Tammi', 'Helmi', 'Maalis', 'Huhti', 'Touko', 'Kesä', 'Heinä', 'Elo', 'Syys', 'Loka', 'Marras', 'Joulu'];
 const monthNamesFull = ['Tammikuu', 'Helmikuu', 'Maaliskuu', 'Huhtikuu', 'Toukokuu', 'Kesäkuu', 'Heinäkuu', 'Elokuu', 'Syyskuu', 'Lokakuu', 'Marraskuu', 'Joulukuu'];
 
+// Aseta true paikallista CSV-parser debuggausta varten
+const CALENDAR_DEBUG = false;
+
+function calendarDebug(...args) {
+    if (CALENDAR_DEBUG) {
+        console.log(...args);
+    }
+}
+
 async function initCalendar() {
-    console.log("Alustetaan kalenteri...");
+    calendarDebug("Alustetaan kalenteri...");
     
     // Ladataan tallennetut kalenteridata Firebasesta ja odotetaan sen valmistumista
     await loadCalendarData();
@@ -52,7 +61,7 @@ function setupCalendarEventListeners() {
 
 async function loadCalendarData() {
     if (!currentUser || !currentUser.uid) {
-        console.log("Ei kirjautunutta käyttäjää, käytetään oletusdataa");
+        calendarDebug("Ei kirjautunutta käyttäjää, käytetään oletusdataa");
         calendarData = { finds: {}, totalFinds: 0, years: [], events: {}, lastImportDate: null };
         return;
     }
@@ -69,9 +78,9 @@ async function loadCalendarData() {
                 events: (data.events && typeof data.events === 'object') ? data.events : {},
                 lastImportDate: data.lastImportDate || null
             };
-            console.log("Kalenteridata ladattu Firebasesta:", calendarData);
+            calendarDebug("Kalenteridata ladattu Firebasesta:", calendarData);
         } else {
-            console.log("Ei kalenteridataa Firebasessa, aloitetaan tyhjällä");
+            calendarDebug("Ei kalenteridataa Firebasessa, aloitetaan tyhjällä");
             calendarData = { finds: {}, totalFinds: 0, years: [], events: {}, lastImportDate: null };
         }
     } catch (e) {
@@ -82,7 +91,7 @@ async function loadCalendarData() {
 
 async function saveCalendarData() {
     if (!currentUser || !currentUser.uid) {
-        console.log("Ei kirjautunutta käyttäjää, ei tallenneta Firebaseen");
+        calendarDebug("Ei kirjautunutta käyttäjää, ei tallenneta Firebaseen");
         return;
     }
     
@@ -109,7 +118,7 @@ async function saveCalendarData() {
     
     try {
         await db.ref('miitit/' + currentUser.uid + '/calendar').set(calendarData);
-        console.log("Kalenteridata tallennettu Firebaseen");
+        calendarDebug("Kalenteridata tallennettu Firebaseen");
     } catch (e) {
         console.error("Kalenteridan tallennus epäonnistui:", e);
         alert("Tallennus epäonnistui: " + e.message);
@@ -191,7 +200,7 @@ function parseSrvContent(content) {
         parts.push(current.trim());
         
         if (parts.length < 5) {
-            console.log("Liian vähän sarakkeita:", parts, "rivi:", line);
+            calendarDebug("Liian vähän sarakkeita:", parts, "rivi:", line);
             return;
         }
         
@@ -199,7 +208,7 @@ function parseSrvContent(content) {
         const dateStr = parts[0].trim().replace(/"/g, '');
         const dateMatch = dateStr.match(/(\d{2})\.(\d{2})\.(\d{4})/);
         if (!dateMatch) {
-            console.log("Virheellinen päivämäärä:", dateStr, "rivi:", line);
+            calendarDebug("Virheellinen päivämäärä:", dateStr, "rivi:", line);
             return;
         }
         
@@ -229,19 +238,19 @@ function parseSrvContent(content) {
             description = parts[4].trim().replace(/"/g, '');
             cacheType = parts[5].trim().replace(/"/g, '');
         } else {
-            console.log("Tuntematon formaatti, sarakkeita:", parts.length, "rivi:", line);
+            calendarDebug("Tuntematon formaatti, sarakkeita:", parts.length, "rivi:", line);
             return;
         }
         
         // Debug: näytetään oikea cacheType
         if (logType === "Attended") {
-            console.log("CSV-rivi:", line);
-            console.log("Parsed parts:", parts);
-            console.log("Sarakkeita:", parts.length);
-            console.log("Nimi:", name);
-            console.log("Kuvaus:", description);
-            console.log("CacheType:", cacheType);
-            console.log("Formaatti:", parts.length === 10 ? "ilman kuvausta" : "kuvauksella");
+            calendarDebug("CSV-rivi:", line);
+            calendarDebug("Parsed parts:", parts);
+            calendarDebug("Sarakkeita:", parts.length);
+            calendarDebug("Nimi:", name);
+            calendarDebug("Kuvaus:", description);
+            calendarDebug("CacheType:", cacheType);
+            calendarDebug("Formaatti:", parts.length === 10 ? "ilman kuvausta" : "kuvauksella");
         }
         
         const monthKey = String(month).padStart(2, '0');
@@ -259,7 +268,7 @@ function parseSrvContent(content) {
             isEvent && 
             !isCito && 
             !isCommunity) {
-            console.log("✅ Lisätään miitti:", dateKey, gcCode, cacheType);
+            calendarDebug("✅ Lisätään miitti:", dateKey, gcCode, cacheType);
             if (!newEvents[dateKey]) {
                 newEvents[dateKey] = [];
             }
@@ -273,7 +282,7 @@ function parseSrvContent(content) {
             });
             totalEvents++;
         } else if (logType === "Attended") {
-            console.log("❌ Ohitetaan tapahtuma:", cacheType, "(Sarakkeita:", parts.length, "Event:", isEvent, "CITO:", isCito, "Community:", isCommunity + ")");
+            calendarDebug("❌ Ohitetaan tapahtuma:", cacheType, "(Sarakkeita:", parts.length, "Event:", isEvent, "CITO:", isCito, "Community:", isCommunity + ")");
         }
     });
     
@@ -291,7 +300,7 @@ function parseSrvContent(content) {
     // Tallennetaan viimeisin tuontipäivä
     calendarData.lastImportDate = new Date().toISOString();
     
-    console.log("CSV-data käsitelty (vain miitit):", { 
+    calendarDebug("CSV-data käsitelty (vain miitit):", { 
         newEvents, 
         totalEvents,
         years: Array.from(years),

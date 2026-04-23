@@ -15,12 +15,14 @@ const visitorTranslations = {
         alertNick: "Kirjoita nimimerkkisi!",
         alertDup: "Hei {0}, olet jo kirjannut käynnin tähän miittiin!\n\nEi tarvitse kirjata uudelleen.",
         welcomeTitle: "Kiitos käynnistä!",
+        savingMsg: "Tallennetaan...",
         savedMsg: "Kirjaus tallennettu!",
         closeBtn: "Sulje",
         visitGeoBtn: "Jatka miittisivulle ➡",
         logAnotherBtn: "Kirjaa toinen kävijä 👤",
         nextEventTitle: "🔮 Seuraava miitti:",
         noNextEvent: "Ei tiedossa olevia tulevia miittejä.",
+        specialMessageTitle: "🎁 Järjestäjän erikoisviesti",
         expiryUntil: "⏳ Tämä kirjausikkuna voimassa {0} klo {1} asti.",
         streakInfo: "Putki: {0} miittiä (alkaa {1})",
         badgeFirst: "Ensikertalainen!",
@@ -42,12 +44,14 @@ const visitorTranslations = {
         alertNick: "Please enter your nickname!",
         alertDup: "Hi {0}, you have already signed this guestbook!\n\nNo need to sign again.",
         welcomeTitle: "Thanks for visiting!",
+        savingMsg: "Saving...",
         savedMsg: "Entry saved!",
         closeBtn: "Close",
         visitGeoBtn: "Go to Event Page ➡",
         logAnotherBtn: "Log another person 👤",
         nextEventTitle: "🔮 Next Event:",
         noNextEvent: "No upcoming events known.",
+        specialMessageTitle: "🎁 Organizer's special message",
         expiryUntil: "⏳ This sign-in window is open until {0} at {1}.",
         streakInfo: "Streak: {0} events (starts at {1})",
         badgeFirst: "First timer!",
@@ -69,12 +73,14 @@ const visitorTranslations = {
         alertNick: "Ange ditt användarnamn!",
         alertDup: "Hej {0}, du har redan signerat gästboken!\n\nIngen anledning att signera igen.",
         welcomeTitle: "Tack för besöket!",
+        savingMsg: "Sparar...",
         savedMsg: "Loggen sparad!",
         closeBtn: "Stäng",
         visitGeoBtn: "Gå till eventsidan ➡",
         logAnotherBtn: "Logga en annan person 👤",
         nextEventTitle: "🔮 Nästa event:",
         noNextEvent: "Inga kommande event kända.",
+        specialMessageTitle: "🎁 Arrangörens specialmeddelande",
         expiryUntil: "⏳ Den här inloggningen gäller till {0} kl {1}.",
         streakInfo: "Putke: {0} miittiä (startar {1})",
         badgeFirst: "Första gången!",
@@ -96,12 +102,14 @@ const visitorTranslations = {
         alertNick: "Palun sisesta oma kasutajanimi!",
         alertDup: "Hei {0}, sa oled juba sellel üritusel kirje teinud!\n\nPole vaja uuesti.",
         welcomeTitle: "Aitäh külastuse eest!",
+        savingMsg: "Salvestan...",
         savedMsg: "Kirje salvestatud!",
         closeBtn: "Sulge",
         visitGeoBtn: "Mine ürituse lehele ➡",
         logAnotherBtn: "Lisa teine külastaja 👤",
         nextEventTitle: "🔮 Järgmine üritus:",
         noNextEvent: "Tulevasi üritusi ei ole teada.",
+        specialMessageTitle: "🎁 Korraldaja erisõnum",
         expiryUntil: "⏳ See registreerimisaken kehtib kuni {0} kell {1}.",
         streakInfo: "Seeria: {0} miitti (algab {1})",
         badgeFirst: "Esimest korda!",
@@ -222,7 +230,7 @@ window.handleVisitorSign = async function() {
     // Estä tuplapainallukset
     if (signBtn && signBtn.disabled) return;
     setLoading(true);
-    setStatus('Tallennetaan...');
+    setStatus(t.savingMsg || 'Tallennetaan...');
 
     try {
         const currentLogsSnap = await firebase.database().ref('miitit/' + targetHost + '/logs/' + eventId).once('value');
@@ -260,7 +268,18 @@ window.handleVisitorSign = async function() {
 
     // --- TILASTOJEN LASKENTA ---
     let userHistory = null;
-    let stats = { isFirstTime: false, totalVisits: 0, title: "", greeting: "", streakText: "", isMilestone: false, nextEvent: null, streakCount: 0, streakStartLabel: "" };
+    let stats = {
+        isFirstTime: false,
+        totalVisits: 0,
+        title: "",
+        greeting: "",
+        streakText: "",
+        isMilestone: false,
+        nextEvent: null,
+        streakCount: 0,
+        streakStartLabel: "",
+        specialMessage: ""
+    };
 
     try {
         const eventsSnap = await firebase.database().ref('miitit/' + targetHost + '/events').once('value');
@@ -320,6 +339,11 @@ window.handleVisitorSign = async function() {
         stats.isFirstTime = (stats.totalVisits <= 1);
         stats.isMilestone = (stats.totalVisits % 10 === 0) || stats.isFirstTime;
 
+        const currentEvent = eventsMap[eventId];
+        if (currentEvent && typeof currentEvent.specialMessage === 'string') {
+            stats.specialMessage = currentEvent.specialMessage.trim();
+        }
+
         if (window.MK_Messages) {
             stats.title = window.MK_Messages.getRankTitle(stats.totalVisits);
             
@@ -344,7 +368,6 @@ window.handleVisitorSign = async function() {
             stats.greeting = greeting;
             
             // Putkilaskuri (vain miitit)
-            const currentEvent = eventsMap[eventId];
             const currentIsMiitti = currentEvent && isMiittiEvent(currentEvent);
             if (currentIsMiitti && !stats.isFirstTime && miittiEvents.length > 0) {
                 const currentEventIndex = miittiEvents.findIndex(e => e.key === eventId);
@@ -428,6 +451,8 @@ function showVisitorModalWithLang(nick, history, stats) {
     // 1. SIIVOTAAN PÖYTÄ: Poistetaan kaikki vanhat "Visitor UI" -elementit
     const oldFooter = document.getElementById('visitor-custom-footer');
     if (oldFooter) oldFooter.remove();
+    const oldSpecialMessage = document.getElementById('up-special-message-box');
+    if (oldSpecialMessage) oldSpecialMessage.remove();
 
     // 2. PIILOTETAAN ALKUPERÄINEN SULJE-NAPPI (Jätetään se ehjäksi Adminia varten)
     // Etsitään modal-contentin sisällä oleva punainen nappi
@@ -458,6 +483,17 @@ function showVisitorModalWithLang(nick, history, stats) {
         badgeText = t.badges[Math.floor(Math.random() * t.badges.length)];
     }
     badgeEl.innerText = badgeText;
+
+    if (stats.specialMessage) {
+        const specialBox = document.createElement('div');
+        specialBox.id = 'up-special-message-box';
+        specialBox.className = 'visitor-special-message';
+        specialBox.innerHTML = `
+            <div class="visitor-special-message-title">${t.specialMessageTitle || '🎁 Järjestäjän erikoisviesti'}</div>
+            <div>${stats.specialMessage}</div>
+        `;
+        badgeEl.insertAdjacentElement('afterend', specialBox);
+    }
     
     // 4. HISTORIALISTAN PÄIVITYS
     const listEl = document.getElementById('up-history-list');

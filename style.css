@@ -238,6 +238,22 @@ body.theme-light .card.archived {
     box-shadow: none !important;
 }
 
+.visitor-special-message {
+    margin: 10px 0 14px 0;
+    padding: 12px;
+    border: 2px solid var(--secondary-color);
+    border-radius: 10px;
+    background: var(--highlight-bg);
+    text-align: center;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+}
+
+.visitor-special-message-title {
+    font-weight: bold;
+    color: var(--secondary-color);
+    margin-bottom: 6px;
+}
+
 #new-event-toggle {
     cursor: pointer;
     user-select: none;

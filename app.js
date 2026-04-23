@@ -564,6 +564,7 @@ if (btnAddEvent) {
         const time = document.getElementById('new-time').value.trim();
         const coords = document.getElementById('new-coords').value.trim();
         const loc = document.getElementById('new-loc').value.trim();
+        const specialMessage = document.getElementById('new-special-message').value.trim();
         const desc = document.getElementById('new-desc').value.trim();
 
         if (!name || !date) {
@@ -579,12 +580,13 @@ if (btnAddEvent) {
             time: time,
             coords: coords,
             location: loc,
+            specialMessage: specialMessage,
             descriptionHtml: desc,
             createdAt: firebase.database.ServerValue.TIMESTAMP
         }).then(() => {
             alert("Tapahtuma lisätty!");
             document.getElementById('new-event-form').style.display = 'none';
-            ['new-gc', 'new-name', 'new-date', 'new-time', 'new-coords', 'new-loc', 'new-desc'].forEach(id => {
+            ['new-gc', 'new-name', 'new-date', 'new-time', 'new-coords', 'new-loc', 'new-special-message', 'new-desc'].forEach(id => {
                 const el = document.getElementById(id);
                 if(el) el.value = "";
             });
@@ -922,6 +924,7 @@ window.openEditModal = function(key) {
         document.getElementById('edit-type').value = e.type || "miitti";
         document.getElementById('edit-coords').value = e.coords || "";
         document.getElementById('edit-loc').value = e.location || "";
+        document.getElementById('edit-special-message').value = e.specialMessage || "";
         document.getElementById('edit-desc').value = e.descriptionHtml || "";
         if(editModal) editModal.style.display = "block";
     });
@@ -939,6 +942,7 @@ if (btnSaveEdit) {
             time: document.getElementById('edit-time').value,
             coords: document.getElementById('edit-coords').value,
             location: document.getElementById('edit-loc').value,
+            specialMessage: document.getElementById('edit-special-message').value,
             descriptionHtml: document.getElementById('edit-desc').value
         };
         db.ref('miitit/' + currentUser.uid + '/events/' + key).update(updateData).then(() => { 
