@@ -20,6 +20,7 @@ const visitorTranslations = {
         closeBtn: "Sulje",
         visitGeoBtn: "Jatka miittisivulle ➡",
         logAnotherBtn: "Kirjaa toinen kävijä 👤",
+        preSignMessageTitle: "📝 Järjestäjän viesti ennen kirjausta",
         nextEventTitle: "🔮 Seuraava miitti:",
         noNextEvent: "Ei tiedossa olevia tulevia miittejä.",
         specialMessageTitle: "🎁 Järjestäjän erikoisviesti",
@@ -49,6 +50,7 @@ const visitorTranslations = {
         closeBtn: "Close",
         visitGeoBtn: "Go to Event Page ➡",
         logAnotherBtn: "Log another person 👤",
+        preSignMessageTitle: "📝 Organizer message before sign-in",
         nextEventTitle: "🔮 Next Event:",
         noNextEvent: "No upcoming events known.",
         specialMessageTitle: "🎁 Organizer's special message",
@@ -78,6 +80,7 @@ const visitorTranslations = {
         closeBtn: "Stäng",
         visitGeoBtn: "Gå till eventsidan ➡",
         logAnotherBtn: "Logga en annan person 👤",
+        preSignMessageTitle: "📝 Arrangörens meddelande före inloggning",
         nextEventTitle: "🔮 Nästa event:",
         noNextEvent: "Inga kommande event kända.",
         specialMessageTitle: "🎁 Arrangörens specialmeddelande",
@@ -107,6 +110,7 @@ const visitorTranslations = {
         closeBtn: "Sulge",
         visitGeoBtn: "Mine ürituse lehele ➡",
         logAnotherBtn: "Lisa teine külastaja 👤",
+        preSignMessageTitle: "📝 Korraldaja sõnum enne registreerimist",
         nextEventTitle: "🔮 Järgmine üritus:",
         noNextEvent: "Tulevasi üritusi ei ole teada.",
         specialMessageTitle: "🎁 Korraldaja erisõnum",
@@ -124,6 +128,30 @@ const visitorTranslations = {
 
 let currentLang = 'fi';
 window.isVisitorExpired = false;
+
+window.renderVisitorPreSignMessage = function() {
+    const box = document.getElementById('vv-pre-special-message');
+    if (!box) return;
+
+    const t = visitorTranslations[currentLang] || visitorTranslations.fi;
+    const msg = (typeof window.currentVisitorPreSignMessage === 'string')
+        ? window.currentVisitorPreSignMessage.trim()
+        : '';
+
+    if (!msg) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+
+    box.style.display = 'block';
+    box.innerHTML = `
+        <div class="visitor-pre-sign-message-title">${t.preSignMessageTitle || '📝 Järjestäjän viesti ennen kirjausta'}</div>
+        <div></div>
+    `;
+    const body = box.querySelector('div:last-child');
+    if (body) body.textContent = msg;
+};
 
 // Kutsutaan index.html:stä kun lippua painetaan
 window.setVisitorLanguage = function(lang) {
@@ -151,6 +179,9 @@ window.setVisitorLanguage = function(lang) {
 
     if (typeof window.updateVisitorExpiryNotice === 'function') {
         window.updateVisitorExpiryNotice();
+    }
+    if (typeof window.renderVisitorPreSignMessage === 'function') {
+        window.renderVisitorPreSignMessage();
     }
 
     if (window.isVisitorExpired) {

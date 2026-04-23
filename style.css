@@ -238,6 +238,22 @@ body.theme-light .card.archived {
     box-shadow: none !important;
 }
 
+.visitor-pre-sign-message {
+    margin: 0 0 10px 0;
+    padding: 10px 12px;
+    border: 2px dashed var(--secondary-color);
+    border-radius: 10px;
+    background: var(--highlight-bg);
+    text-align: center;
+    color: var(--text-color);
+}
+
+.visitor-pre-sign-message-title {
+    font-weight: bold;
+    color: var(--secondary-color);
+    margin-bottom: 6px;
+}
+
 .visitor-special-message {
     margin: 10px 0 14px 0;
     padding: 12px;

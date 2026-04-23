@@ -145,6 +145,7 @@ async function openVisitorGuestbook(uid, eventId) {
     // Asetetaan globaalit muuttujat, joita visitor.js käyttää
     window.currentEventId = eventId;
     window.currentVisitorTargetUid = uid; 
+    window.currentVisitorPreSignMessage = "";
     window.currentVisitorSpecialMessage = "";
     currentEventId = eventId; // Varmuuden vuoksi myös app.js:n omaan muuttujaan
     lastAttendeeCount = null;
@@ -159,8 +160,13 @@ async function openVisitorGuestbook(uid, eventId) {
         }
         
         currentEventGcCode = evt.gc || null;
+        window.currentVisitorPreSignMessage = (typeof evt.preSignMessage === 'string') ? evt.preSignMessage.trim() : "";
         window.currentVisitorSpecialMessage = (typeof evt.specialMessage === 'string') ? evt.specialMessage.trim() : "";
         applyVisitorThemeColor(extractThemeColorFromDescription(evt.descriptionHtml));
+
+        if (typeof window.renderVisitorPreSignMessage === 'function') {
+            window.renderVisitorPreSignMessage();
+        }
 
         const nameEl = document.getElementById('vv-event-name');
         const infoEl = document.getElementById('vv-event-info');
@@ -566,6 +572,7 @@ if (btnAddEvent) {
         const time = document.getElementById('new-time').value.trim();
         const coords = document.getElementById('new-coords').value.trim();
         const loc = document.getElementById('new-loc').value.trim();
+        const preSignMessage = document.getElementById('new-presign-message').value.trim();
         const specialMessage = document.getElementById('new-special-message').value.trim();
         const desc = document.getElementById('new-desc').value.trim();
 
@@ -582,13 +589,14 @@ if (btnAddEvent) {
             time: time,
             coords: coords,
             location: loc,
+            preSignMessage: preSignMessage,
             specialMessage: specialMessage,
             descriptionHtml: desc,
             createdAt: firebase.database.ServerValue.TIMESTAMP
         }).then(() => {
             alert("Tapahtuma lisätty!");
             document.getElementById('new-event-form').style.display = 'none';
-            ['new-gc', 'new-name', 'new-date', 'new-time', 'new-coords', 'new-loc', 'new-special-message', 'new-desc'].forEach(id => {
+            ['new-gc', 'new-name', 'new-date', 'new-time', 'new-coords', 'new-loc', 'new-presign-message', 'new-special-message', 'new-desc'].forEach(id => {
                 const el = document.getElementById(id);
                 if(el) el.value = "";
             });
@@ -652,6 +660,7 @@ function loadEvents() {
         displayQueue.forEach(evt => {
             const isToday = (evt.date === todayStr);
             const isArchived = (evt.isArchived === true);
+            const hasPreSignMessage = typeof evt.preSignMessage === 'string' && evt.preSignMessage.trim().length > 0;
             const hasSpecialMessage = typeof evt.specialMessage === 'string' && evt.specialMessage.trim().length > 0;
             const countId = `count-${isAdminMode ? 'adm' : 'usr'}-${evt.key}`;
             
@@ -670,7 +679,12 @@ function loadEvents() {
                 div.innerHTML = `
                     <div style="display:flex; justify-content:space-between;"><strong>${displayName}</strong><span>${evt.date}</span></div>
                     <div style="font-size:0.8em; color:#666; margin-bottom:5px;">🕓 ${evt.time || '-'}</div>
-                    ${hasSpecialMessage ? '<div style="margin:2px 0 6px 0; font-size:0.8em; color:#8B4513; font-weight:bold;">🎁 Erikoisviesti asetettu</div>' : ''}
+                    ${(hasPreSignMessage || hasSpecialMessage)
+                        ? `<div style="margin:2px 0 6px 0; display:flex; gap:6px; flex-wrap:wrap;">
+                            ${hasPreSignMessage ? '<span style="font-size:0.75em; color:#8B4513; font-weight:bold; background:#fff7e6; border:1px solid #d8b48a; border-radius:999px; padding:2px 8px;">📝 Viesti ennen kirjausta</span>' : ''}
+                            ${hasSpecialMessage ? '<span style="font-size:0.75em; color:#8B4513; font-weight:bold; background:#fff7e6; border:1px solid #d8b48a; border-radius:999px; padding:2px 8px;">🎁 Viesti kirjauksen jälkeen</span>' : ''}
+                        </div>`
+                        : ''}
                     <div style="font-size:0.9em; color:#A0522D; display:flex; justify-content:space-between;">
                         <span><a href="https://coord.info/${evt.gc}" target="_blank" style="color:#A0522D; font-weight:bold; text-decoration:none;">${evt.gc}</a> • ${evt.location || ''}</span>
                         <span id="${countId}">👤 0</span>
@@ -928,6 +942,7 @@ window.openEditModal = function(key) {
         document.getElementById('edit-type').value = e.type || "miitti";
         document.getElementById('edit-coords').value = e.coords || "";
         document.getElementById('edit-loc').value = e.location || "";
+        document.getElementById('edit-presign-message').value = e.preSignMessage || "";
         document.getElementById('edit-special-message').value = e.specialMessage || "";
         document.getElementById('edit-desc').value = e.descriptionHtml || "";
         if(editModal) editModal.style.display = "block";
@@ -946,6 +961,7 @@ if (btnSaveEdit) {
             time: document.getElementById('edit-time').value,
             coords: document.getElementById('edit-coords').value,
             location: document.getElementById('edit-loc').value,
+            preSignMessage: document.getElementById('edit-presign-message').value,
             specialMessage: document.getElementById('edit-special-message').value,
             descriptionHtml: document.getElementById('edit-desc').value
         };

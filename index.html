@@ -73,6 +73,8 @@
         <div class="card-form">
             <h3 id="vv-ui-subtitle" style="text-align:center; color:#B22222;">✍️ Kirjaa käyntisi vieraskirjaan</h3>
 
+            <div id="vv-pre-special-message" class="visitor-pre-sign-message" style="display:none;"></div>
+
             <div id="vv-error" style="display:none;"></div>
             
             <div style="position:relative;">
@@ -122,7 +124,8 @@
                 <input type="text" id="new-time" placeholder="Klo (esim. 18:00-19:00)">
                 <input type="text" id="new-coords" placeholder="Koordinaatit">
                 <input type="text" id="new-loc" placeholder="Paikka">
-                <textarea id="new-special-message" rows="3" placeholder="Erikoisviesti kävijälle (näkyy kirjauksen jälkeen, valinnainen)"></textarea>
+                <textarea id="new-presign-message" rows="3" placeholder="Erikoisviesti kirjautumisikkunaan (ennen tallennusta, valinnainen)"></textarea>
+                <textarea id="new-special-message" rows="3" placeholder="Erikoisviesti kirjauksen jälkeen (valinnainen)"></textarea>
                 <textarea id="new-desc" rows="4" placeholder="HTML kuvaus..."></textarea>
                 <button id="btn-add-event" class="btn btn-blue">Tallenna Tapahtuma</button>
             </div>
@@ -417,7 +420,8 @@
             <label>Aika</label><input type="text" id="edit-time">
             <label>Koordinaatit</label><input type="text" id="edit-coords">
             <label>Paikka</label><input type="text" id="edit-loc">
-            <label>Erikoisviesti kävijälle</label><textarea id="edit-special-message" rows="3"></textarea>
+            <label>Erikoisviesti kirjautumisikkunaan (ennen tallennusta)</label><textarea id="edit-presign-message" rows="3"></textarea>
+            <label>Erikoisviesti kirjauksen jälkeen</label><textarea id="edit-special-message" rows="3"></textarea>
             <label>HTML Kuvaus</label><textarea id="edit-desc" rows="5"></textarea>
             <div style="display:flex; gap:10px;"><button id="btn-save-edit" class="btn btn-green">Tallenna</button><button onclick="closeModal()" class="btn btn-red">Peruuta</button></div>
         </div>
