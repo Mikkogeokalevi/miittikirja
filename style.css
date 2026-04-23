@@ -34,6 +34,89 @@
     --btn-gray-bg: #555555;
     
     --visitor-input-border: #CD853F;
+
+    /* Visitorin oma (QR) väriteema: OCEAN oletus */
+    --vv-bg-start: #f8fbff;
+    --vv-bg-end: #f2f7ff;
+    --vv-border: #c7d7ef;
+    --vv-shadow: rgba(24, 58, 112, 0.14);
+    --vv-heading-color: #1f3d66;
+    --vv-event-name-color: #16365e;
+    --vv-text-color: #22344d;
+    --vv-muted-color: #7a8da8;
+    --vv-card-bg: #ffffff;
+    --vv-card-border: #d7e3f2;
+    --vv-card-shadow: rgba(25, 58, 112, 0.08);
+    --vv-form-bg: #ffffff;
+    --vv-form-border: #cfdcf0;
+    --vv-input-bg: #ffffff;
+    --vv-input-border: #b9cce7;
+    --vv-input-text: #22344d;
+    --vv-placeholder: #7a8da8;
+    --vv-pre-bg-start: #fff9ef;
+    --vv-pre-bg-end: #fff3dd;
+    --vv-pre-border: #f1b15f;
+    --vv-pre-border-strong: #e67e22;
+    --vv-pre-text: #4a3725;
+    --vv-pre-title: #b85d09;
+    --vv-pre-shadow: rgba(230, 126, 34, 0.12);
+    --vv-post-bg-start: #eef6ff;
+    --vv-post-bg-end: #e7f1ff;
+    --vv-post-border: #76a7e8;
+    --vv-post-text: #1f3d66;
+    --vv-post-title: #2e64aa;
+    --vv-post-shadow: rgba(40, 90, 160, 0.15);
+    --vv-modal-bg-start: #f8fbff;
+    --vv-modal-bg-end: #eff6ff;
+    --vv-modal-border: #c7d7ef;
+    --vv-modal-text: #1f3656;
+    --vv-theme-btn-bg: #eef4fd;
+    --vv-theme-btn-border: #bfd0e8;
+    --vv-theme-btn-text: #2a4a75;
+    --vv-theme-btn-active-bg: #2e64aa;
+    --vv-theme-btn-active-text: #ffffff;
+}
+
+body[data-visitor-theme="forest"] {
+    --vv-bg-start: #eef8f1;
+    --vv-bg-end: #e4f2ea;
+    --vv-border: #b8d6c1;
+    --vv-shadow: rgba(31, 77, 55, 0.14);
+    --vv-heading-color: #1e4a38;
+    --vv-event-name-color: #143f2d;
+    --vv-text-color: #223b2f;
+    --vv-muted-color: #6f8e7c;
+    --vv-card-bg: #ffffff;
+    --vv-card-border: #cfe3d6;
+    --vv-card-shadow: rgba(40, 96, 68, 0.08);
+    --vv-form-bg: #ffffff;
+    --vv-form-border: #c8ddcf;
+    --vv-input-bg: #ffffff;
+    --vv-input-border: #a8ccb5;
+    --vv-input-text: #223b2f;
+    --vv-placeholder: #6f8e7c;
+    --vv-pre-bg-start: #fff8ea;
+    --vv-pre-bg-end: #fff0d7;
+    --vv-pre-border: #e8b36a;
+    --vv-pre-border-strong: #c57b18;
+    --vv-pre-text: #4d3820;
+    --vv-pre-title: #9e5e0d;
+    --vv-pre-shadow: rgba(180, 110, 20, 0.14);
+    --vv-post-bg-start: #ecfaf0;
+    --vv-post-bg-end: #e2f4e8;
+    --vv-post-border: #77be8b;
+    --vv-post-text: #184533;
+    --vv-post-title: #236b4f;
+    --vv-post-shadow: rgba(45, 120, 82, 0.14);
+    --vv-modal-bg-start: #f1fbf5;
+    --vv-modal-bg-end: #e9f6ee;
+    --vv-modal-border: #b8d6c1;
+    --vv-modal-text: #1f3f31;
+    --vv-theme-btn-bg: #e8f3ec;
+    --vv-theme-btn-border: #b9d4c1;
+    --vv-theme-btn-text: #2b5b45;
+    --vv-theme-btn-active-bg: #2f7a58;
+    --vv-theme-btn-active-text: #ffffff;
 }
 
 /* --- LIGHT TEEMA (Päivä) --- */
@@ -206,43 +289,73 @@ body.theme-light .card.archived {
 
 /* --- VISITOR VIEW: oma pehmeämpi teema (riippumatta pääteemasta) --- */
 #visitor-view {
-    background: linear-gradient(180deg, #f8fbff 0%, #f2f7ff 100%);
-    border: 3px solid #c7d7ef;
-    box-shadow: 0 10px 28px rgba(24, 58, 112, 0.14);
+    background: linear-gradient(180deg, var(--vv-bg-start) 0%, var(--vv-bg-end) 100%);
+    border: 3px solid var(--vv-border);
+    box-shadow: 0 10px 28px var(--vv-shadow);
 }
 
 #visitor-view h2,
 #visitor-view h3 {
     text-shadow: none;
-    color: #1f3d66;
+    color: var(--vv-heading-color);
+}
+
+#visitor-view #vv-event-name {
+    color: var(--vv-event-name-color) !important;
+    text-shadow: none;
 }
 
 #visitor-view .card {
-    background: #ffffff;
-    border: 1px solid #d7e3f2;
-    box-shadow: 0 4px 14px rgba(25, 58, 112, 0.08);
+    background: var(--vv-card-bg);
+    border: 1px solid var(--vv-card-border);
+    box-shadow: 0 4px 14px var(--vv-card-shadow);
 }
 
 #visitor-view .card-form {
-    background: #ffffff;
-    border: 1px solid #cfdcf0;
+    background: var(--vv-form-bg);
+    border: 1px solid var(--vv-form-border);
 }
 
 #visitor-view #vv-event-info,
 #visitor-view #vv-expiry-info {
-    color: #2b3f5c;
+    color: var(--vv-text-color);
 }
 
 #visitor-view input,
 #visitor-view textarea {
-    background: #ffffff;
-    border-color: #b9cce7;
-    color: #22344d;
+    background: var(--vv-input-bg);
+    border-color: var(--vv-input-border);
+    color: var(--vv-input-text);
 }
 
 #visitor-view input::placeholder,
 #visitor-view textarea::placeholder {
-    color: #7a8da8;
+    color: var(--vv-placeholder);
+}
+
+.visitor-theme-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 0 0 12px 0;
+}
+
+.visitor-theme-btn {
+    border: 1px solid var(--vv-theme-btn-border);
+    background: var(--vv-theme-btn-bg);
+    color: var(--vv-theme-btn-text);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.78em;
+    font-weight: bold;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+}
+
+.visitor-theme-btn.active {
+    background: var(--vv-theme-btn-active-bg);
+    color: var(--vv-theme-btn-active-text);
+    border-color: var(--vv-theme-btn-active-bg);
 }
 
 /* --- VISITOR VIEW: inline error & status (UI only) --- */
@@ -282,18 +395,18 @@ body.theme-light .card.archived {
 .visitor-pre-sign-message {
     margin: 0 0 12px 0;
     padding: 12px 14px;
-    border: 2px solid #f1b15f;
-    border-left: 6px solid #e67e22;
+    border: 2px solid var(--vv-pre-border);
+    border-left: 6px solid var(--vv-pre-border-strong);
     border-radius: 10px;
-    background: linear-gradient(180deg, #fff9ef 0%, #fff3dd 100%);
+    background: linear-gradient(180deg, var(--vv-pre-bg-start) 0%, var(--vv-pre-bg-end) 100%);
     text-align: center;
-    color: #4a3725;
-    box-shadow: 0 3px 12px rgba(230, 126, 34, 0.12);
+    color: var(--vv-pre-text);
+    box-shadow: 0 3px 12px var(--vv-pre-shadow);
 }
 
 .visitor-pre-sign-message-title {
     font-weight: bold;
-    color: #b85d09;
+    color: var(--vv-pre-title);
     letter-spacing: 0.2px;
     margin-bottom: 6px;
 }
@@ -301,25 +414,25 @@ body.theme-light .card.archived {
 .visitor-special-message {
     margin: 10px 0 14px 0;
     padding: 12px;
-    border: 2px solid #76a7e8;
+    border: 2px solid var(--vv-post-border);
     border-radius: 10px;
-    background: linear-gradient(180deg, #eef6ff 0%, #e7f1ff 100%);
+    background: linear-gradient(180deg, var(--vv-post-bg-start) 0%, var(--vv-post-bg-end) 100%);
     text-align: center;
-    color: #1f3d66;
-    box-shadow: 0 3px 10px rgba(40, 90, 160, 0.15);
+    color: var(--vv-post-text);
+    box-shadow: 0 3px 10px var(--vv-post-shadow);
 }
 
 .visitor-special-message-title {
     font-weight: bold;
-    color: #2e64aa;
+    color: var(--vv-post-title);
     margin-bottom: 6px;
 }
 
 /* Kirjauksen jälkeinen profiilimodaali (visitor) */
 #user-profile-modal .modal-content {
-    background: linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
-    border: 3px solid #c7d7ef;
-    color: #1f3656;
+    background: linear-gradient(180deg, var(--vv-modal-bg-start) 0%, var(--vv-modal-bg-end) 100%);
+    border: 3px solid var(--vv-modal-border);
+    color: var(--vv-modal-text);
 }
 
 #user-profile-modal .modal-content .btn-red {

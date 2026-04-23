@@ -128,6 +128,38 @@ const visitorTranslations = {
 
 let currentLang = 'fi';
 window.isVisitorExpired = false;
+let currentVisitorColorTheme = 'ocean';
+
+window.setVisitorColorTheme = function(theme) {
+    if (theme !== 'ocean' && theme !== 'forest') return;
+
+    currentVisitorColorTheme = theme;
+    document.body.setAttribute('data-visitor-theme', theme);
+
+    const oceanBtn = document.getElementById('btn-vtheme-ocean');
+    const forestBtn = document.getElementById('btn-vtheme-forest');
+    if (oceanBtn) oceanBtn.classList.toggle('active', theme === 'ocean');
+    if (forestBtn) forestBtn.classList.toggle('active', theme === 'forest');
+
+    try {
+        localStorage.setItem('mk_visitor_color_theme', theme);
+    } catch (e) {
+        // Ei kriittinen, jatketaan ilman pysyvyyttä
+    }
+};
+
+function initVisitorColorTheme() {
+    let savedTheme = 'ocean';
+    try {
+        const fromStorage = localStorage.getItem('mk_visitor_color_theme');
+        if (fromStorage === 'ocean' || fromStorage === 'forest') {
+            savedTheme = fromStorage;
+        }
+    } catch (e) {
+        // localStorage ei käytettävissä, käytetään oletusta
+    }
+    window.setVisitorColorTheme(savedTheme);
+}
 
 window.renderVisitorPreSignMessage = function() {
     const box = document.getElementById('vv-pre-special-message');
@@ -152,6 +184,12 @@ window.renderVisitorPreSignMessage = function() {
     const body = box.querySelector('div:last-child');
     if (body) body.textContent = msg;
 };
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initVisitorColorTheme);
+} else {
+    initVisitorColorTheme();
+}
 
 // Kutsutaan index.html:stä kun lippua painetaan
 window.setVisitorLanguage = function(lang) {
