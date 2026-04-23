@@ -268,6 +268,9 @@ window.handleVisitorSign = async function() {
 
     // --- TILASTOJEN LASKENTA ---
     let userHistory = null;
+    const preloadedSpecialMessage = (typeof window.currentVisitorSpecialMessage === 'string')
+        ? window.currentVisitorSpecialMessage.trim()
+        : "";
     let stats = {
         isFirstTime: false,
         totalVisits: 0,
@@ -278,7 +281,7 @@ window.handleVisitorSign = async function() {
         nextEvent: null,
         streakCount: 0,
         streakStartLabel: "",
-        specialMessage: ""
+        specialMessage: preloadedSpecialMessage
     };
 
     try {

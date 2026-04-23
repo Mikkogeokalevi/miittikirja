@@ -145,6 +145,7 @@ async function openVisitorGuestbook(uid, eventId) {
     // Asetetaan globaalit muuttujat, joita visitor.js käyttää
     window.currentEventId = eventId;
     window.currentVisitorTargetUid = uid; 
+    window.currentVisitorSpecialMessage = "";
     currentEventId = eventId; // Varmuuden vuoksi myös app.js:n omaan muuttujaan
     lastAttendeeCount = null;
     
@@ -158,6 +159,7 @@ async function openVisitorGuestbook(uid, eventId) {
         }
         
         currentEventGcCode = evt.gc || null;
+        window.currentVisitorSpecialMessage = (typeof evt.specialMessage === 'string') ? evt.specialMessage.trim() : "";
         applyVisitorThemeColor(extractThemeColorFromDescription(evt.descriptionHtml));
 
         const nameEl = document.getElementById('vv-event-name');
@@ -650,6 +652,7 @@ function loadEvents() {
         displayQueue.forEach(evt => {
             const isToday = (evt.date === todayStr);
             const isArchived = (evt.isArchived === true);
+            const hasSpecialMessage = typeof evt.specialMessage === 'string' && evt.specialMessage.trim().length > 0;
             const countId = `count-${isAdminMode ? 'adm' : 'usr'}-${evt.key}`;
             
             // Muotoillaan nimi numeron kanssa
@@ -667,6 +670,7 @@ function loadEvents() {
                 div.innerHTML = `
                     <div style="display:flex; justify-content:space-between;"><strong>${displayName}</strong><span>${evt.date}</span></div>
                     <div style="font-size:0.8em; color:#666; margin-bottom:5px;">🕓 ${evt.time || '-'}</div>
+                    ${hasSpecialMessage ? '<div style="margin:2px 0 6px 0; font-size:0.8em; color:#8B4513; font-weight:bold;">🎁 Erikoisviesti asetettu</div>' : ''}
                     <div style="font-size:0.9em; color:#A0522D; display:flex; justify-content:space-between;">
                         <span><a href="https://coord.info/${evt.gc}" target="_blank" style="color:#A0522D; font-weight:bold; text-decoration:none;">${evt.gc}</a> • ${evt.location || ''}</span>
                         <span id="${countId}">👤 0</span>
