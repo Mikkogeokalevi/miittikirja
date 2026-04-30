@@ -1066,6 +1066,7 @@ if (fileInputSync) {
         const parser = new DOMParser();
         const xml = parser.parseFromString(text, "text/xml");
         const logs = xml.getElementsByTagName("groundspeak:log");
+        const totalLogsInFile = logs.length;
         
         if (logs.length > 0) {
             // Haetaan ensin olemassa olevat MAP-rakenteeseen
@@ -1084,6 +1085,10 @@ if (fileInputSync) {
 
             let addedCount = 0;
             let updatedCount = 0;
+            let attendedLikeCount = 0;
+            let skippedNonAttendedCount = 0;
+            let skippedEmptyFinderCount = 0;
+            let skippedOwnerCount = 0;
 
             for (let i = 0; i < logs.length; i++) {
                 const logNode = logs[i];
@@ -1091,13 +1096,23 @@ if (fileInputSync) {
                 const type = typeNode ? typeNode.textContent : "";
 
                 // Vain Attended-lokit (ja webcam photo)
-                if (type !== "Attended" && type !== "Webcam Photo Taken") continue;
+                if (type !== "Attended" && type !== "Webcam Photo Taken") {
+                    skippedNonAttendedCount++;
+                    continue;
+                }
+                attendedLikeCount++;
 
                 const finderNode = logNode.getElementsByTagName("groundspeak:finder")[0];
                 const finder = finderNode ? finderNode.textContent.trim() : "";
                 
-                if (!finder) continue; // Ei tyhjiä nimiä
-                if (finder.toLowerCase() === "mikkokalevi") continue; // Ei omistajaa
+                if (!finder) {
+                    skippedEmptyFinderCount++;
+                    continue;
+                } // Ei tyhjiä nimiä
+                if (finder.toLowerCase() === "mikkokalevi") {
+                    skippedOwnerCount++;
+                    continue;
+                } // Ei omistajaa
 
                 const textNode = logNode.getElementsByTagName("groundspeak:text")[0];
                 const netMessageRaw = textNode ? textNode.textContent.trim() : "";
@@ -1134,10 +1149,14 @@ if (fileInputSync) {
                     addedCount++;
                 }
             }
+
+            const lowLogWarning = totalLogsInFile <= 10
+                ? `\n\n⚠ HUOM: Tiedostossa oli vain ${totalLogsInFile} lokia.\nJos geocaching.com antaa rajatun GPX:n, kaikki osallistujat eivät näy tässä synkronoinnissa.`
+                : "";
             
-            alert(`GPX-synkronointi valmis!\n\n- Kätkön tiedot päivitetty.\n- Lisätty ${addedCount} uutta kävijää.\n- Päivitetty viesti ${updatedCount} olemassa olevalle kävijälle.`);
+            alert(`GPX-synkronointi valmis!\n\n- Kätkön tiedot päivitetty.\n- Tiedoston lokit yhteensä: ${totalLogsInFile}\n- Attended/Webcam-lokit tiedostossa: ${attendedLikeCount}\n- Ohitettu (ei Attended/Webcam): ${skippedNonAttendedCount}\n- Ohitettu (tyhjä nimimerkki): ${skippedEmptyFinderCount}\n- Ohitettu (järjestäjä): ${skippedOwnerCount}\n- Lisätty ${addedCount} uutta kävijää.\n- Päivitetty viesti ${updatedCount} olemassa olevalle kävijälle.${lowLogWarning}`);
         } else {
-            alert("Kätkön tiedot päivitetty GPX-tiedostosta!\n(Tiedostossa ei ollut lokimerkintöjä tai lukeminen epäonnistui).");
+            alert("Kätkön tiedot päivitetty GPX-tiedostosta!\n\n- Tiedoston lokit yhteensä: 0\n(Tiedostossa ei ollut lokimerkintöjä tai lukeminen epäonnistui).");
         }
 
         if(loadingOverlay) loadingOverlay.style.display = 'none';
@@ -1150,6 +1169,7 @@ if (fileInputSync) {
 window.openMassImport = function() {
     const input = document.getElementById('mass-input');
     const output = document.getElementById('mass-output');
+    parsedMassEntries = [];
     if(input) input.value = ""; if(output) output.value = ""; 
     document.getElementById('mass-step-1').style.display = 'block'; 
     document.getElementById('mass-step-2').style.display = 'none';
@@ -1157,18 +1177,101 @@ window.openMassImport = function() {
 };
 
 const btnParseMass = document.getElementById('btn-parse-mass');
+let parsedMassEntries = [];
+
+function parseMassEntriesFromClipboard(rawText) {
+    const lines = rawText
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+    const memberLineRegex = /^(Premium\s+Member|Member|Reviewer)$/i;
+    const attendedLineRegex = /^(Osallistui|Attended)\b/i;
+    const dateLineRegex = /^(\d{1,2}\.\d{1,2}\.\d{4}|\d{4}-\d{2}-\d{2})$/;
+    const endLineRegex = /^(Hieno\s+kertomus|Hyödyllinen|Found\s+this\s+log\s+useful|Näytä\s+loki|View\s+Log)\b/i;
+
+    const memberIndexes = [];
+    for (let i = 0; i < lines.length; i++) {
+        if (memberLineRegex.test(lines[i])) memberIndexes.push(i);
+    }
+
+    const entries = [];
+
+    for (let m = 0; m < memberIndexes.length; m++) {
+        const memberIdx = memberIndexes[m];
+
+        // Nimimerkki on yleensä jäsenyysrivin yläpuolella
+        let nickname = "";
+        for (let p = memberIdx - 1; p >= 0; p--) {
+            if (lines[p].length > 0) {
+                nickname = lines[p];
+                break;
+            }
+        }
+        if (!nickname) continue;
+
+        const nextMemberIdx = (m + 1 < memberIndexes.length) ? memberIndexes[m + 1] : lines.length;
+        const segment = lines.slice(memberIdx + 1, nextMemberIdx);
+        if (segment.length === 0) continue;
+
+        const attendedIdx = segment.findIndex(line => attendedLineRegex.test(line));
+        if (attendedIdx === -1) continue;
+
+        let msgStart = attendedIdx + 1;
+        if (msgStart < segment.length && dateLineRegex.test(segment[msgStart])) {
+            msgStart++;
+        }
+
+        const messageLines = [];
+        for (let s = msgStart; s < segment.length; s++) {
+            const line = segment[s];
+            if (endLineRegex.test(line)) break;
+            messageLines.push(line);
+        }
+
+        const message = messageLines.join(' ').replace(/\s+/g, ' ').trim();
+        entries.push({ nickname, message });
+    }
+
+    // Dedup: pidetään viimeisin osuma samalla nimimerkillä
+    const byNick = new Map();
+    entries.forEach(entry => {
+        const key = entry.nickname.trim().toLowerCase();
+        if (!key) return;
+        byNick.set(key, entry);
+    });
+
+    return Array.from(byNick.values());
+}
+
+function parseMassEntriesFromOutput(rawText) {
+    return rawText
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .map(line => {
+            const tabIndex = line.indexOf('\t');
+            if (tabIndex === -1) {
+                return { nickname: line, message: "" };
+            }
+            const nickname = line.slice(0, tabIndex).trim();
+            const message = line.slice(tabIndex + 1).trim();
+            return { nickname, message };
+        })
+        .filter(entry => entry.nickname.length > 0);
+}
+
 if (btnParseMass) {
     btnParseMass.onclick = function() {
         const text = document.getElementById('mass-input').value; if(!text) return;
-        let names = []; const blocks = text.split(/Näytä\s+loki|View\s+Log/i);
-        blocks.forEach(b => {
-            if (/Osallistui|Attended/i.test(b)) {
-                const m = b.match(/^(.*?)\s+(?:Premium\s+Member|Member|Reviewer)/i);
-                if (m && m[1]) names.push(m[1].trim());
-            }
+        parsedMassEntries = parseMassEntriesFromClipboard(text);
+        if (parsedMassEntries.length === 0) return alert("Nimiä/lokeja ei löytynyt!\nVarmista että liitit lokilistaa geocaching.com-sivulta.");
+
+        const outputRows = parsedMassEntries.map(entry => {
+            // Muoto: nimimerkki<TAB>viesti (viesti voi olla tyhjä)
+            return entry.message ? `${entry.nickname}\t${entry.message}` : entry.nickname;
         });
-        names = [...new Set(names)]; if (names.length === 0) return alert("Nimiä ei löytynyt!");
-        document.getElementById('mass-output').value = names.join('\n');
+        document.getElementById('mass-output').value = outputRows.join('\n');
         document.getElementById('mass-step-1').style.display = 'none'; 
         document.getElementById('mass-step-2').style.display = 'block';
     };
@@ -1176,11 +1279,70 @@ if (btnParseMass) {
 
 const btnSaveMass = document.getElementById('btn-save-mass');
 if(btnSaveMass) {
-    btnSaveMass.onclick = function() {
-        const nicks = document.getElementById('mass-output').value.split('\n').map(s => s.trim()).filter(s => s.length > 0);
-        nicks.forEach(n => { 
-            db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({ nickname: n, from: "", message: "(Massa)", timestamp: firebase.database.ServerValue.TIMESTAMP }); 
+    btnSaveMass.onclick = async function() {
+        if (!currentUser || !currentEventId) return;
+
+        const outputText = document.getElementById('mass-output').value;
+        let entries = parseMassEntriesFromOutput(outputText);
+        if (entries.length === 0 && parsedMassEntries.length > 0) {
+            entries = parsedMassEntries;
+        }
+        if (entries.length === 0) return alert("Ei tallennettavaa dataa.");
+
+        const logsRef = db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId);
+        const snap = await logsRef.once('value');
+        const existingLogsMap = new Map();
+
+        snap.forEach(child => {
+            const val = child.val() || {};
+            const nick = (val.nickname || '').trim();
+            if (!nick) return;
+            existingLogsMap.set(nick.toLowerCase(), {
+                key: child.key,
+                message: val.message || ''
+            });
         });
+
+        let addedCount = 0;
+        let updatedCount = 0;
+        let unchangedCount = 0;
+
+        for (const entry of entries) {
+            const nickname = (entry.nickname || '').trim();
+            const rawMessage = (entry.message || '').trim();
+            if (!nickname) continue;
+
+            const normalizedNick = nickname.toLowerCase();
+            const importedMessage = rawMessage ? `🌐: ${rawMessage}` : '(Massa)';
+
+            if (existingLogsMap.has(normalizedNick)) {
+                const existing = existingLogsMap.get(normalizedNick);
+                const existingMessage = existing.message || '';
+
+                // Päivitetään vain jos tuli oikea lokiteksti jota ei vielä viestissä ole
+                if (rawMessage && !existingMessage.includes(rawMessage)) {
+                    const combinedMessage = existingMessage
+                        ? `${existingMessage} | ${importedMessage}`
+                        : importedMessage;
+                    await logsRef.child(existing.key).update({ message: combinedMessage });
+                    existingLogsMap.set(normalizedNick, { key: existing.key, message: combinedMessage });
+                    updatedCount++;
+                } else {
+                    unchangedCount++;
+                }
+            } else {
+                await logsRef.push({
+                    nickname,
+                    from: "",
+                    message: importedMessage,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+                existingLogsMap.set(normalizedNick, { key: 'temp', message: importedMessage });
+                addedCount++;
+            }
+        }
+
+        alert(`Massatuonti valmis!\n\n- Lisätty uusia: ${addedCount}\n- Päivitetty olemassa olevia: ${updatedCount}\n- Ei muutosta: ${unchangedCount}`);
         if(massModal) massModal.style.display = "none";
     };
 }
