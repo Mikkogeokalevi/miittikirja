@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.7.0 - GPU Optimized Confetti
+// Versio: 7.8.0 - Massa-tuonnin logitekstien päivitys + SW-valmius
 // ==========================================
 
-const APP_VERSION = "7.7.0";
+const APP_VERSION = "7.8.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1170,6 +1170,7 @@ window.openMassImport = function() {
     const input = document.getElementById('mass-input');
     const output = document.getElementById('mass-output');
     parsedMassEntries = [];
+    setMassDebugText('');
     if(input) input.value = ""; if(output) output.value = ""; 
     document.getElementById('mass-step-1').style.display = 'block'; 
     document.getElementById('mass-step-2').style.display = 'none';
@@ -1178,6 +1179,50 @@ window.openMassImport = function() {
 
 const btnParseMass = document.getElementById('btn-parse-mass');
 let parsedMassEntries = [];
+
+function buildMassDebugSummary(entries, sourceLabel = "") {
+    const total = entries.length;
+    const withMessage = entries.filter(e => (e.message || '').trim().length > 0).length;
+    const withoutMessage = total - withMessage;
+    const preview = entries.slice(0, 5).map(e => `- ${e.nickname}${e.message ? ': ' + e.message.slice(0, 80) : ''}`).join('\n');
+    return [
+        sourceLabel ? `Lähde: ${sourceLabel}` : '',
+        `Rivejä löydetty: ${total}`,
+        `Rivejä viestillä: ${withMessage}`,
+        `Rivejä ilman viestiä: ${withoutMessage}`,
+        preview ? `\nEsikatselu:\n${preview}` : ''
+    ].filter(Boolean).join('\n');
+}
+
+function setMassDebugText(text) {
+    const debugEl = document.getElementById('mass-debug');
+    if (debugEl) debugEl.textContent = text;
+}
+
+function upsertNetMessage(existingMessage, rawMessage) {
+    const existing = (existingMessage || '').trim();
+    const cleanRaw = (rawMessage || '').trim();
+
+    if (!cleanRaw) {
+        return { nextMessage: existing, changed: false };
+    }
+
+    const netPart = `🌐: ${cleanRaw}`;
+    const parts = existing
+        ? existing.split(' | ').map(p => p.trim()).filter(Boolean)
+        : [];
+
+    // Poistetaan kaikki aiemmat 🌐-osat ja lisätään vain viimeisin -> ei duplikaatteja
+    const nonNetParts = parts.filter(p => !p.startsWith('🌐:'));
+    const nextMessage = nonNetParts.length > 0
+        ? `${nonNetParts.join(' | ')} | ${netPart}`
+        : netPart;
+
+    return {
+        nextMessage,
+        changed: nextMessage !== existing
+    };
+}
 
 function parseMassEntriesFromClipboard(rawText) {
     const lines = rawText
@@ -1272,6 +1317,7 @@ if (btnParseMass) {
             return entry.message ? `${entry.nickname}\t${entry.message}` : entry.nickname;
         });
         document.getElementById('mass-output').value = outputRows.join('\n');
+        setMassDebugText(buildMassDebugSummary(parsedMassEntries, "Clipboard-parseri"));
         document.getElementById('mass-step-1').style.display = 'none'; 
         document.getElementById('mass-step-2').style.display = 'block';
     };
@@ -1288,6 +1334,8 @@ if(btnSaveMass) {
             entries = parsedMassEntries;
         }
         if (entries.length === 0) return alert("Ei tallennettavaa dataa.");
+
+        setMassDebugText(buildMassDebugSummary(entries, "Tallennettava data"));
 
         const logsRef = db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId);
         const snap = await logsRef.once('value');
@@ -1313,24 +1361,22 @@ if(btnSaveMass) {
             if (!nickname) continue;
 
             const normalizedNick = nickname.toLowerCase();
-            const importedMessage = rawMessage ? `🌐: ${rawMessage}` : '(Massa)';
 
             if (existingLogsMap.has(normalizedNick)) {
                 const existing = existingLogsMap.get(normalizedNick);
                 const existingMessage = existing.message || '';
 
-                // Päivitetään vain jos tuli oikea lokiteksti jota ei vielä viestissä ole
-                if (rawMessage && !existingMessage.includes(rawMessage)) {
-                    const combinedMessage = existingMessage
-                        ? `${existingMessage} | ${importedMessage}`
-                        : importedMessage;
-                    await logsRef.child(existing.key).update({ message: combinedMessage });
-                    existingLogsMap.set(normalizedNick, { key: existing.key, message: combinedMessage });
+                // Idempotentti: .com-viesti korvataan/ylläpidetään yhtenä 🌐-osana (ei tuplia)
+                const netUpdate = upsertNetMessage(existingMessage, rawMessage);
+                if (netUpdate.changed) {
+                    await logsRef.child(existing.key).update({ message: netUpdate.nextMessage });
+                    existingLogsMap.set(normalizedNick, { key: existing.key, message: netUpdate.nextMessage });
                     updatedCount++;
                 } else {
                     unchangedCount++;
                 }
             } else {
+                const importedMessage = rawMessage ? `🌐: ${rawMessage}` : '(Massa)';
                 await logsRef.push({
                     nickname,
                     from: "",
@@ -1348,6 +1394,7 @@ if(btnSaveMass) {
 }
 
 window.resetMassModal = function() { 
+    setMassDebugText('');
     document.getElementById('mass-step-1').style.display = 'block'; 
     document.getElementById('mass-step-2').style.display = 'none'; 
 };

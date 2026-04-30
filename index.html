@@ -435,8 +435,8 @@
     <div id="mass-modal" class="modal">
         <div class="modal-content">
             <h3>📥 Massa-tuonti</h3>
-            <div id="mass-step-1"><textarea id="mass-input" rows="8" placeholder="Liitä teksti..."></textarea><button id="btn-parse-mass" class="btn btn-blue">Etsi nimet</button></div>
-            <div id="mass-step-2" style="display:none;"><textarea id="mass-output" rows="10"></textarea><div style="display:flex; gap:10px;"><button id="btn-save-mass" class="btn btn-green">Tallenna</button><button onclick="resetMassModal()" class="btn btn-gray">Takaisin</button></div></div>
+            <div id="mass-step-1"><textarea id="mass-input" rows="8" placeholder="Liitä teksti..."></textarea><button id="btn-parse-mass" class="btn btn-blue">Etsi nimet + tekstit</button></div>
+            <div id="mass-step-2" style="display:none;"><textarea id="mass-output" rows="10"></textarea><pre id="mass-debug" style="margin-top:10px; padding:10px; border:1px dashed #666; border-radius:8px; background:#1a1a1a; color:#b7d6ff; font-size:0.85em; white-space:pre-wrap;"></pre><div style="display:flex; gap:10px;"><button id="btn-save-mass" class="btn btn-green">Tallenna</button><button onclick="resetMassModal()" class="btn btn-gray">Takaisin</button></div></div>
             <button onclick="closeModal()" class="btn btn-red" style="margin-top:20px; width:100%;">Sulje</button>
         </div>
     </div>
@@ -550,6 +550,22 @@
         }
 
         initTheme();
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+                    .then(reg => {
+                        // Tarkista uusi versio heti avauksessa
+                        reg.update().catch(() => {});
+
+                        // Tarkista silloin tällöin myös käynnissä ollessa
+                        setInterval(() => {
+                            reg.update().catch(() => {});
+                        }, 60 * 1000);
+                    })
+                    .catch(() => {});
+            });
+        }
     </script>
 </body>
 </html>
