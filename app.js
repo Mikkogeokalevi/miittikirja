@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.8.0 - Massa-tuonnin logitekstien päivitys + SW-valmius
+// Versio: 7.9.0 - Tilastojen käyttäjälogihaku + sanalaskurit
 // ==========================================
 
-const APP_VERSION = "7.8.0";
+const APP_VERSION = "7.9.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",

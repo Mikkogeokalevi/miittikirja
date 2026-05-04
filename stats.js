@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.5.6 - Titles in List & User Card
+// Versio: 7.6.0 - Käyttäjäkohtainen logihaku + sanalaskurit
 // ==========================================
 
 let allStatsData = {
@@ -45,6 +45,7 @@ async function initStats() {
         allStatsData.events = events;
         populateYearFilter(events);
         updateStatsView(events);
+        initUserLogSearchBindings();
 
     } catch (e) {
         console.error("Tilastojen lataus epäonnistui:", e);
@@ -195,6 +196,8 @@ function updateStatsView(data) {
 
     renderLocationsTable(data);
     renderAttributesList(data);
+    populateStatsLogUserDatalist(data);
+    runUserLogSearch(data);
 
     if(document.getElementById('tab-graphs').classList.contains('active')) {
         renderCharts(data);
@@ -243,6 +246,188 @@ function renderUserRegistry(data) {
     }).join('');
     
     el.innerHTML = html;
+}
+
+function escapeHtml(str) {
+    return (str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function splitMessageSources(message) {
+    const raw = (message || '').trim();
+    if (!raw) return { local: '', net: '' };
+
+    const parts = raw.split('|').map(p => p.trim()).filter(Boolean);
+    const netParts = parts.filter(p => p.startsWith('🌐:')).map(p => p.replace(/^🌐:\s*/, '').trim()).filter(Boolean);
+    const localParts = parts.filter(p => !p.startsWith('🌐:')).filter(Boolean);
+
+    return {
+        local: localParts.join(' | ').trim(),
+        net: netParts.join(' | ').trim()
+    };
+}
+
+function countWords(text) {
+    const clean = (text || '').trim();
+    if (!clean) return 0;
+    return clean.split(/\s+/).filter(Boolean).length;
+}
+
+function flattenEventLogs(data) {
+    const rows = [];
+    data.forEach(evt => {
+        const evtLogs = Array.isArray(evt.logs) ? evt.logs : [];
+        evtLogs.forEach(log => {
+            const nickname = (log.nickname || '').trim();
+            if (!nickname) return;
+
+            const sources = splitMessageSources(log.message || '');
+            rows.push({
+                eventKey: evt.key,
+                eventName: evt.name || 'Nimetön miitti',
+                eventDate: evt.date || '',
+                nickname,
+                nicknameLower: nickname.toLowerCase(),
+                from: (log.from || '').trim(),
+                localMessage: sources.local,
+                netMessage: sources.net,
+                timestamp: log.timestamp || 0
+            });
+        });
+    });
+    return rows;
+}
+
+function populateStatsLogUserDatalist(data) {
+    const datalist = document.getElementById('stats-log-user-list');
+    if (!datalist) return;
+
+    const names = [...new Set(flattenEventLogs(data).map(r => r.nickname))]
+        .sort((a, b) => a.localeCompare(b, 'fi'));
+
+    datalist.innerHTML = names
+        .slice(0, 500)
+        .map(name => `<option value="${escapeHtml(name)}"></option>`)
+        .join('');
+}
+
+function initUserLogSearchBindings() {
+    const btn = document.getElementById('btn-apply-user-logs');
+    if (btn && !btn.dataset.bound) {
+        btn.onclick = () => runUserLogSearch(window.currentFilteredData || allStatsData.events || []);
+        btn.dataset.bound = '1';
+    }
+
+    const input = document.getElementById('stats-log-user');
+    if (input && !input.dataset.bound) {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                runUserLogSearch(window.currentFilteredData || allStatsData.events || []);
+            }
+        });
+        input.dataset.bound = '1';
+    }
+}
+
+function runUserLogSearch(data) {
+    const summaryEl = document.getElementById('stats-user-log-summary');
+    const wordStatsEl = document.getElementById('stats-user-word-stats');
+    const listEl = document.getElementById('stats-user-log-results');
+    if (!summaryEl || !wordStatsEl || !listEl) return;
+
+    const userFilter = (document.getElementById('stats-log-user')?.value || '').trim().toLowerCase();
+    const fromDate = (document.getElementById('stats-log-from')?.value || '').trim();
+    const toDate = (document.getElementById('stats-log-to')?.value || '').trim();
+    const limitValue = (document.getElementById('stats-log-limit')?.value || '10').trim();
+    const sourceMode = (document.getElementById('stats-log-source')?.value || 'both').trim();
+
+    let rows = flattenEventLogs(data);
+
+    if (fromDate) rows = rows.filter(r => r.eventDate && r.eventDate >= fromDate);
+    if (toDate) rows = rows.filter(r => r.eventDate && r.eventDate <= toDate);
+    if (userFilter) rows = rows.filter(r => r.nicknameLower.includes(userFilter));
+
+    rows.sort((a, b) => {
+        if (a.eventDate !== b.eventDate) return (b.eventDate || '').localeCompare(a.eventDate || '');
+        return (b.timestamp || 0) - (a.timestamp || 0);
+    });
+
+    const limit = limitValue === 'all' ? Number.MAX_SAFE_INTEGER : (parseInt(limitValue, 10) || 10);
+    const limitedRows = rows.slice(0, limit);
+
+    const writerWordCounts = {};
+    rows.forEach(r => {
+        const words =
+            sourceMode === 'local' ? countWords(r.localMessage)
+            : sourceMode === 'net' ? countWords(r.netMessage)
+            : countWords(r.localMessage) + countWords(r.netMessage);
+
+        if (!writerWordCounts[r.nickname]) writerWordCounts[r.nickname] = 0;
+        writerWordCounts[r.nickname] += words;
+    });
+
+    const topWriters = Object.entries(writerWordCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+    const totalLocalWords = limitedRows.reduce((sum, r) => sum + countWords(r.localMessage), 0);
+    const totalNetWords = limitedRows.reduce((sum, r) => sum + countWords(r.netMessage), 0);
+    const totalShownWords =
+        sourceMode === 'local' ? totalLocalWords
+        : sourceMode === 'net' ? totalNetWords
+        : totalLocalWords + totalNetWords;
+
+    summaryEl.innerHTML = `
+        <div style="display:flex; flex-wrap:wrap; gap:10px;">
+            <span><strong>Osumia:</strong> ${rows.length}</span>
+            <span><strong>Näytetään:</strong> ${Math.min(limitedRows.length, limit === Number.MAX_SAFE_INTEGER ? limitedRows.length : limit)}</span>
+            <span><strong>Lähde:</strong> ${sourceMode === 'both' ? 'Molemmat' : sourceMode === 'local' ? 'Miittikirja' : 'Geocaching.com'}</span>
+            <span><strong>Aikaväli:</strong> ${fromDate || 'alku'} - ${toDate || 'loppu'}</span>
+        </div>
+    `;
+
+    wordStatsEl.innerHTML = `
+        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+            <span><strong>Sanoja näytetyissä:</strong> ${totalShownWords}</span>
+            <span style="color:#888;">(Miitti: ${totalLocalWords}, .com: ${totalNetWords})</span>
+        </div>
+        <div style="margin-top:6px; color:#ddd;">
+            <strong>Top-kirjoittajat (sanamäärä):</strong>
+            ${topWriters.length ? topWriters.map(([name, words], i) => `${i + 1}. ${escapeHtml(name)} (${words})`).join(' • ') : 'Ei dataa'}
+        </div>
+    `;
+
+    if (limitedRows.length === 0) {
+        listEl.innerHTML = 'Ei osumia annetuilla ehdoilla.';
+        return;
+    }
+
+    listEl.innerHTML = limitedRows.map(r => {
+        const localText = r.localMessage ? `<div style="margin-top:4px;"><span style="color:#8bc34a;">📝 Miitti:</span> ${escapeHtml(r.localMessage)}</div>` : '';
+        const netText = r.netMessage ? `<div style="margin-top:4px;"><span style="color:#64b5f6;">🌐 .com:</span> ${escapeHtml(r.netMessage)}</div>` : '';
+
+        const selectedContent = sourceMode === 'local'
+            ? (localText || `<div style="color:#777; margin-top:4px;">(Ei miittiviestiä)</div>`)
+            : sourceMode === 'net'
+                ? (netText || `<div style="color:#777; margin-top:4px;">(Ei .com-viestiä)</div>`)
+                : `${localText}${netText}` || `<div style="color:#777; margin-top:4px;">(Ei viestiä)</div>`;
+
+        return `
+            <div class="result-item" style="cursor:default;">
+                <div style="display:flex; justify-content:space-between; gap:8px;">
+                    <strong>${escapeHtml(r.nickname)}</strong>
+                    <small style="color:#aaa;">${escapeHtml(r.eventDate)}</small>
+                </div>
+                <div style="font-size:0.85em; color:#999; margin-top:2px;">${escapeHtml(r.eventName)}${r.from ? ` • ${escapeHtml(r.from)}` : ''}</div>
+                ${selectedContent}
+            </div>
+        `;
+    }).join('');
 }
 
 function renderFirstTimersTopEvents(data) {
