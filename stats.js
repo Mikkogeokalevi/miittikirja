@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.6.1 - Logihaun mobiili-autocomplete + oma välilehti
+// Versio: 7.6.2 - Logihaun CSV-vienti
 // ==========================================
 
 let allStatsData = {
@@ -11,6 +11,7 @@ let allStatsData = {
 let chartInstances = {};
 let mapInstance = null;
 let statsLogUserNames = [];
+let currentStatsLogSearchSnapshot = { rows: [], sourceMode: 'both' };
 
 async function initStats() {
     if (!currentUser) return;
@@ -278,6 +279,18 @@ function countWords(text) {
     return clean.split(/\s+/).filter(Boolean).length;
 }
 
+function getDisplayMessageBySource(row, sourceMode) {
+    if (sourceMode === 'local') return row.localMessage || '';
+    if (sourceMode === 'net') return row.netMessage || '';
+    const both = [row.localMessage, row.netMessage].filter(Boolean).join(' | ');
+    return both;
+}
+
+function csvEscape(value) {
+    const text = (value ?? '').toString().replace(/"/g, '""');
+    return `"${text}"`;
+}
+
 function flattenEventLogs(data) {
     const rows = [];
     data.forEach(evt => {
@@ -352,6 +365,12 @@ function initUserLogSearchBindings() {
         btn.dataset.bound = '1';
     }
 
+    const exportBtn = document.getElementById('btn-export-user-logs');
+    if (exportBtn && !exportBtn.dataset.bound) {
+        exportBtn.onclick = exportCurrentUserLogSearch;
+        exportBtn.dataset.bound = '1';
+    }
+
     const input = document.getElementById('stats-log-user');
     if (input && !input.dataset.bound) {
         input.addEventListener('input', () => {
@@ -381,6 +400,56 @@ window.selectStatsLogUser = function(name) {
     runUserLogSearch(window.currentFilteredData || allStatsData.events || []);
 };
 
+function exportCurrentUserLogSearch() {
+    const rows = currentStatsLogSearchSnapshot.rows || [];
+    const sourceMode = currentStatsLogSearchSnapshot.sourceMode || 'both';
+
+    if (rows.length === 0) {
+        alert('Ei ladattavia logeja. Tee ensin haku.');
+        return;
+    }
+
+    const header = [
+        'Pvm',
+        'Miitti',
+        'Nimimerkki',
+        'Paikkakunta',
+        'Miittiviesti',
+        'Geocaching.com viesti',
+        'Näytetty viesti'
+    ];
+
+    const lines = [header.map(csvEscape).join(';')];
+    rows.forEach(r => {
+        lines.push([
+            r.eventDate || '',
+            r.eventName || '',
+            r.nickname || '',
+            r.from || '',
+            r.localMessage || '',
+            r.netMessage || '',
+            getDisplayMessageBySource(r, sourceMode)
+        ].map(csvEscape).join(';'));
+    });
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+    const userRaw = (document.getElementById('stats-log-user')?.value || 'kaikki').trim().toLowerCase();
+    const safeUser = userRaw.replace(/[^a-z0-9åäö_-]+/gi, '_') || 'kaikki';
+    const fileName = `miittikirja_logit_${safeUser}_${stamp}.csv`;
+
+    const blob = new Blob(["\uFEFF" + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
 function runUserLogSearch(data) {
     const summaryEl = document.getElementById('stats-user-log-summary');
     const wordStatsEl = document.getElementById('stats-user-word-stats');
@@ -406,6 +475,7 @@ function runUserLogSearch(data) {
 
     const limit = limitValue === 'all' ? Number.MAX_SAFE_INTEGER : (parseInt(limitValue, 10) || 10);
     const limitedRows = rows.slice(0, limit);
+    currentStatsLogSearchSnapshot = { rows: limitedRows, sourceMode };
 
     const writerWordCounts = {};
     rows.forEach(r => {

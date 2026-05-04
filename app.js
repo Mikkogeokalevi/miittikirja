@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.10.0 - Logihaun mobiilikorjaus + oma välilehti
+// Versio: 7.11.0 - Logihaun CSV-vienti käyttäjälle
 // ==========================================
 
-const APP_VERSION = "7.10.0";
+const APP_VERSION = "7.11.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
