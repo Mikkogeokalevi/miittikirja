@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.6.5 - Paikkakunta-lähde logihakuun
+// Versio: 7.6.6 - Top-listat + autocomplete näyttölogiikka
 // ==========================================
 
 let allStatsData = {
@@ -335,9 +335,13 @@ function renderStatsLogUserAutocomplete(query) {
     if (!list) return;
 
     const q = (query || '').trim().toLowerCase();
-    const matches = q.length === 0
-        ? statsLogUserNames.slice(0, 12)
-        : statsLogUserNames.filter(name => name.toLowerCase().includes(q)).slice(0, 12);
+    if (q.length === 0) {
+        list.innerHTML = '';
+        list.style.display = 'none';
+        return;
+    }
+
+    const matches = statsLogUserNames.filter(name => name.toLowerCase().includes(q)).slice(0, 12);
 
     if (matches.length === 0) {
         list.innerHTML = '';
@@ -557,6 +561,7 @@ function exportCurrentUserLogSearchTxt() {
 function runUserLogSearch(data) {
     const summaryEl = document.getElementById('stats-user-log-summary');
     const wordStatsEl = document.getElementById('stats-user-word-stats');
+    const topListsEl = document.getElementById('stats-user-top-lists');
     const listEl = document.getElementById('stats-user-log-results');
     if (!summaryEl || !wordStatsEl || !listEl) return;
 
@@ -582,17 +587,24 @@ function runUserLogSearch(data) {
     currentStatsLogSearchSnapshot = { rows: limitedRows, sourceMode };
 
     const writerWordCounts = {};
+    const writerLogCounts = {};
     rows.forEach(r => {
         const words =
             sourceMode === 'local' ? countWords(r.localMessage)
             : sourceMode === 'net' ? countWords(r.netMessage)
+            : sourceMode === 'from' ? countWords(r.from)
             : countWords(r.localMessage) + countWords(r.netMessage);
 
         if (!writerWordCounts[r.nickname]) writerWordCounts[r.nickname] = 0;
         writerWordCounts[r.nickname] += words;
+        if (!writerLogCounts[r.nickname]) writerLogCounts[r.nickname] = 0;
+        writerLogCounts[r.nickname] += 1;
     });
 
     const topWriters = Object.entries(writerWordCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+    const topLoggers = Object.entries(writerLogCounts)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5);
 
@@ -619,16 +631,37 @@ function runUserLogSearch(data) {
             <span><strong>Sanoja näytetyissä:</strong> ${totalShownWords}</span>
             <span style="color:#888;">(Miitti: ${totalLocalWords}, .com: ${totalNetWords}, Paikkakunta: ${totalFromWords})</span>
         </div>
-        <div style="margin-top:6px; color:#ddd;">
-            <strong>Top-kirjoittajat (sanamäärä):</strong>
-            ${topWriters.length ? topWriters.map(([name, words], i) => `${i + 1}. ${escapeHtml(name)} (${words})`).join(' • ') : 'Ei dataa'}
-        </div>
     `;
 
+    if (topListsEl) {
+        topListsEl.innerHTML = `
+            <div class="card" style="margin:0; padding:10px; border-style:dashed;">
+                <h4 style="margin:0 0 8px 0;">🏆 Top-listat</h4>
+                <div style="display:grid; gap:8px; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));">
+                    <div>
+                        <div style="font-weight:600; margin-bottom:4px;">Eniten sanoja</div>
+                        <div style="font-size:0.92em; color:#ddd;">
+                            ${topWriters.length ? topWriters.map(([name, words], i) => `${i + 1}. ${escapeHtml(name)} (${words} sanaa)`).join('<br>') : 'Ei dataa'}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-weight:600; margin-bottom:4px;">Eniten logeja</div>
+                        <div style="font-size:0.92em; color:#ddd;">
+                            ${topLoggers.length ? topLoggers.map(([name, count], i) => `${i + 1}. ${escapeHtml(name)} (${count} logia)`).join('<br>') : 'Ei dataa'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     if (limitedRows.length === 0) {
+        if (topListsEl) topListsEl.style.display = 'none';
         listEl.innerHTML = 'Ei osumia annetuilla ehdoilla.';
         return;
     }
+
+    if (topListsEl) topListsEl.style.display = 'block';
 
     listEl.innerHTML = limitedRows.map(r => {
         const localText = r.localMessage ? `<div style="margin-top:4px;"><span style="color:#8bc34a;">📝 Miitti:</span> ${escapeHtml(r.localMessage)}</div>` : '';
