@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.14.0 - Logihaun top-listat + autocomplete UX
+// Versio: 7.15.0 - Top-listan laajuusvalinta
 // ==========================================
 
-const APP_VERSION = "7.14.0";
+const APP_VERSION = "7.15.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",

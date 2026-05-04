@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.6.6 - Top-listat + autocomplete näyttölogiikka
+// Versio: 7.6.8 - Top-listat: suodatus tai kaikki data
 // ==========================================
 
 let allStatsData = {
@@ -48,6 +48,7 @@ async function initStats() {
         populateYearFilter(events);
         updateStatsView(events);
         initUserLogSearchBindings();
+        runUserLogSearch(window.currentFilteredData || events);
 
     } catch (e) {
         console.error("Tilastojen lataus epäonnistui:", e);
@@ -382,6 +383,14 @@ function initUserLogSearchBindings() {
         exportTxtBtn.dataset.bound = '1';
     }
 
+    const topScopeSelect = document.getElementById('stats-top-scope');
+    if (topScopeSelect && !topScopeSelect.dataset.bound) {
+        topScopeSelect.addEventListener('change', () => {
+            runUserLogSearch(window.currentFilteredData || allStatsData.events || []);
+        });
+        topScopeSelect.dataset.bound = '1';
+    }
+
     const input = document.getElementById('stats-log-user');
     if (input && !input.dataset.bound) {
         input.addEventListener('input', () => {
@@ -570,6 +579,7 @@ function runUserLogSearch(data) {
     const toDate = (document.getElementById('stats-log-to')?.value || '').trim();
     const limitValue = (document.getElementById('stats-log-limit')?.value || '10').trim();
     const sourceMode = (document.getElementById('stats-log-source')?.value || 'both').trim();
+    const topScope = (document.getElementById('stats-top-scope')?.value || 'filtered').trim();
 
     let rows = flattenEventLogs(data);
 
@@ -586,9 +596,13 @@ function runUserLogSearch(data) {
     const limitedRows = rows.slice(0, limit);
     currentStatsLogSearchSnapshot = { rows: limitedRows, sourceMode };
 
+    const topRows = topScope === 'all'
+        ? flattenEventLogs(allStatsData.events || [])
+        : rows;
+
     const writerWordCounts = {};
     const writerLogCounts = {};
-    rows.forEach(r => {
+    topRows.forEach(r => {
         const words =
             sourceMode === 'local' ? countWords(r.localMessage)
             : sourceMode === 'net' ? countWords(r.netMessage)
@@ -637,6 +651,7 @@ function runUserLogSearch(data) {
         topListsEl.innerHTML = `
             <div class="card" style="margin:0; padding:10px; border-style:dashed;">
                 <h4 style="margin:0 0 8px 0;">🏆 Top-listat</h4>
+                <div style="font-size:0.86em; color:#aaa; margin-bottom:8px;">Lähde: ${topScope === 'all' ? 'Kaikki data' : 'Nykyinen suodatus'}</div>
                 <div style="display:grid; gap:8px; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));">
                     <div>
                         <div style="font-weight:600; margin-bottom:4px;">Eniten sanoja</div>
@@ -656,12 +671,9 @@ function runUserLogSearch(data) {
     }
 
     if (limitedRows.length === 0) {
-        if (topListsEl) topListsEl.style.display = 'none';
         listEl.innerHTML = 'Ei osumia annetuilla ehdoilla.';
         return;
     }
-
-    if (topListsEl) topListsEl.style.display = 'block';
 
     listEl.innerHTML = limitedRows.map(r => {
         const localText = r.localMessage ? `<div style="margin-top:4px;"><span style="color:#8bc34a;">📝 Miitti:</span> ${escapeHtml(r.localMessage)}</div>` : '';
