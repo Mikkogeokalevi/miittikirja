@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.6.0 - Käyttäjäkohtainen logihaku + sanalaskurit
+// Versio: 7.6.1 - Logihaun mobiili-autocomplete + oma välilehti
 // ==========================================
 
 let allStatsData = {
@@ -10,6 +10,7 @@ let allStatsData = {
 
 let chartInstances = {};
 let mapInstance = null;
+let statsLogUserNames = [];
 
 async function initStats() {
     if (!currentUser) return;
@@ -303,16 +304,45 @@ function flattenEventLogs(data) {
 }
 
 function populateStatsLogUserDatalist(data) {
-    const datalist = document.getElementById('stats-log-user-list');
-    if (!datalist) return;
+    statsLogUserNames = [...new Set(flattenEventLogs(data).map(r => r.nickname))]
+        .sort((a, b) => a.localeCompare(b, 'fi'))
+        .slice(0, 1000);
 
-    const names = [...new Set(flattenEventLogs(data).map(r => r.nickname))]
-        .sort((a, b) => a.localeCompare(b, 'fi'));
+    renderStatsLogUserAutocomplete(document.getElementById('stats-log-user')?.value || '');
+}
 
-    datalist.innerHTML = names
-        .slice(0, 500)
-        .map(name => `<option value="${escapeHtml(name)}"></option>`)
-        .join('');
+function hideStatsLogUserAutocomplete() {
+    const list = document.getElementById('stats-log-user-autocomplete');
+    if (list) list.style.display = 'none';
+}
+
+function renderStatsLogUserAutocomplete(query) {
+    const list = document.getElementById('stats-log-user-autocomplete');
+    if (!list) return;
+
+    const q = (query || '').trim().toLowerCase();
+    const matches = q.length === 0
+        ? statsLogUserNames.slice(0, 12)
+        : statsLogUserNames.filter(name => name.toLowerCase().includes(q)).slice(0, 12);
+
+    if (matches.length === 0) {
+        list.innerHTML = '';
+        list.style.display = 'none';
+        return;
+    }
+
+    list.innerHTML = '';
+    matches.forEach(name => {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item';
+        item.textContent = name;
+        item.onmousedown = (e) => {
+            e.preventDefault();
+            window.selectStatsLogUser(name);
+        };
+        list.appendChild(item);
+    });
+    list.style.display = 'block';
 }
 
 function initUserLogSearchBindings() {
@@ -324,15 +354,32 @@ function initUserLogSearchBindings() {
 
     const input = document.getElementById('stats-log-user');
     if (input && !input.dataset.bound) {
+        input.addEventListener('input', () => {
+            renderStatsLogUserAutocomplete(input.value || '');
+        });
+        input.addEventListener('focus', () => {
+            renderStatsLogUserAutocomplete(input.value || '');
+        });
+        input.addEventListener('blur', () => {
+            setTimeout(() => hideStatsLogUserAutocomplete(), 120);
+        });
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
+                hideStatsLogUserAutocomplete();
                 runUserLogSearch(window.currentFilteredData || allStatsData.events || []);
             }
         });
         input.dataset.bound = '1';
     }
 }
+
+window.selectStatsLogUser = function(name) {
+    const input = document.getElementById('stats-log-user');
+    if (input) input.value = name;
+    hideStatsLogUserAutocomplete();
+    runUserLogSearch(window.currentFilteredData || allStatsData.events || []);
+};
 
 function runUserLogSearch(data) {
     const summaryEl = document.getElementById('stats-user-log-summary');

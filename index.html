@@ -241,30 +241,21 @@
         </div>
 
         <div class="tab-container">
-            <button class="tab-btn active" onclick="switchStatsTab('tab-lists', this)">📍 Listat</button>
+            <button class="tab-btn active" onclick="switchStatsTab('tab-user-logs', this)">🧾 Logihaku</button>
+            <button class="tab-btn" onclick="switchStatsTab('tab-lists', this)">📍 Listat</button>
             <button class="tab-btn" onclick="switchStatsTab('tab-graphs', this)">📊 Graafit</button>
             <button class="tab-btn" onclick="switchStatsTab('tab-map', this)">🗺️ Kartta</button>
             <button class="tab-btn" onclick="switchStatsTab('tab-calendar', this)">📅 Kalenteri</button>
         </div>
 
-        <div id="tab-lists" class="tab-content active">
-            <div class="card">
-                <h3>👥 Kävijäluettelo</h3>
-                <div id="stats-user-registry" class="scroll-box" style="max-height: 400px;"></div>
-                <small style="color:#888;">* Näytetään max 50 aktiivisinta haun perusteella</small>
-            </div>
-
-            <div class="card"><h3>📈 Yhteenveto</h3><div id="stats-summary-text"></div></div>
-            
-            <div class="card"><h3>🗓️ Aktiivisuuskalenteri</h3><div id="stats-year-heatmap" class="scroll-box"></div></div>
-
-            <div class="card"><h3>🔎 Haun tulokset (Miitit)</h3><div id="stats-results-list" class="scroll-box"></div></div>
-
+        <div id="tab-user-logs" class="tab-content active">
             <div class="card">
                 <h3>🧾 Kätköilijän logit</h3>
                 <div style="display:grid; gap:8px;">
-                    <input type="text" id="stats-log-user" list="stats-log-user-list" placeholder="Hae nimimerkillä (esim. eukka)">
-                    <datalist id="stats-log-user-list"></datalist>
+                    <div style="position:relative;">
+                        <input type="text" id="stats-log-user" placeholder="Hae nimimerkillä (esim. eukka)">
+                        <div id="stats-log-user-autocomplete" class="autocomplete-list" style="display:none;"></div>
+                    </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
                         <div style="flex:1; min-width:140px;">
                             <small style="color:#888; display:block; margin-bottom:2px;">Alkaen</small>
@@ -294,7 +285,21 @@
                 <div id="stats-user-word-stats" style="margin-top:8px; font-size:0.9em;"></div>
                 <div id="stats-user-log-results" class="scroll-box" style="max-height:360px; margin-top:10px;"></div>
             </div>
+        </div>
+
+        <div id="tab-lists" class="tab-content">
+            <div class="card">
+                <h3>👥 Kävijäluettelo</h3>
+                <div id="stats-user-registry" class="scroll-box" style="max-height: 400px;"></div>
+                <small style="color:#888;">* Näytetään max 50 aktiivisinta haun perusteella</small>
+            </div>
+
+            <div class="card"><h3>📈 Yhteenveto</h3><div id="stats-summary-text"></div></div>
             
+            <div class="card"><h3>🗓️ Aktiivisuuskalenteri</h3><div id="stats-year-heatmap" class="scroll-box"></div></div>
+
+            <div class="card"><h3>🔎 Haun tulokset (Miitit)</h3><div id="stats-results-list" class="scroll-box"></div></div>
+
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                 <div class="card"><h3>🏆 TOP 10 Miitit</h3><div id="stats-top-10" style="font-size:0.8em;"></div></div>
                 <div class="card"><h3>🧊 BOTTOM 10 Miitit</h3><div id="stats-bottom-10" style="font-size:0.8em;"></div></div>

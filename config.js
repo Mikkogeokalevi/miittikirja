@@ -10,5 +10,5 @@ const MK_Config = {
     HOST_UID: "T8wI16Gf67W4G4yX3Cq7U0U1H6I2",
 
     // Sovelluksen versio (näytetään kirjautumissivulla)
-    VERSION: "7.9.0"
+    VERSION: "7.10.0"
 };
