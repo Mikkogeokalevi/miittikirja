@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.6.4 - TXT-viennin sanalaskuriyhteenveto
+// Versio: 7.6.5 - Paikkakunta-lähde logihakuun
 // ==========================================
 
 let allStatsData = {
@@ -282,6 +282,7 @@ function countWords(text) {
 function getDisplayMessageBySource(row, sourceMode) {
     if (sourceMode === 'local') return row.localMessage || '';
     if (sourceMode === 'net') return row.netMessage || '';
+    if (sourceMode === 'from') return row.from || '';
     const both = [row.localMessage, row.netMessage].filter(Boolean).join(' | ');
     return both;
 }
@@ -468,15 +469,24 @@ function exportCurrentUserLogSearchTxt() {
     const fromDate = (document.getElementById('stats-log-from')?.value || '').trim();
     const toDate = (document.getElementById('stats-log-to')?.value || '').trim();
     const userRaw = (document.getElementById('stats-log-user')?.value || 'kaikki').trim();
-    const sourceLabel = sourceMode === 'both' ? 'Molemmat' : sourceMode === 'local' ? 'Miittikirja' : 'Geocaching.com';
+    const sourceLabel = sourceMode === 'both'
+        ? 'Molemmat'
+        : sourceMode === 'local'
+            ? 'Miittikirja'
+            : sourceMode === 'net'
+                ? 'Geocaching.com'
+                : 'Paikkakunta';
 
     const totalLocalWords = rows.reduce((sum, r) => sum + countWords(r.localMessage), 0);
     const totalNetWords = rows.reduce((sum, r) => sum + countWords(r.netMessage), 0);
+    const totalFromWords = rows.reduce((sum, r) => sum + countWords(r.from), 0);
     const totalShownWords = sourceMode === 'local'
         ? totalLocalWords
         : sourceMode === 'net'
             ? totalNetWords
-            : totalLocalWords + totalNetWords;
+            : sourceMode === 'from'
+                ? totalFromWords
+                : totalLocalWords + totalNetWords;
 
     const writerWordCounts = {};
     rows.forEach(r => {
@@ -484,7 +494,9 @@ function exportCurrentUserLogSearchTxt() {
             ? countWords(r.localMessage)
             : sourceMode === 'net'
                 ? countWords(r.netMessage)
-                : countWords(r.localMessage) + countWords(r.netMessage);
+                : sourceMode === 'from'
+                    ? countWords(r.from)
+                    : countWords(r.localMessage) + countWords(r.netMessage);
         writerWordCounts[r.nickname] = (writerWordCounts[r.nickname] || 0) + words;
     });
     const topWriters = Object.entries(writerWordCounts)
@@ -504,6 +516,7 @@ function exportCurrentUserLogSearchTxt() {
     lines.push(`Sanoja yhteensa (näytetty lähde): ${totalShownWords}`);
     lines.push(`Miittiviestit sanat: ${totalLocalWords}`);
     lines.push(`Geocaching.com sanat: ${totalNetWords}`);
+    lines.push(`Paikkakunta-kentän sanat: ${totalFromWords}`);
     lines.push(`Top-kirjoittajat: ${topWriters.length ? topWriters.map(([name, words], i) => `${i + 1}. ${name} (${words})`).join(' | ') : 'Ei dataa'}`);
     lines.push('');
 
@@ -516,6 +529,9 @@ function exportCurrentUserLogSearchTxt() {
         }
         if (sourceMode === 'both' || sourceMode === 'net') {
             lines.push(`   Geocaching.com: ${r.netMessage || '-'}`);
+        }
+        if (sourceMode === 'from') {
+            lines.push(`   Paikkakunta: ${r.from || '-'}`);
         }
 
         lines.push('');
@@ -582,16 +598,18 @@ function runUserLogSearch(data) {
 
     const totalLocalWords = limitedRows.reduce((sum, r) => sum + countWords(r.localMessage), 0);
     const totalNetWords = limitedRows.reduce((sum, r) => sum + countWords(r.netMessage), 0);
+    const totalFromWords = limitedRows.reduce((sum, r) => sum + countWords(r.from), 0);
     const totalShownWords =
         sourceMode === 'local' ? totalLocalWords
         : sourceMode === 'net' ? totalNetWords
+        : sourceMode === 'from' ? totalFromWords
         : totalLocalWords + totalNetWords;
 
     summaryEl.innerHTML = `
         <div style="display:flex; flex-wrap:wrap; gap:10px;">
             <span><strong>Osumia:</strong> ${rows.length}</span>
             <span><strong>Näytetään:</strong> ${Math.min(limitedRows.length, limit === Number.MAX_SAFE_INTEGER ? limitedRows.length : limit)}</span>
-            <span><strong>Lähde:</strong> ${sourceMode === 'both' ? 'Molemmat' : sourceMode === 'local' ? 'Miittikirja' : 'Geocaching.com'}</span>
+            <span><strong>Lähde:</strong> ${sourceMode === 'both' ? 'Molemmat' : sourceMode === 'local' ? 'Miittikirja' : sourceMode === 'net' ? 'Geocaching.com' : 'Paikkakunta'}</span>
             <span><strong>Aikaväli:</strong> ${fromDate || 'alku'} - ${toDate || 'loppu'}</span>
         </div>
     `;
@@ -599,7 +617,7 @@ function runUserLogSearch(data) {
     wordStatsEl.innerHTML = `
         <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
             <span><strong>Sanoja näytetyissä:</strong> ${totalShownWords}</span>
-            <span style="color:#888;">(Miitti: ${totalLocalWords}, .com: ${totalNetWords})</span>
+            <span style="color:#888;">(Miitti: ${totalLocalWords}, .com: ${totalNetWords}, Paikkakunta: ${totalFromWords})</span>
         </div>
         <div style="margin-top:6px; color:#ddd;">
             <strong>Top-kirjoittajat (sanamäärä):</strong>
@@ -615,11 +633,14 @@ function runUserLogSearch(data) {
     listEl.innerHTML = limitedRows.map(r => {
         const localText = r.localMessage ? `<div style="margin-top:4px;"><span style="color:#8bc34a;">📝 Miitti:</span> ${escapeHtml(r.localMessage)}</div>` : '';
         const netText = r.netMessage ? `<div style="margin-top:4px;"><span style="color:#64b5f6;">🌐 .com:</span> ${escapeHtml(r.netMessage)}</div>` : '';
+        const fromText = r.from ? `<div style="margin-top:4px;"><span style="color:#ffcc80;">📍 Paikkakunta:</span> ${escapeHtml(r.from)}</div>` : '';
 
         const selectedContent = sourceMode === 'local'
             ? (localText || `<div style="color:#777; margin-top:4px;">(Ei miittiviestiä)</div>`)
             : sourceMode === 'net'
                 ? (netText || `<div style="color:#777; margin-top:4px;">(Ei .com-viestiä)</div>`)
+                : sourceMode === 'from'
+                    ? (fromText || `<div style="color:#777; margin-top:4px;">(Ei paikkakuntaa)</div>`)
                 : `${localText}${netText}` || `<div style="color:#777; margin-top:4px;">(Ei viestiä)</div>`;
 
         return `
@@ -628,7 +649,8 @@ function runUserLogSearch(data) {
                     <strong>${escapeHtml(r.nickname)}</strong>
                     <small style="color:#aaa;">${escapeHtml(r.eventDate)}</small>
                 </div>
-                <div style="font-size:0.85em; color:#999; margin-top:2px;">${escapeHtml(r.eventName)}${r.from ? ` • ${escapeHtml(r.from)}` : ''}</div>
+                <div style="font-size:0.85em; color:#999; margin-top:2px;">${escapeHtml(r.eventName)}</div>
+                ${fromText}
                 ${selectedContent}
             </div>
         `;

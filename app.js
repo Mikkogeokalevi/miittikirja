@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.12.1 - TXT-raportin sanalaskurit
+// Versio: 7.13.0 - Logihaun paikkakunta-lähde
 // ==========================================
 
-const APP_VERSION = "7.12.1";
+const APP_VERSION = "7.13.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
