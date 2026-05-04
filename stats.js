@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.6.2 - Logihaun CSV-vienti
+// Versio: 7.6.4 - TXT-viennin sanalaskuriyhteenveto
 // ==========================================
 
 let allStatsData = {
@@ -371,6 +371,12 @@ function initUserLogSearchBindings() {
         exportBtn.dataset.bound = '1';
     }
 
+    const exportTxtBtn = document.getElementById('btn-export-user-logs-txt');
+    if (exportTxtBtn && !exportTxtBtn.dataset.bound) {
+        exportTxtBtn.onclick = exportCurrentUserLogSearchTxt;
+        exportTxtBtn.dataset.bound = '1';
+    }
+
     const input = document.getElementById('stats-log-user');
     if (input && !input.dataset.bound) {
         input.addEventListener('input', () => {
@@ -440,6 +446,88 @@ function exportCurrentUserLogSearch() {
     const fileName = `miittikirja_logit_${safeUser}_${stamp}.csv`;
 
     const blob = new Blob(["\uFEFF" + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function exportCurrentUserLogSearchTxt() {
+    const rows = currentStatsLogSearchSnapshot.rows || [];
+    const sourceMode = currentStatsLogSearchSnapshot.sourceMode || 'both';
+
+    if (rows.length === 0) {
+        alert('Ei ladattavia logeja. Tee ensin haku.');
+        return;
+    }
+
+    const fromDate = (document.getElementById('stats-log-from')?.value || '').trim();
+    const toDate = (document.getElementById('stats-log-to')?.value || '').trim();
+    const userRaw = (document.getElementById('stats-log-user')?.value || 'kaikki').trim();
+    const sourceLabel = sourceMode === 'both' ? 'Molemmat' : sourceMode === 'local' ? 'Miittikirja' : 'Geocaching.com';
+
+    const totalLocalWords = rows.reduce((sum, r) => sum + countWords(r.localMessage), 0);
+    const totalNetWords = rows.reduce((sum, r) => sum + countWords(r.netMessage), 0);
+    const totalShownWords = sourceMode === 'local'
+        ? totalLocalWords
+        : sourceMode === 'net'
+            ? totalNetWords
+            : totalLocalWords + totalNetWords;
+
+    const writerWordCounts = {};
+    rows.forEach(r => {
+        const words = sourceMode === 'local'
+            ? countWords(r.localMessage)
+            : sourceMode === 'net'
+                ? countWords(r.netMessage)
+                : countWords(r.localMessage) + countWords(r.netMessage);
+        writerWordCounts[r.nickname] = (writerWordCounts[r.nickname] || 0) + words;
+    });
+    const topWriters = Object.entries(writerWordCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+    const lines = [];
+    lines.push('MK Miittikirja - Logiraportti');
+    lines.push('=============================');
+    lines.push(`Nimimerkkihaku: ${userRaw || 'kaikki'}`);
+    lines.push(`Aikavali: ${fromDate || 'alku'} - ${toDate || 'loppu'}`);
+    lines.push(`Viestilahde: ${sourceLabel}`);
+    lines.push(`Riveja: ${rows.length}`);
+    lines.push('');
+    lines.push('Sanalaskuri');
+    lines.push('----------');
+    lines.push(`Sanoja yhteensa (näytetty lähde): ${totalShownWords}`);
+    lines.push(`Miittiviestit sanat: ${totalLocalWords}`);
+    lines.push(`Geocaching.com sanat: ${totalNetWords}`);
+    lines.push(`Top-kirjoittajat: ${topWriters.length ? topWriters.map(([name, words], i) => `${i + 1}. ${name} (${words})`).join(' | ') : 'Ei dataa'}`);
+    lines.push('');
+
+    rows.forEach((r, idx) => {
+        lines.push(`${idx + 1}) ${r.eventDate || '-'} | ${r.eventName || '-'} | ${r.nickname || '-'}`);
+        if (r.from) lines.push(`   Paikkakunta: ${r.from}`);
+
+        if (sourceMode === 'both' || sourceMode === 'local') {
+            lines.push(`   Miittiviesti: ${r.localMessage || '-'}`);
+        }
+        if (sourceMode === 'both' || sourceMode === 'net') {
+            lines.push(`   Geocaching.com: ${r.netMessage || '-'}`);
+        }
+
+        lines.push('');
+    });
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+    const safeUser = userRaw.toLowerCase().replace(/[^a-z0-9åäö_-]+/gi, '_') || 'kaikki';
+    const fileName = `miittikirja_logiraportti_${safeUser}_${stamp}.txt`;
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
