@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.7.0 - Mediaani + pituusjakauma
+// Versio: 7.7.1 - Pituusjakauman prosentit
 // ==========================================
 
 let allStatsData = {
@@ -725,8 +725,12 @@ function runUserLogSearch(data) {
         else if (len <= 100) charLengthBuckets['51-100'] += 1;
         else charLengthBuckets['100+'] += 1;
     });
+    const totalBucketRows = shownCharsPerLog.length;
     const charLengthSummary = Object.entries(charLengthBuckets)
-        .map(([label, count]) => `${label}: ${count}`)
+        .map(([label, count]) => {
+            const pct = totalBucketRows ? ((count / totalBucketRows) * 100).toFixed(1) : '0.0';
+            return `${label}: ${count} (${pct} %)`;
+        })
         .join(' • ');
 
     summaryEl.innerHTML = `

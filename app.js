@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.17.0 - Logihaun mediaani + pituusjakauma
+// Versio: 7.17.1 - Pituusjakauman prosentit
 // ==========================================
 
-const APP_VERSION = "7.17.0";
+const APP_VERSION = "7.17.1";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
