@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.6.8 - Top-listat: suodatus tai kaikki data
+// Versio: 7.7.0 - Mediaani + pituusjakauma
 // ==========================================
 
 let allStatsData = {
@@ -280,6 +280,20 @@ function countWords(text) {
     return clean.split(/\s+/).filter(Boolean).length;
 }
 
+function countChars(text, includeSpaces = true) {
+    const value = (text || '').toString();
+    return includeSpaces ? value.length : value.replace(/\s+/g, '').length;
+}
+
+function medianOf(values) {
+    const nums = (values || []).filter(v => Number.isFinite(v)).sort((a, b) => a - b);
+    if (nums.length === 0) return 0;
+    const mid = Math.floor(nums.length / 2);
+    return nums.length % 2 === 0
+        ? (nums[mid - 1] + nums[mid]) / 2
+        : nums[mid];
+}
+
 function getDisplayMessageBySource(row, sourceMode) {
     if (sourceMode === 'local') return row.localMessage || '';
     if (sourceMode === 'net') return row.netMessage || '';
@@ -383,6 +397,12 @@ function initUserLogSearchBindings() {
         exportTxtBtn.dataset.bound = '1';
     }
 
+    const resetBtn = document.getElementById('btn-reset-user-logs');
+    if (resetBtn && !resetBtn.dataset.bound) {
+        resetBtn.onclick = resetUserLogSearchFilters;
+        resetBtn.dataset.bound = '1';
+    }
+
     const topScopeSelect = document.getElementById('stats-top-scope');
     if (topScopeSelect && !topScopeSelect.dataset.bound) {
         topScopeSelect.addEventListener('change', () => {
@@ -419,6 +439,25 @@ window.selectStatsLogUser = function(name) {
     hideStatsLogUserAutocomplete();
     runUserLogSearch(window.currentFilteredData || allStatsData.events || []);
 };
+
+function resetUserLogSearchFilters() {
+    const userInput = document.getElementById('stats-log-user');
+    const fromInput = document.getElementById('stats-log-from');
+    const toInput = document.getElementById('stats-log-to');
+    const limitSelect = document.getElementById('stats-log-limit');
+    const sourceSelect = document.getElementById('stats-log-source');
+    const topScopeSelect = document.getElementById('stats-top-scope');
+
+    if (userInput) userInput.value = '';
+    if (fromInput) fromInput.value = '';
+    if (toInput) toInput.value = '';
+    if (limitSelect) limitSelect.value = '10';
+    if (sourceSelect) sourceSelect.value = 'both';
+    if (topScopeSelect) topScopeSelect.value = 'filtered';
+
+    hideStatsLogUserAutocomplete();
+    runUserLogSearch(window.currentFilteredData || allStatsData.events || []);
+}
 
 function exportCurrentUserLogSearch() {
     const rows = currentStatsLogSearchSnapshot.rows || [];
@@ -493,6 +532,12 @@ function exportCurrentUserLogSearchTxt() {
     const totalLocalWords = rows.reduce((sum, r) => sum + countWords(r.localMessage), 0);
     const totalNetWords = rows.reduce((sum, r) => sum + countWords(r.netMessage), 0);
     const totalFromWords = rows.reduce((sum, r) => sum + countWords(r.from), 0);
+    const totalLocalChars = rows.reduce((sum, r) => sum + countChars(r.localMessage), 0);
+    const totalNetChars = rows.reduce((sum, r) => sum + countChars(r.netMessage), 0);
+    const totalFromChars = rows.reduce((sum, r) => sum + countChars(r.from), 0);
+    const totalLocalCharsNoSpace = rows.reduce((sum, r) => sum + countChars(r.localMessage, false), 0);
+    const totalNetCharsNoSpace = rows.reduce((sum, r) => sum + countChars(r.netMessage, false), 0);
+    const totalFromCharsNoSpace = rows.reduce((sum, r) => sum + countChars(r.from, false), 0);
     const totalShownWords = sourceMode === 'local'
         ? totalLocalWords
         : sourceMode === 'net'
@@ -500,6 +545,20 @@ function exportCurrentUserLogSearchTxt() {
             : sourceMode === 'from'
                 ? totalFromWords
                 : totalLocalWords + totalNetWords;
+    const totalShownChars = sourceMode === 'local'
+        ? totalLocalChars
+        : sourceMode === 'net'
+            ? totalNetChars
+            : sourceMode === 'from'
+                ? totalFromChars
+                : totalLocalChars + totalNetChars;
+    const totalShownCharsNoSpace = sourceMode === 'local'
+        ? totalLocalCharsNoSpace
+        : sourceMode === 'net'
+            ? totalNetCharsNoSpace
+            : sourceMode === 'from'
+                ? totalFromCharsNoSpace
+                : totalLocalCharsNoSpace + totalNetCharsNoSpace;
 
     const writerWordCounts = {};
     rows.forEach(r => {
@@ -527,6 +586,8 @@ function exportCurrentUserLogSearchTxt() {
     lines.push('Sanalaskuri');
     lines.push('----------');
     lines.push(`Sanoja yhteensa (näytetty lähde): ${totalShownWords}`);
+    lines.push(`Merkkeja yhteensa (näytetty lähde): ${totalShownChars}`);
+    lines.push(`Merkkeja ilman valilyonteja (näytetty lähde): ${totalShownCharsNoSpace}`);
     lines.push(`Miittiviestit sanat: ${totalLocalWords}`);
     lines.push(`Geocaching.com sanat: ${totalNetWords}`);
     lines.push(`Paikkakunta-kentän sanat: ${totalFromWords}`);
@@ -625,11 +686,48 @@ function runUserLogSearch(data) {
     const totalLocalWords = limitedRows.reduce((sum, r) => sum + countWords(r.localMessage), 0);
     const totalNetWords = limitedRows.reduce((sum, r) => sum + countWords(r.netMessage), 0);
     const totalFromWords = limitedRows.reduce((sum, r) => sum + countWords(r.from), 0);
+    const totalLocalChars = limitedRows.reduce((sum, r) => sum + countChars(r.localMessage), 0);
+    const totalNetChars = limitedRows.reduce((sum, r) => sum + countChars(r.netMessage), 0);
+    const totalFromChars = limitedRows.reduce((sum, r) => sum + countChars(r.from), 0);
+    const totalLocalCharsNoSpace = limitedRows.reduce((sum, r) => sum + countChars(r.localMessage, false), 0);
+    const totalNetCharsNoSpace = limitedRows.reduce((sum, r) => sum + countChars(r.netMessage, false), 0);
+    const totalFromCharsNoSpace = limitedRows.reduce((sum, r) => sum + countChars(r.from, false), 0);
     const totalShownWords =
         sourceMode === 'local' ? totalLocalWords
         : sourceMode === 'net' ? totalNetWords
         : sourceMode === 'from' ? totalFromWords
         : totalLocalWords + totalNetWords;
+    const totalShownChars =
+        sourceMode === 'local' ? totalLocalChars
+        : sourceMode === 'net' ? totalNetChars
+        : sourceMode === 'from' ? totalFromChars
+        : totalLocalChars + totalNetChars;
+    const totalShownCharsNoSpace =
+        sourceMode === 'local' ? totalLocalCharsNoSpace
+        : sourceMode === 'net' ? totalNetCharsNoSpace
+        : sourceMode === 'from' ? totalFromCharsNoSpace
+        : totalLocalCharsNoSpace + totalNetCharsNoSpace;
+
+    const shownWordsPerLog = limitedRows.map(r => countWords(getDisplayMessageBySource(r, sourceMode)));
+    const shownCharsPerLog = limitedRows.map(r => countChars(getDisplayMessageBySource(r, sourceMode)));
+    const medianShownWords = medianOf(shownWordsPerLog);
+    const medianShownChars = medianOf(shownCharsPerLog);
+
+    const charLengthBuckets = {
+        '0-20': 0,
+        '21-50': 0,
+        '51-100': 0,
+        '100+': 0
+    };
+    shownCharsPerLog.forEach(len => {
+        if (len <= 20) charLengthBuckets['0-20'] += 1;
+        else if (len <= 50) charLengthBuckets['21-50'] += 1;
+        else if (len <= 100) charLengthBuckets['51-100'] += 1;
+        else charLengthBuckets['100+'] += 1;
+    });
+    const charLengthSummary = Object.entries(charLengthBuckets)
+        .map(([label, count]) => `${label}: ${count}`)
+        .join(' • ');
 
     summaryEl.innerHTML = `
         <div style="display:flex; flex-wrap:wrap; gap:10px;">
@@ -644,6 +742,17 @@ function runUserLogSearch(data) {
         <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
             <span><strong>Sanoja näytetyissä:</strong> ${totalShownWords}</span>
             <span style="color:#888;">(Miitti: ${totalLocalWords}, .com: ${totalNetWords}, Paikkakunta: ${totalFromWords})</span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:4px;">
+            <span><strong>Merkkejä näytetyissä:</strong> ${totalShownChars}</span>
+            <span style="color:#888;">(ilman välejä: ${totalShownCharsNoSpace})</span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:4px;">
+            <span><strong>Mediaani / viesti:</strong> ${medianShownWords} sanaa</span>
+            <span style="color:#888;">(${medianShownChars} merkkiä)</span>
+        </div>
+        <div style="margin-top:4px; color:#888;">
+            <strong>Pituusjakauma (merkkiä / viesti):</strong> ${charLengthSummary}
         </div>
     `;
 
