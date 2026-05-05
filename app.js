@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.17.1 - Pituusjakauman prosentit
+// Versio: 7.19.0 - Top: yksittäisen login sanat/merkit
 // ==========================================
 
-const APP_VERSION = "7.17.1";
+const APP_VERSION = "7.19.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",

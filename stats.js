@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.7.1 - Pituusjakauman prosentit
+// Versio: 7.7.3 - Top: yksittäisen login pituus
 // ==========================================
 
 let allStatsData = {
@@ -12,6 +12,18 @@ let chartInstances = {};
 let mapInstance = null;
 let statsLogUserNames = [];
 let currentStatsLogSearchSnapshot = { rows: [], sourceMode: 'both' };
+
+function normalizeNickname(name) {
+    return (name || '').replace(/[\s\u00A0]+/g, ' ').trim().toLowerCase();
+}
+
+function sanitizeMessageForStats(message) {
+    const raw = (message || '').trim();
+    if (!raw) return '';
+    const normalized = raw.replace(/[\s\u00A0]+/g, ' ').trim().toLowerCase();
+    if (normalized === '(massatuonti)' || normalized === '(massa)') return '';
+    return raw;
+}
 
 async function initStats() {
     if (!currentUser) return;
@@ -29,9 +41,18 @@ async function initStats() {
 
         events.forEach(evt => {
             const evtLogs = logsData[evt.key] || {};
-            evt.attendeeCount = Object.keys(evtLogs).length;
-            evt.logs = Object.values(evtLogs); 
-            evt.attendeeNames = evt.logs.map(l => l.nickname);
+            evt.logs = Object.values(evtLogs);
+
+            const attendeeMap = new Map();
+            evt.logs.forEach(log => {
+                const nick = (log.nickname || '').trim();
+                const key = normalizeNickname(nick);
+                if (!key || attendeeMap.has(key)) return;
+                attendeeMap.set(key, nick);
+            });
+
+            evt.attendeeNames = Array.from(attendeeMap.values());
+            evt.attendeeCount = evt.attendeeNames.length;
         });
 
         // Lasketaan järjestysnumerot (seqNumber) tyypeittäin
@@ -315,7 +336,7 @@ function flattenEventLogs(data) {
             const nickname = (log.nickname || '').trim();
             if (!nickname) return;
 
-            const sources = splitMessageSources(log.message || '');
+            const sources = splitMessageSources(sanitizeMessageForStats(log.message || ''));
             rows.push({
                 eventKey: evt.key,
                 eventName: evt.name || 'Nimetön miitti',
@@ -683,6 +704,24 @@ function runUserLogSearch(data) {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5);
 
+    const singleLogTopByWords = topRows
+        .map(r => {
+            const displayText = getDisplayMessageBySource(r, sourceMode);
+            return { row: r, words: countWords(displayText), chars: countChars(displayText) };
+        })
+        .filter(x => x.words > 0)
+        .sort((a, b) => b.words - a.words || b.chars - a.chars)
+        .slice(0, 5);
+
+    const singleLogTopByChars = topRows
+        .map(r => {
+            const displayText = getDisplayMessageBySource(r, sourceMode);
+            return { row: r, words: countWords(displayText), chars: countChars(displayText) };
+        })
+        .filter(x => x.chars > 0)
+        .sort((a, b) => b.chars - a.chars || b.words - a.words)
+        .slice(0, 5);
+
     const totalLocalWords = limitedRows.reduce((sum, r) => sum + countWords(r.localMessage), 0);
     const totalNetWords = limitedRows.reduce((sum, r) => sum + countWords(r.netMessage), 0);
     const totalFromWords = limitedRows.reduce((sum, r) => sum + countWords(r.from), 0);
@@ -776,6 +815,18 @@ function runUserLogSearch(data) {
                         <div style="font-weight:600; margin-bottom:4px;">Eniten logeja</div>
                         <div style="font-size:0.92em; color:#ddd;">
                             ${topLoggers.length ? topLoggers.map(([name, count], i) => `${i + 1}. ${escapeHtml(name)} (${count} logia)`).join('<br>') : 'Ei dataa'}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-weight:600; margin-bottom:4px;">Yksittäinen logi: eniten sanoja</div>
+                        <div style="font-size:0.92em; color:#ddd;">
+                            ${singleLogTopByWords.length ? singleLogTopByWords.map((item, i) => `${i + 1}. ${escapeHtml(item.row.nickname)} (${item.words} sanaa)`).join('<br>') : 'Ei dataa'}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-weight:600; margin-bottom:4px;">Yksittäinen logi: eniten merkkejä</div>
+                        <div style="font-size:0.92em; color:#ddd;">
+                            ${singleLogTopByChars.length ? singleLogTopByChars.map((item, i) => `${i + 1}. ${escapeHtml(item.row.nickname)} (${item.chars} merkkiä)`).join('<br>') : 'Ei dataa'}
                         </div>
                     </div>
                 </div>
@@ -1026,7 +1077,13 @@ function renderWordCloud(data) {
     const el = document.getElementById('stats-wordcloud');
     if (!el) return;
     let allText = "";
-    data.forEach(e => { if (e.logs) e.logs.forEach(l => { if (l.message) allText += " " + l.message; }); });
+    data.forEach(e => {
+        if (!e.logs) return;
+        e.logs.forEach(l => {
+            const msg = sanitizeMessageForStats(l.message || '');
+            if (msg) allText += " " + msg;
+        });
+    });
     const words = allText.toLowerCase().replace(/[.,!?;:()"]/g, "").split(/\s+/).filter(w => w.length > 2);
     const stopWords = ["oli", "että", "kun", "niin", "mutta", "siis", "vain", "nyt", "tämä", "sitten", "olla", "ollut", "ovat", "myös", "kanssa", "kuin", "joka", "mitä", "sekä", "täällä", "koko", "jälkeen", "vielä", "paljon", "kiitos", "miitti", "miitistä", "kätkö", "kätköllä", "kk", "tftc", "kiitokset", "log", "hyvä", "tosi", "kiva", "mukava", "järjestäjälle", "järjestäjille"];
     const counts = {};
