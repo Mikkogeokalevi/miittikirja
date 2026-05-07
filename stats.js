@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.8.0 - Omat puuttuvat osallistumiset
+// Versio: 7.9.0 - Graafipaketti laajennettu
 // ==========================================
 
 let allStatsData = {
@@ -1552,93 +1552,260 @@ window.selectUser = (name) => {
 function renderCharts(data) {
     if (!window.Chart || !data || data.length === 0) return;
     const clearChart = (id) => { if (chartInstances[id]) { chartInstances[id].destroy(); } };
+    const getCanvas = (id) => document.getElementById(id);
+    const createChart = (key, canvasId, config) => {
+        clearChart(key);
+        const canvas = getCanvas(canvasId);
+        if (!canvas) return;
+        chartInstances[key] = new Chart(canvas, config);
+    };
     const colors = { primary: '#8B4513', secondary: '#D2691E', accent: '#4caf50', text: '#4E342E' };
+    const todayStr = new Date().toISOString().split('T')[0];
+    const activeData = (data || []).filter(e => !(e.name || '').includes('/ PERUTTU /'));
+    const realizedData = activeData.filter(e => (e.date || '') <= todayStr);
+
+    const monthNames = ["Tam", "Hel", "Maa", "Huh", "Tou", "Kes", "Hei", "Elo", "Syy", "Lok", "Mar", "Jou"];
 
     // 1. WEEKDAYS
-    clearChart('weekdays');
     const dayLabels = ["Ma", "Ti", "Ke", "To", "Pe", "La", "Su"];
     const dayData = [0,0,0,0,0,0,0];
-    data.forEach(e => { if(e.date) { const jsDay = new Date(e.date).getDay(); const fiDay = (jsDay + 6) % 7; dayData[fiDay]++; } });
-    chartInstances['weekdays'] = new Chart(document.getElementById('chart-weekdays-canvas'), {
+    activeData.forEach(e => { if(e.date) { const jsDay = new Date(e.date).getDay(); const fiDay = (jsDay + 6) % 7; dayData[fiDay]++; } });
+    createChart('weekdays', 'chart-weekdays-canvas', {
         type: 'bar', data: { labels: dayLabels, datasets: [{ label: 'Miitit', data: dayData, backgroundColor: colors.primary }] }
     });
 
     // 2. TYPES
-    clearChart('types');
     const typeCounts = { miitti: 0, cito: 0, cce: 0 };
-    data.forEach(e => { if(typeCounts[e.type] !== undefined) typeCounts[e.type]++; });
-    chartInstances['types'] = new Chart(document.getElementById('chart-types-canvas'), {
+    activeData.forEach(e => {
+        const type = (e.type || 'miitti').toLowerCase();
+        if(typeCounts[type] !== undefined) typeCounts[type]++;
+    });
+    createChart('types', 'chart-types-canvas', {
         type: 'doughnut', data: { labels: ["Miitti", "CITO", "CCE"], datasets: [{ data: Object.values(typeCounts), backgroundColor: [colors.primary, colors.accent, colors.secondary] }] }
     });
 
     // 3. TIMELINE
-    clearChart('timeline');
-    const timelineData = [...data].sort((a,b) => new Date(a.date) - new Date(b.date)).slice(-15);
-    chartInstances['timeline'] = new Chart(document.getElementById('chart-timeline-canvas'), {
+    const timelineData = [...activeData].sort((a,b) => new Date(a.date || 0) - new Date(b.date || 0)).slice(-15);
+    createChart('timeline', 'chart-timeline-canvas', {
         type: 'line', data: { labels: timelineData.map(e => e.date.split('-').slice(1).reverse().join('.')), datasets: [{ label: 'Kävijät', data: timelineData.map(e => e.attendeeCount), borderColor: colors.primary, backgroundColor: 'rgba(139, 69, 19, 0.2)', fill: true, tension: 0.4 }] }
     });
 
     // 4. CUMULATIVE
-    clearChart('cumulative');
-    const allEventsSorted = [...allStatsData.events].sort((a,b) => new Date(a.date) - new Date(b.date));
+    const allEventsSorted = [...(allStatsData.events || [])]
+        .filter(e => !(e.name || '').includes('/ PERUTTU /'))
+        .filter(e => (e.date || '') <= todayStr)
+        .sort((a,b) => new Date(a.date || 0) - new Date(b.date || 0));
     const uniqueUsersSet = new Set();
     const cumulativePoints = [];
     allEventsSorted.forEach(evt => {
-        if(evt.attendeeNames) evt.attendeeNames.forEach(name => uniqueUsersSet.add(name.toLowerCase()));
+        (evt.attendeeNames || []).forEach(name => uniqueUsersSet.add(normalizeNickname(name)));
         cumulativePoints.push({ x: evt.date, y: uniqueUsersSet.size });
     });
-    chartInstances['cumulative'] = new Chart(document.getElementById('chart-cumulative-canvas'), {
+    createChart('cumulative', 'chart-cumulative-canvas', {
         type: 'line', data: { labels: cumulativePoints.map(p => p.x), datasets: [{ label: 'Uniikit kävijät yhteensä', data: cumulativePoints.map(p => p.y), borderColor: '#2e7d32', backgroundColor: 'rgba(46, 125, 50, 0.1)', fill: true, pointRadius: 2, tension: 0.1 }] }
     });
 
-    // 5. HOURS
-    clearChart('hours');
+    // 5. NEW VS RETURNING PER MONTH
+    const chronEvents = [...realizedData].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const seenUsers = new Set();
+    const newReturningByMonth = new Map();
+    chronEvents.forEach(evt => {
+        const monthKey = (evt.date || '').slice(0, 7);
+        if (!monthKey) return;
+        if (!newReturningByMonth.has(monthKey)) newReturningByMonth.set(monthKey, { fresh: 0, returning: 0 });
+        const bucket = newReturningByMonth.get(monthKey);
+
+        const uniqueAttendees = new Set((evt.attendeeNames || []).map(n => normalizeNickname(n)).filter(Boolean));
+        uniqueAttendees.forEach(nameKey => {
+            if (seenUsers.has(nameKey)) bucket.returning += 1;
+            else {
+                bucket.fresh += 1;
+                seenUsers.add(nameKey);
+            }
+        });
+    });
+    const nvrLabels = Array.from(newReturningByMonth.keys()).sort();
+    createChart('newVsReturning', 'chart-new-vs-returning-canvas', {
+        type: 'bar',
+        data: {
+            labels: nvrLabels,
+            datasets: [
+                { label: 'Uudet kävijät', data: nvrLabels.map(k => newReturningByMonth.get(k).fresh), backgroundColor: '#66bb6a' },
+                { label: 'Palaavat kävijät', data: nvrLabels.map(k => newReturningByMonth.get(k).returning), backgroundColor: '#42a5f5' }
+            ]
+        },
+        options: { scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+    });
+
+    // 6. YEARLY MEDIAN ATTENDEE COUNT
+    const byYear = {};
+    realizedData.forEach(evt => {
+        const y = (evt.date || '').slice(0, 4);
+        if (!y) return;
+        if (!byYear[y]) byYear[y] = [];
+        byYear[y].push(Number(evt.attendeeCount || 0));
+    });
+    const yearlyLabels = Object.keys(byYear).sort();
+    createChart('yearlyMedian', 'chart-yearly-median-canvas', {
+        type: 'line',
+        data: {
+            labels: yearlyLabels,
+            datasets: [{
+                label: 'Mediaani kävijämäärä',
+                data: yearlyLabels.map(y => medianOf(byYear[y])),
+                borderColor: '#7e57c2',
+                backgroundColor: 'rgba(126, 87, 194, 0.15)',
+                fill: true,
+                tension: 0.25
+            }]
+        },
+        options: { scales: { y: { beginAtZero: true } } }
+    });
+
+    // 7. HOURS
     const hoursData = Array(24).fill(0);
-    data.forEach(e => { if(e.time) { const hour = parseInt(e.time.split(':')[0]); if(!isNaN(hour)) hoursData[hour]++; } });
-    chartInstances['hours'] = new Chart(document.getElementById('chart-hours-canvas'), {
+    activeData.forEach(e => { if(e.time) { const hour = parseInt(e.time.split(':')[0], 10); if(!isNaN(hour)) hoursData[hour]++; } });
+    createChart('hours', 'chart-hours-canvas', {
         type: 'bar', data: { labels: Array.from({length: 24}, (_, i) => i + ":00"), datasets: [{ label: 'Miitit', data: hoursData, backgroundColor: colors.secondary }] }
     });
 
-    // 6. MONTHS
-    clearChart('months');
+    // 8. START TIME VS ATTENDANCE
+    const scatterPoints = activeData
+        .filter(e => e.time)
+        .map(e => {
+            const parts = (e.time || '').split(':');
+            const h = parseInt(parts[0], 10);
+            const m = parseInt(parts[1] || '0', 10);
+            if (isNaN(h) || isNaN(m)) return null;
+            return { x: h + (m / 60), y: Number(e.attendeeCount || 0) };
+        })
+        .filter(Boolean);
+    createChart('timeVsAttendance', 'chart-time-vs-attendance-canvas', {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Miitti',
+                data: scatterPoints,
+                pointBackgroundColor: '#ef6c00',
+                pointRadius: 4
+            }]
+        },
+        options: {
+            scales: {
+                x: { min: 0, max: 24, ticks: { callback: (val) => `${val}:00` }, title: { display: true, text: 'Aloitusaika' } },
+                y: { beginAtZero: true, title: { display: true, text: 'Kävijämäärä' } }
+            }
+        }
+    });
+
+    // 9. MONTHS
     const monthsData = Array(12).fill(0);
-    const monthNames = ["Tam", "Hel", "Maa", "Huh", "Tou", "Kes", "Hei", "Elo", "Syy", "Lok", "Mar", "Jou"];
-    data.forEach(e => { if(e.date) { const m = new Date(e.date).getMonth(); monthsData[m] += e.attendeeCount; } });
-    chartInstances['months'] = new Chart(document.getElementById('chart-months-canvas'), {
+    realizedData.forEach(e => { if(e.date) { const m = new Date(e.date).getMonth(); monthsData[m] += Number(e.attendeeCount || 0); } });
+    createChart('months', 'chart-months-canvas', {
         type: 'bar', data: { labels: monthNames, datasets: [{ label: 'Kävijämäärä yhteensä', data: monthsData, backgroundColor: '#A0522D' }] }
     });
 
-    // 7. LOCATIONS
-    clearChart('locations');
+    // 10. SEASONAL AVERAGE
+    const seasonMeta = {
+        talvi: { label: 'Talvi', months: [11, 0, 1], total: 0, count: 0 },
+        kevat: { label: 'Kevät', months: [2, 3, 4], total: 0, count: 0 },
+        kesa: { label: 'Kesä', months: [5, 6, 7], total: 0, count: 0 },
+        syksy: { label: 'Syksy', months: [8, 9, 10], total: 0, count: 0 }
+    };
+    realizedData.forEach(evt => {
+        if (!evt.date) return;
+        const m = new Date(evt.date).getMonth();
+        const entry = Object.values(seasonMeta).find(s => s.months.includes(m));
+        if (!entry) return;
+        entry.total += Number(evt.attendeeCount || 0);
+        entry.count += 1;
+    });
+    const seasonList = Object.values(seasonMeta);
+    createChart('seasonAverage', 'chart-season-average-canvas', {
+        type: 'bar',
+        data: {
+            labels: seasonList.map(s => s.label),
+            datasets: [{
+                label: 'Keskimääräinen kävijämäärä',
+                data: seasonList.map(s => s.count ? Number((s.total / s.count).toFixed(1)) : 0),
+                backgroundColor: ['#90caf9', '#81c784', '#ffb74d', '#bcaaa4']
+            }]
+        },
+        options: { scales: { y: { beginAtZero: true } } }
+    });
+
+    // 11. LOCATIONS
     const locMap = {};
-    data.forEach(e => { if (e.location) locMap[e.location] = (locMap[e.location] || 0) + 1; });
+    activeData.forEach(e => { if (e.location) locMap[e.location] = (locMap[e.location] || 0) + 1; });
     const sortedLocs = Object.entries(locMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
-    chartInstances['locations'] = new Chart(document.getElementById('chart-locations-canvas'), {
+    createChart('locations', 'chart-locations-canvas', {
         type: 'bar', data: { labels: sortedLocs.map(x => x[0]), datasets: [{ label: 'Miitit', data: sortedLocs.map(x => x[1]), backgroundColor: colors.primary }] }, options: { indexAxis: 'y' }
     });
 
-    // 8. TOP ATTENDEES
-    clearChart('topAttendees');
+    // 12. TOP ATTENDEES
     const userMap = {};
-    data.forEach(e => e.attendeeNames.forEach(n => userMap[n] = (userMap[n] || 0) + 1));
+    realizedData.forEach(e => (e.attendeeNames || []).forEach(n => userMap[n] = (userMap[n] || 0) + 1));
     const topUsers = Object.entries(userMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
-    chartInstances['topAttendees'] = new Chart(document.getElementById('chart-top-attendees-canvas'), {
+    createChart('topAttendees', 'chart-top-attendees-canvas', {
         type: 'bar', data: { labels: topUsers.map(x => x[0]), datasets: [{ label: 'Käynnit', data: topUsers.map(x => x[1]), backgroundColor: colors.secondary }] }, options: { indexAxis: 'y' }
     });
 
-    // 9. TOP EVENTS
-    clearChart('topEvents');
-    const topEvents = [...data].sort((a,b) => b.attendeeCount - a.attendeeCount).slice(0, 10);
-    chartInstances['topEvents'] = new Chart(document.getElementById('chart-top-events-canvas'), {
-        type: 'bar', data: { labels: topEvents.map(x => x.name.substring(0, 15) + "..."), datasets: [{ label: 'Osallistujat', data: topEvents.map(x => x.attendeeCount), backgroundColor: colors.accent }] }
+    // 13. TOP EVENTS
+    const topEvents = [...realizedData].sort((a,b) => Number(b.attendeeCount || 0) - Number(a.attendeeCount || 0)).slice(0, 10);
+    createChart('topEvents', 'chart-top-events-canvas', {
+        type: 'bar', data: { labels: topEvents.map(x => (x.name || '').length > 18 ? `${(x.name || '').substring(0, 18)}...` : (x.name || 'Nimetön')), datasets: [{ label: 'Osallistujat', data: topEvents.map(x => Number(x.attendeeCount || 0)), backgroundColor: colors.accent }] }
     });
 
-    // 10. ATTRIBUTES
-    clearChart('attrs');
+    // 14. ATTRIBUTES
     const attrMap = {};
-    data.forEach(e => { if(e.attributes) e.attributes.forEach(a => { if(a.inc === 1) { const name = a.name || a; attrMap[name] = (attrMap[name] || 0) + 1; } }); });
+    activeData.forEach(e => { if(e.attributes) e.attributes.forEach(a => { if(a.inc === 1) { const name = a.name || a; attrMap[name] = (attrMap[name] || 0) + 1; } }); });
     const topAttrs = Object.entries(attrMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
-    chartInstances['attrs'] = new Chart(document.getElementById('chart-attributes-canvas'), {
+    createChart('attrs', 'chart-attributes-canvas', {
         type: 'bar', data: { labels: topAttrs.map(x => x[0]), datasets: [{ label: 'Esiintyvyys', data: topAttrs.map(x => x[1]), backgroundColor: '#A0522D' }] }, options: { indexAxis: 'y' }
+    });
+
+    // 15. LOG LENGTH TREND
+    const logMonthMap = {};
+    flattenEventLogs(realizedData).forEach(row => {
+        const monthKey = (row.eventDate || '').slice(0, 7);
+        if (!monthKey) return;
+        const text = [row.localMessage, row.netMessage].filter(Boolean).join(' | ');
+        const words = countWords(text);
+        const chars = countChars(text);
+        if (!logMonthMap[monthKey]) logMonthMap[monthKey] = { words: 0, chars: 0, count: 0 };
+        logMonthMap[monthKey].words += words;
+        logMonthMap[monthKey].chars += chars;
+        logMonthMap[monthKey].count += 1;
+    });
+    const logMonthLabels = Object.keys(logMonthMap).sort();
+    createChart('logLengthTrend', 'chart-log-length-trend-canvas', {
+        type: 'line',
+        data: {
+            labels: logMonthLabels,
+            datasets: [
+                {
+                    label: 'Sanoja / logi (avg)',
+                    data: logMonthLabels.map(k => logMonthMap[k].count ? Number((logMonthMap[k].words / logMonthMap[k].count).toFixed(1)) : 0),
+                    borderColor: '#43a047',
+                    backgroundColor: 'rgba(67, 160, 71, 0.15)',
+                    yAxisID: 'y',
+                    tension: 0.25
+                },
+                {
+                    label: 'Merkkejä / logi (avg)',
+                    data: logMonthLabels.map(k => logMonthMap[k].count ? Number((logMonthMap[k].chars / logMonthMap[k].count).toFixed(1)) : 0),
+                    borderColor: '#1e88e5',
+                    backgroundColor: 'rgba(30, 136, 229, 0.15)',
+                    yAxisID: 'y1',
+                    tension: 0.25
+                }
+            ]
+        },
+        options: {
+            scales: {
+                y: { beginAtZero: true, position: 'left', title: { display: true, text: 'Sanat' } },
+                y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Merkit' } }
+            }
+        }
     });
 }
