@@ -43,7 +43,9 @@ const visitorTranslations = {
         queueSavedUpdate: "Yhteys katkesi — viestin päivitys tallennettiin jonoon ({0}).",
         queueFlushed: "Jonosta lähetetty kirjauksia: {0}",
         miniVisits: "Käynnit",
-        miniReturns: "Paluukerrat",
+        miniWordsTotal: "Sanat yht.",
+        miniWordsAvg: "Keskim. / logi",
+        miniWordsMax: "Pisin {0}",
         miniStreak: "Putki",
         miniMilestone: "Seuraava",
         miniMilestoneMissing: "Puuttuu {0}",
@@ -89,7 +91,9 @@ const visitorTranslations = {
         queueSavedUpdate: "Connection lost — message update queued ({0}).",
         queueFlushed: "Queued entries sent: {0}",
         miniVisits: "Visits",
-        miniReturns: "Return Visits",
+        miniWordsTotal: "Words Total",
+        miniWordsAvg: "Avg / log",
+        miniWordsMax: "Longest {0}",
         miniStreak: "Streak",
         miniMilestone: "Next",
         miniMilestoneMissing: "Remaining {0}",
@@ -135,7 +139,9 @@ const visitorTranslations = {
         queueSavedUpdate: "Uppkopplingen bröts — meddelandeuppdatering köades ({0}).",
         queueFlushed: "Skickat från kö: {0}",
         miniVisits: "Besök",
-        miniReturns: "Återbesök",
+        miniWordsTotal: "Ord totalt",
+        miniWordsAvg: "Snitt / logg",
+        miniWordsMax: "Längsta {0}",
         miniStreak: "Putke",
         miniMilestone: "Nästa",
         miniMilestoneMissing: "Kvar {0}",
@@ -181,7 +187,9 @@ const visitorTranslations = {
         queueSavedUpdate: "Võrguühendus katkes — sõnumi uuendus pandi järjekorda ({0}).",
         queueFlushed: "Järjekorrast saadetud kirjeid: {0}",
         miniVisits: "Külastused",
-        miniReturns: "Tagasikülastused",
+        miniWordsTotal: "Sõnu kokku",
+        miniWordsAvg: "Keskm. / logi",
+        miniWordsMax: "Pikim {0}",
         miniStreak: "Seeria",
         miniMilestone: "Järgmine",
         miniMilestoneMissing: "Puudu {0}",
@@ -826,6 +834,9 @@ window.handleVisitorSign = async function() {
         nextEvent: null,
         streakCount: 0,
         streakStartLabel: "",
+        messageWordTotal: 0,
+        messageWordAvg: 0,
+        messageWordMax: 0,
         specialMessage: preloadedSpecialMessage
     };
 
@@ -876,7 +887,15 @@ window.handleVisitorSign = async function() {
                 let attended = false;
                 evtLogs.forEach(log => {
                     const val = log.val();
-                    if (val && val.nickname && normalizeNickname(val.nickname) === nickNorm) attended = true;
+                    if (val && val.nickname && normalizeNickname(val.nickname) === nickNorm) {
+                        attended = true;
+                        const msg = (val.message || '').trim();
+                        if (msg) {
+                            const words = msg.split(/\s+/).filter(Boolean).length;
+                            stats.messageWordTotal += words;
+                            if (words > stats.messageWordMax) stats.messageWordMax = words;
+                        }
+                    }
                 });
                 if (attended) userHistory.push(evtData);
             }
@@ -897,6 +916,9 @@ window.handleVisitorSign = async function() {
         stats.totalVisits = userHistory.length;
         stats.isFirstTime = (stats.totalVisits <= 1);
         stats.isMilestone = (stats.totalVisits % 10 === 0) || stats.isFirstTime;
+        stats.messageWordAvg = stats.totalVisits > 0
+            ? Math.round((stats.messageWordTotal / stats.totalVisits) * 10) / 10
+            : 0;
 
         const currentEvent = eventsMap[eventId];
         if (currentEvent && typeof currentEvent.specialMessage === 'string') {
@@ -1104,27 +1126,23 @@ function showVisitorModalWithLang(nick, history, stats) {
     const oldDashboard = document.getElementById('up-visitor-mini-dashboard');
     if (oldDashboard) oldDashboard.remove();
 
-    const milestoneBase = Math.max(10, Math.ceil(stats.totalVisits / 10) * 10);
-    const nextMilestone = milestoneBase <= stats.totalVisits ? milestoneBase + 10 : milestoneBase;
-    const missingToMilestone = Math.max(0, nextMilestone - stats.totalVisits);
-    const returnVisits = Math.max(0, stats.totalVisits - 1);
-    const milestoneMissingText = (t.miniMilestoneMissing || 'Remaining {0}').replace('{0}', missingToMilestone);
+    const longestWordsText = (t.miniWordsMax || 'Longest {0}').replace('{0}', stats.messageWordMax || 0);
     const miniDashboard = document.createElement('div');
     miniDashboard.id = 'up-visitor-mini-dashboard';
     miniDashboard.className = 'visitor-mini-dashboard';
     miniDashboard.innerHTML = `
         <div class="visitor-mini-card">
-            <div class="visitor-mini-label">${t.miniReturns || 'Return Visits'}</div>
-            <div class="visitor-mini-value">${returnVisits}</div>
+            <div class="visitor-mini-label">${t.miniWordsTotal || 'Words Total'}</div>
+            <div class="visitor-mini-value">${stats.messageWordTotal || 0}</div>
         </div>
         <div class="visitor-mini-card">
             <div class="visitor-mini-label">${t.miniStreak || 'Streak'}</div>
             <div class="visitor-mini-value">${stats.streakCount || 0}</div>
         </div>
         <div class="visitor-mini-card">
-            <div class="visitor-mini-label">${t.miniMilestone || 'Next'}</div>
-            <div class="visitor-mini-value">${nextMilestone}</div>
-            <div class="visitor-mini-subvalue">${milestoneMissingText}</div>
+            <div class="visitor-mini-label">${t.miniWordsAvg || 'Avg / log'}</div>
+            <div class="visitor-mini-value">${stats.messageWordAvg || 0}</div>
+            <div class="visitor-mini-subvalue">${longestWordsText}</div>
         </div>
     `;
     badgeEl.insertAdjacentElement('afterend', miniDashboard);
