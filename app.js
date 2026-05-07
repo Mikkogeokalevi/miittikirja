@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.24.2 - Visitor summary card UI
+// Versio: 7.24.3 - Visitor wording polish
 // ==========================================
 
-const APP_VERSION = "7.24.2";
+const APP_VERSION = "7.24.3";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",

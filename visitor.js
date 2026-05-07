@@ -1,6 +1,6 @@
 // ==========================================
 // MK MIITTIKIRJA - VISITOR.JS
-// Versio: 1.4.3 - Visitor Summary Card Layout
+// Versio: 1.4.4 - Clearer Finnish wording
 // ==========================================
 
 const visitorTranslations = {
@@ -43,14 +43,14 @@ const visitorTranslations = {
         queueSavedUpdate: "Yhteys katkesi — viestin päivitys tallennettiin jonoon ({0}).",
         queueFlushed: "Jonosta lähetetty kirjauksia: {0}",
         miniVisits: "Käynnit",
-        miniWordsLocal: "Miittikirja sanat",
-        miniWordsNet: "Geocaching.com sanat",
-        miniWordsTotal: "Sanat yht.",
-        miniWordsAvg: "Keskim. / logi",
+        miniWordsLocal: "Sanoja Miittikirjassa",
+        miniWordsNet: "Sanoja Geocaching.comissa",
+        miniWordsTotal: "Sanoja yhteensä",
+        miniWordsAvg: "Keskiarvo / kirjaus",
         miniWordsMax: "Pisin {0}",
         miniWordsSummaryTitle: "Viestiyhteenveto",
         miniWordsSummaryHelp: "Näet tässä omien kirjauksiesi sanamäärät lähteittäin.",
-        miniStreakNow: "Putki nyt: {0} peräkkäistä miittiä",
+        miniStreakNow: "Tämä on sinun {0}. Mikkokalevin miitti putkeen",
         miniStreak: "Putki",
         miniMilestone: "Seuraava",
         miniMilestoneMissing: "Puuttuu {0}",
