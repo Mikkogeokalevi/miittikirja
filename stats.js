@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.9.0 - Graafipaketti laajennettu
+// Versio: 7.10.0 - Retention + top-kävijätrendi
 // ==========================================
 
 let allStatsData = {
@@ -1807,5 +1807,118 @@ function renderCharts(data) {
                 y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Merkit' } }
             }
         }
+    });
+
+    // 16. RETENTION WINDOWS (3/6/12 months)
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+    const retentionWindows = [
+        { key: '3kk', days: 90 },
+        { key: '6kk', days: 180 },
+        { key: '12kk', days: 365 }
+    ];
+
+    const userVisitDates = new Map();
+    [...realizedData]
+        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+        .forEach(evt => {
+            const dateStr = evt.date || '';
+            if (!dateStr) return;
+            const uniqueAttendees = new Set((evt.attendeeNames || []).map(n => normalizeNickname(n)).filter(Boolean));
+            uniqueAttendees.forEach(nameKey => {
+                if (!userVisitDates.has(nameKey)) userVisitDates.set(nameKey, []);
+                userVisitDates.get(nameKey).push(dateStr);
+            });
+        });
+
+    const nowDate = new Date(todayStr);
+    const retentionPct = retentionWindows.map(windowDef => {
+        let eligible = 0;
+        let returned = 0;
+
+        userVisitDates.forEach(dates => {
+            if (!dates || dates.length === 0) return;
+            const sortedDates = [...dates].sort();
+            const first = new Date(sortedDates[0]);
+            if (!Number.isFinite(first.getTime())) return;
+
+            const ageDays = Math.floor((nowDate - first) / MS_PER_DAY);
+            if (ageDays < windowDef.days) return;
+
+            eligible += 1;
+            const didReturn = sortedDates.slice(1).some(d => {
+                const dt = new Date(d);
+                if (!Number.isFinite(dt.getTime())) return false;
+                const diffDays = Math.floor((dt - first) / MS_PER_DAY);
+                return diffDays > 0 && diffDays <= windowDef.days;
+            });
+            if (didReturn) returned += 1;
+        });
+
+        return eligible ? Number(((returned / eligible) * 100).toFixed(1)) : 0;
+    });
+
+    createChart('retentionWindows', 'chart-retention-windows-canvas', {
+        type: 'bar',
+        data: {
+            labels: retentionWindows.map(w => w.key),
+            datasets: [{
+                label: 'Palasi uudelleen (%)',
+                data: retentionPct,
+                backgroundColor: ['#26a69a', '#29b6f6', '#5c6bc0']
+            }]
+        },
+        options: { scales: { y: { beginAtZero: true, max: 100 } } }
+    });
+
+    // 17. TOP USERS TREND (cumulative)
+    const attendeeTotals = {};
+    const attendeeDisplayNames = {};
+    const chronRealized = [...realizedData].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    chronRealized.forEach(evt => {
+        const uniqueAttendees = new Set((evt.attendeeNames || []).map(n => normalizeNickname(n)).filter(Boolean));
+        uniqueAttendees.forEach(nameKey => {
+            attendeeTotals[nameKey] = (attendeeTotals[nameKey] || 0) + 1;
+            if (!attendeeDisplayNames[nameKey]) {
+                const display = (evt.attendeeNames || []).find(n => normalizeNickname(n) === nameKey) || nameKey;
+                attendeeDisplayNames[nameKey] = display;
+            }
+        });
+    });
+
+    const topUserKeys = Object.entries(attendeeTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([key]) => key);
+
+    const trendLabels = chronRealized.map(evt => evt.date || '');
+    const running = {};
+    topUserKeys.forEach(key => { running[key] = 0; });
+    const trendData = {};
+    topUserKeys.forEach(key => { trendData[key] = []; });
+
+    chronRealized.forEach(evt => {
+        const uniqueAttendees = new Set((evt.attendeeNames || []).map(n => normalizeNickname(n)).filter(Boolean));
+        topUserKeys.forEach(key => {
+            if (uniqueAttendees.has(key)) running[key] += 1;
+            trendData[key].push(running[key]);
+        });
+    });
+
+    const trendColors = ['#ef5350', '#42a5f5', '#66bb6a', '#ffa726', '#ab47bc'];
+    createChart('topUsersTrend', 'chart-top-users-trend-canvas', {
+        type: 'line',
+        data: {
+            labels: trendLabels,
+            datasets: topUserKeys.map((key, idx) => ({
+                label: attendeeDisplayNames[key] || key,
+                data: trendData[key],
+                borderColor: trendColors[idx % trendColors.length],
+                backgroundColor: 'transparent',
+                tension: 0.2,
+                pointRadius: 1
+            }))
+        },
+        options: { scales: { y: { beginAtZero: true } } }
     });
 }

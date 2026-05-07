@@ -88,9 +88,16 @@
             </div>
             
             <small style="display:block; color:#666; margin-top:2px; margin-bottom:10px; font-style:italic;">(Kirjoita kuten Geocaching.comissa)</small>
+
+            <div id="vv-quick-actions" style="display:none;"></div>
             
             <input type="text" id="vv-from" placeholder="Mistä tulet? (Paikkakunta)">
             <input type="text" id="vv-message" placeholder="Terveiset Mikkokaleville">
+
+            <div id="vv-duplicate-panel" style="display:none;">
+                <div id="vv-duplicate-info"></div>
+                <button id="btn-update-duplicate-message" class="btn btn-gray btn-small" onclick="updateDuplicateLogMessage()" style="width:100%; margin-top:8px;"></button>
+            </div>
             
             <button id="btn-visitor-sign" class="btn btn-green" onclick="handleVisitorSign()" style="font-size: 1.2em; box-shadow: 4px 4px 0px #2e7d32;">TALLENNA KÄYNTI ✅</button>
 
@@ -347,6 +354,7 @@
             <div class="card"><h3>🚀 Yhteisön kumulatiivinen kasvu</h3><canvas id="chart-cumulative-canvas"></canvas></div>
             <div class="card"><h3>🆕↩️ Uudet vs palaavat (kk)</h3><canvas id="chart-new-vs-returning-canvas"></canvas></div>
             <div class="card"><h3>🧭 Kävijöiden mediaani / vuosi</h3><canvas id="chart-yearly-median-canvas"></canvas></div>
+            <div class="card"><h3>🔁 Retention 3/6/12 kk</h3><canvas id="chart-retention-windows-canvas"></canvas></div>
             
             <div class="card"><h3>🕒 Suosituimmat kellonajat (Tunnit)</h3><canvas id="chart-hours-canvas"></canvas></div>
             <div class="card"><h3>🎯 Aloitusaika vs kävijämäärä</h3><canvas id="chart-time-vs-attendance-canvas"></canvas></div>
@@ -357,6 +365,7 @@
             <div class="card"><h3>🏆 TOP 10 Miitit</h3><canvas id="chart-top-events-canvas"></canvas></div>
             <div class="card"><h3>⭐ Suosituimmat attribuutit</h3><canvas id="chart-attributes-canvas"></canvas></div>
             <div class="card"><h3>✍️ Logipituus ajassa (keskiarvo)</h3><canvas id="chart-log-length-trend-canvas"></canvas></div>
+            <div class="card"><h3>📈 Top-kävijöiden kehitys</h3><canvas id="chart-top-users-trend-canvas"></canvas></div>
         </div>
 
         <div id="tab-map" class="tab-content">

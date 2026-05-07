@@ -1,6 +1,6 @@
 // ==========================================
 // MK MIITTIKIRJA - VISITOR.JS
-// Versio: 1.3.0 - Robust UI Reset
+// Versio: 1.4.1 - Fuzzy Nickname Assist
 // ==========================================
 
 const visitorTranslations = {
@@ -32,7 +32,20 @@ const visitorTranslations = {
         badges: ["Hyvä meininki!", "Tervetuloa takaisin!", "Kiitos kun piipahdit!", "Legendaarinen kävijä!"],
         expiredTitle: "⛔ Kirjaus on sulkeutunut",
         expiredBody: "Tämä QR‑koodi on voimassa vain 3 päivää tapahtuman jälkeen.",
-        expiredAlert: "Kirjaus on sulkeutunut. QR‑koodi ei ole enää voimassa."
+        expiredAlert: "Kirjaus on sulkeutunut. QR‑koodi ei ole enää voimassa.",
+        quickSignBtn: "⚡ Kirjaa muistetuilla tiedoilla ({0})",
+        duplicateInfoTime: "Kirjaus löytyi jo ({0}). Voit halutessasi päivittää vain viestin.",
+        duplicateInfoNoTime: "Kirjaus löytyi jo. Voit halutessasi päivittää vain viestin.",
+        duplicateUpdateBtn: "Päivitä viesti aiempaan kirjaukseen",
+        duplicateUpdateNeedMsg: "Kirjoita ensin viesti, jonka haluat päivittää.",
+        duplicateUpdated: "Aiemman kirjauksen viesti päivitetty.",
+        queueSaved: "Yhteys katkesi — kirjaus tallennettiin jonoon ({0}). Lähetetään automaattisesti kun yhteys palaa.",
+        queueSavedUpdate: "Yhteys katkesi — viestin päivitys tallennettiin jonoon ({0}).",
+        queueFlushed: "Jonosta lähetetty kirjauksia: {0}",
+        miniVisits: "Käynnit",
+        miniStreak: "Putki",
+        miniMilestone: "Seuraava",
+        fuzzyDidYouMean: "Tarkoititko: {0}?"
     },
     en: {
         title: "Mikkokalevi's Digital Guestbook",
@@ -62,7 +75,20 @@ const visitorTranslations = {
         badges: ["Great to see you!", "Welcome back!", "Thanks for stopping by!", "Community star!"],
         expiredTitle: "⛔ Sign-in closed",
         expiredBody: "This QR code is valid only 3 days after the event.",
-        expiredAlert: "Sign-in is closed. This QR code is no longer valid."
+        expiredAlert: "Sign-in is closed. This QR code is no longer valid.",
+        quickSignBtn: "⚡ Sign with remembered profile ({0})",
+        duplicateInfoTime: "Existing sign-in found ({0}). You can update only the message.",
+        duplicateInfoNoTime: "Existing sign-in found. You can update only the message.",
+        duplicateUpdateBtn: "Update message in existing sign-in",
+        duplicateUpdateNeedMsg: "Please write a message to update.",
+        duplicateUpdated: "Existing sign-in message updated.",
+        queueSaved: "Connection lost — entry queued ({0}). Will auto-send when back online.",
+        queueSavedUpdate: "Connection lost — message update queued ({0}).",
+        queueFlushed: "Queued entries sent: {0}",
+        miniVisits: "Visits",
+        miniStreak: "Streak",
+        miniMilestone: "Next",
+        fuzzyDidYouMean: "Did you mean: {0}?"
     },
     sv: {
         title: "Mikkokalevis Digitala Gästbok",
@@ -92,7 +118,20 @@ const visitorTranslations = {
         badges: ["Kul att se dig!", "Välkommen tillbaka!", "Tack för besöket!", "Gemenskapsstjärna!"],
         expiredTitle: "⛔ Inskrivningen är stängd",
         expiredBody: "Den här QR‑koden gäller bara 3 dagar efter eventet.",
-        expiredAlert: "Inskrivningen är stängd. Den här QR‑koden är inte längre giltig."
+        expiredAlert: "Inskrivningen är stängd. Den här QR‑koden är inte längre giltig.",
+        quickSignBtn: "⚡ Signera med sparad profil ({0})",
+        duplicateInfoTime: "Registrering finns redan ({0}). Du kan uppdatera endast meddelandet.",
+        duplicateInfoNoTime: "Registrering finns redan. Du kan uppdatera endast meddelandet.",
+        duplicateUpdateBtn: "Uppdatera meddelande i befintlig registrering",
+        duplicateUpdateNeedMsg: "Skriv först ett meddelande att uppdatera.",
+        duplicateUpdated: "Meddelandet uppdaterat i befintlig registrering.",
+        queueSaved: "Uppkopplingen bröts — loggen köades ({0}). Skickas automatiskt när nätet är tillbaka.",
+        queueSavedUpdate: "Uppkopplingen bröts — meddelandeuppdatering köades ({0}).",
+        queueFlushed: "Skickat från kö: {0}",
+        miniVisits: "Besök",
+        miniStreak: "Putke",
+        miniMilestone: "Nästa",
+        fuzzyDidYouMean: "Menade du: {0}?"
     },
     et: {
         title: "Mikkokalevi digitaalne külalisteraamat",
@@ -122,13 +161,181 @@ const visitorTranslations = {
         badges: ["Hea meel sind näha!", "Tere tulemast tagasi!", "Aitäh külastamast!", "Kogukonna staar!"],
         expiredTitle: "⛔ Sisselogimine suletud",
         expiredBody: "See QR‑kood kehtib vaid 3 päeva pärast üritust.",
-        expiredAlert: "Sisselogimine on suletud. See QR‑kood ei kehti enam."
+        expiredAlert: "Sisselogimine on suletud. See QR‑kood ei kehti enam.",
+        quickSignBtn: "⚡ Logi salvestatud profiiliga ({0})",
+        duplicateInfoTime: "Leidsin olemasoleva kirje ({0}). Soovi korral saad uuendada ainult sõnumit.",
+        duplicateInfoNoTime: "Leidsin olemasoleva kirje. Soovi korral saad uuendada ainult sõnumit.",
+        duplicateUpdateBtn: "Uuenda sõnum olemasolevas kirjes",
+        duplicateUpdateNeedMsg: "Kirjuta kõigepealt sõnum, mida uuendada.",
+        duplicateUpdated: "Olemasoleva kirje sõnum uuendatud.",
+        queueSaved: "Võrguühendus katkes — kirje pandi järjekorda ({0}). Saadetakse automaatselt hiljem.",
+        queueSavedUpdate: "Võrguühendus katkes — sõnumi uuendus pandi järjekorda ({0}).",
+        queueFlushed: "Järjekorrast saadetud kirjeid: {0}",
+        miniVisits: "Külastused",
+        miniStreak: "Seeria",
+        miniMilestone: "Järgmine",
+        fuzzyDidYouMean: "Kas mõtlesid: {0}?"
     }
 };
 
 let currentLang = 'fi';
 window.isVisitorExpired = false;
 let currentVisitorColorTheme = 'ocean';
+const VISITOR_PROFILE_KEY = 'mk_visitor_profile';
+const VISITOR_QUEUE_KEY = 'mk_visitor_queue';
+let currentDuplicateContext = null;
+let currentDuplicateMeta = null;
+const visitorNicknameCacheByHost = {};
+
+function normalizeNickname(value) {
+    return (value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function levenshteinDistance(a, b) {
+    const left = a || '';
+    const right = b || '';
+    const matrix = Array.from({ length: left.length + 1 }, () => new Array(right.length + 1).fill(0));
+
+    for (let i = 0; i <= left.length; i += 1) matrix[i][0] = i;
+    for (let j = 0; j <= right.length; j += 1) matrix[0][j] = j;
+
+    for (let i = 1; i <= left.length; i += 1) {
+        for (let j = 1; j <= right.length; j += 1) {
+            const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j - 1] + cost
+            );
+        }
+    }
+
+    return matrix[left.length][right.length];
+}
+
+async function getVisitorNicknameIndex(targetHost) {
+    if (visitorNicknameCacheByHost[targetHost]) {
+        return visitorNicknameCacheByHost[targetHost];
+    }
+
+    const snap = await firebase.database().ref(`miitit/${targetHost}/logs`).once('value');
+    const seen = new Set();
+    const index = [];
+
+    snap.forEach(eventLogs => {
+        eventLogs.forEach(log => {
+            const nick = (log.val()?.nickname || '').trim();
+            if (!nick) return;
+            const norm = normalizeNickname(nick);
+            if (!norm || seen.has(norm)) return;
+            seen.add(norm);
+            index.push({ raw: nick, norm });
+        });
+    });
+
+    visitorNicknameCacheByHost[targetHost] = index;
+    return index;
+}
+
+function hideVisitorAutocomplete() {
+    const list = document.getElementById('vv-autocomplete');
+    if (!list) return;
+    list.innerHTML = '';
+    list.style.display = 'none';
+}
+
+function renderVisitorAutocomplete(items) {
+    const list = document.getElementById('vv-autocomplete');
+    const input = document.getElementById('vv-nickname');
+    if (!list || !input) return;
+
+    if (!items || !items.length) {
+        hideVisitorAutocomplete();
+        return;
+    }
+
+    list.innerHTML = '';
+    items.forEach(item => {
+        const el = document.createElement('div');
+        el.className = 'autocomplete-item';
+        el.innerText = item.label;
+        el.addEventListener('click', () => {
+            input.value = item.value;
+            hideVisitorAutocomplete();
+        });
+        list.appendChild(el);
+    });
+
+    list.style.display = 'block';
+}
+
+function findBestFuzzyNick(inputNorm, index) {
+    if (!inputNorm || inputNorm.length < 3 || !Array.isArray(index) || !index.length) return null;
+
+    let best = null;
+    for (const item of index) {
+        if (!item?.norm || item.norm === inputNorm) continue;
+
+        const distance = levenshteinDistance(inputNorm, item.norm);
+        const maxLen = Math.max(inputNorm.length, item.norm.length);
+        const similarity = maxLen > 0 ? (1 - (distance / maxLen)) : 0;
+        const threshold = maxLen <= 6 ? 1 : 2;
+
+        if (distance > threshold || similarity < 0.65) continue;
+        if (!best || distance < best.distance || (distance === best.distance && similarity > best.similarity)) {
+            best = { raw: item.raw, distance, similarity };
+        }
+    }
+
+    return best;
+}
+
+window.updateVisitorNicknameAssist = async function() {
+    const input = document.getElementById('vv-nickname');
+    if (!input) return;
+
+    const val = input.value || '';
+    const normalizedInput = normalizeNickname(val);
+    if (normalizedInput.length < 2) {
+        hideVisitorAutocomplete();
+        return;
+    }
+
+    const targetHost = window.currentVisitorTargetUid || 'T8wI16Gf67W4G4yX3Cq7U0U1H6I2';
+    let index = [];
+    try {
+        index = await getVisitorNicknameIndex(targetHost);
+    } catch (err) {
+        hideVisitorAutocomplete();
+        return;
+    }
+
+    const exactExists = index.some(item => item.norm === normalizedInput);
+    if (exactExists) {
+        hideVisitorAutocomplete();
+        return;
+    }
+
+    const prefixMatches = index
+        .filter(item => item.norm.startsWith(normalizedInput))
+        .slice(0, 5)
+        .map(item => ({ label: item.raw, value: item.raw }));
+
+    if (prefixMatches.length > 0) {
+        renderVisitorAutocomplete(prefixMatches);
+        return;
+    }
+
+    const fuzzyMatch = findBestFuzzyNick(normalizedInput, index);
+    if (!fuzzyMatch) {
+        hideVisitorAutocomplete();
+        return;
+    }
+
+    const t = visitorTranslations[currentLang] || visitorTranslations.fi;
+    const label = (t.fuzzyDidYouMean || 'Did you mean: {0}?').replace('{0}', fuzzyMatch.raw);
+    renderVisitorAutocomplete([{ label, value: fuzzyMatch.raw }]);
+};
 
 window.setVisitorColorTheme = function(theme) {
     if (theme !== 'ocean' && theme !== 'forest') return;
@@ -160,6 +367,200 @@ function initVisitorColorTheme() {
     }
     window.setVisitorColorTheme(savedTheme);
 }
+
+function readJsonFromStorage(key, fallbackValue) {
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return fallbackValue;
+        const parsed = JSON.parse(raw);
+        return parsed ?? fallbackValue;
+    } catch (e) {
+        return fallbackValue;
+    }
+}
+
+function writeJsonToStorage(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+        // Non-critical
+    }
+}
+
+function getSavedVisitorProfile() {
+    return readJsonFromStorage(VISITOR_PROFILE_KEY, { nickname: '', from: '' });
+}
+
+function saveVisitorProfile(nickname, from) {
+    writeJsonToStorage(VISITOR_PROFILE_KEY, {
+        nickname: (nickname || '').trim(),
+        from: (from || '').trim()
+    });
+}
+
+function getVisitorQueue() {
+    return readJsonFromStorage(VISITOR_QUEUE_KEY, []);
+}
+
+function setVisitorQueue(queue) {
+    writeJsonToStorage(VISITOR_QUEUE_KEY, Array.isArray(queue) ? queue : []);
+}
+
+function enqueueVisitorQueueItem(item) {
+    const queue = getVisitorQueue();
+    queue.push(item);
+    setVisitorQueue(queue);
+    return queue.length;
+}
+
+function formatVisitorTimestamp(ts) {
+    if (!Number.isFinite(Number(ts))) return '';
+    const date = new Date(Number(ts));
+    if (!Number.isFinite(date.getTime())) return '';
+    const locale = currentLang === 'fi' ? 'fi-FI' : currentLang === 'sv' ? 'sv-SE' : currentLang === 'et' ? 'et-EE' : 'en-GB';
+    return date.toLocaleString(locale, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function isLikelyNetworkError(err) {
+    if (!err) return false;
+    const msg = (err.message || '').toLowerCase();
+    return !navigator.onLine || msg.includes('network') || msg.includes('offline') || msg.includes('connection');
+}
+
+function hideDuplicatePanel() {
+    const panel = document.getElementById('vv-duplicate-panel');
+    if (panel) panel.style.display = 'none';
+    currentDuplicateContext = null;
+    currentDuplicateMeta = null;
+}
+
+function renderDuplicatePanel() {
+    const panel = document.getElementById('vv-duplicate-panel');
+    const info = document.getElementById('vv-duplicate-info');
+    const btn = document.getElementById('btn-update-duplicate-message');
+    const t = visitorTranslations[currentLang] || visitorTranslations.fi;
+    if (!panel || !info || !btn || !currentDuplicateContext) {
+        if (panel) panel.style.display = 'none';
+        return;
+    }
+
+    const timeText = currentDuplicateMeta?.timestamp ? formatVisitorTimestamp(currentDuplicateMeta.timestamp) : '';
+    info.innerText = timeText
+        ? (t.duplicateInfoTime || '').replace('{0}', timeText)
+        : (t.duplicateInfoNoTime || '');
+    btn.innerText = t.duplicateUpdateBtn || 'Update message';
+    panel.style.display = 'block';
+}
+
+window.renderVisitorQuickActions = function() {
+    const box = document.getElementById('vv-quick-actions');
+    if (!box) return;
+    const t = visitorTranslations[currentLang] || visitorTranslations.fi;
+    const profile = getSavedVisitorProfile();
+    if (!profile.nickname) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+
+    const label = (t.quickSignBtn || '').replace('{0}', profile.nickname);
+    box.innerHTML = `<button class="btn btn-blue btn-small" style="width:100%;" onclick="useRememberedVisitorProfile()">${label}</button>`;
+    box.style.display = 'block';
+};
+
+function initVisitorNicknameAssist() {
+    const input = document.getElementById('vv-nickname');
+    if (!input || input.dataset.fuzzyBound) return;
+
+    input.addEventListener('input', () => {
+        window.updateVisitorNicknameAssist();
+    });
+
+    input.addEventListener('focus', () => {
+        if ((input.value || '').trim().length >= 2) {
+            window.updateVisitorNicknameAssist();
+        }
+    });
+
+    input.addEventListener('blur', () => {
+        setTimeout(hideVisitorAutocomplete, 120);
+    });
+
+    input.dataset.fuzzyBound = '1';
+}
+
+window.useRememberedVisitorProfile = async function() {
+    const profile = getSavedVisitorProfile();
+    if (!profile.nickname) return;
+    const nickEl = document.getElementById('vv-nickname');
+    const fromEl = document.getElementById('vv-from');
+    if (nickEl) nickEl.value = profile.nickname;
+    if (fromEl && !fromEl.value.trim()) fromEl.value = profile.from || '';
+    await window.handleVisitorSign();
+};
+
+window.flushVisitorQueue = async function(showStatus = false) {
+    const queue = getVisitorQueue();
+    if (!queue.length) return 0;
+
+    const remaining = [];
+    let sent = 0;
+
+    for (const item of queue) {
+        try {
+            if (item.type === 'updateMessage') {
+                await firebase.database().ref(`miitit/${item.targetHost}/logs/${item.eventId}/${item.logKey}`).update({
+                    message: item.message || '',
+                    messageUpdatedAt: firebase.database.ServerValue.TIMESTAMP
+                });
+                sent += 1;
+                continue;
+            }
+
+            const logsRef = firebase.database().ref(`miitit/${item.targetHost}/logs/${item.eventId}`);
+            const snap = await logsRef.once('value');
+            let exists = false;
+            const queueNickNorm = normalizeNickname(item.nickname);
+            snap.forEach(child => {
+                const val = child.val() || {};
+                if (normalizeNickname(val.nickname) === queueNickNorm) {
+                    exists = true;
+                }
+            });
+
+            if (!exists) {
+                await logsRef.push({
+                    nickname: item.nickname || '',
+                    from: item.from || '',
+                    message: item.message || '',
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+                sent += 1;
+            }
+        } catch (err) {
+            remaining.push(item);
+        }
+    }
+
+    setVisitorQueue(remaining);
+
+    if (showStatus && sent > 0) {
+        const t = visitorTranslations[currentLang] || visitorTranslations.fi;
+        const statusEl = document.getElementById('vv-status');
+        if (statusEl) {
+            statusEl.innerText = (t.queueFlushed || 'Queue sent: {0}').replace('{0}', sent);
+            statusEl.style.display = 'block';
+        }
+    }
+
+    return sent;
+};
 
 window.renderVisitorPreSignMessage = function() {
     const box = document.getElementById('vv-pre-special-message');
@@ -221,6 +622,10 @@ window.setVisitorLanguage = function(lang) {
     if (typeof window.renderVisitorPreSignMessage === 'function') {
         window.renderVisitorPreSignMessage();
     }
+    if (typeof window.renderVisitorQuickActions === 'function') {
+        window.renderVisitorQuickActions();
+    }
+    renderDuplicatePanel();
 
     if (window.isVisitorExpired) {
         const expiredEl = document.getElementById('vv-expired');
@@ -278,17 +683,26 @@ window.handleVisitorSign = async function() {
     clearFieldErrors();
     setError('');
     setStatus('');
+    hideDuplicatePanel();
+    hideVisitorAutocomplete();
 
     const nickInput = document.getElementById('vv-nickname');
     const fromInput = document.getElementById('vv-from');
     const msgInput = document.getElementById('vv-message');
 
     const nick = nickInput ? nickInput.value.trim() : "";
+    const fromValue = fromInput ? fromInput.value.trim() : "";
+    const messageValue = msgInput ? msgInput.value.trim() : "";
     if(!nick) {
         markFieldError('vv-nickname');
         setError(t.alertNick);
         focusField('vv-nickname');
         return;
+    }
+
+    saveVisitorProfile(nick, fromValue);
+    if (typeof window.renderVisitorQuickActions === 'function') {
+        window.renderVisitorQuickActions();
     }
 
     const targetHost = window.currentVisitorTargetUid || "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
@@ -301,13 +715,22 @@ window.handleVisitorSign = async function() {
     setLoading(true);
     setStatus(t.savingMsg || 'Tallennetaan...');
 
+    if (navigator.onLine) {
+        await window.flushVisitorQueue(false);
+    }
+
     try {
         const currentLogsSnap = await firebase.database().ref('miitit/' + targetHost + '/logs/' + eventId).once('value');
         let alreadyLogged = false;
+        let duplicateLog = null;
+        let duplicateLogKey = null;
+        const nickNorm = normalizeNickname(nick);
         currentLogsSnap.forEach(child => {
             const val = child.val();
-            if (val.nickname && val.nickname.toLowerCase() === nick.toLowerCase()) {
+            if (val.nickname && normalizeNickname(val.nickname) === nickNorm) {
                 alreadyLogged = true;
+                duplicateLog = val;
+                duplicateLogKey = child.key;
             }
         });
 
@@ -316,19 +739,37 @@ window.handleVisitorSign = async function() {
             setError(t.alertDup.replace('{0}', nick));
             setStatus('');
             markFieldError('vv-nickname');
-            focusField('vv-nickname');
+            currentDuplicateContext = { targetHost, eventId, logKey: duplicateLogKey, nick };
+            currentDuplicateMeta = duplicateLog;
+            renderDuplicatePanel();
+            focusField('vv-message');
             return;
         }
 
         await firebase.database().ref('miitit/' + targetHost + '/logs/' + eventId).push({
             nickname: nick, 
-            from: fromInput ? fromInput.value.trim() : "",
-            message: msgInput ? msgInput.value.trim() : "", 
+            from: fromValue,
+            message: messageValue,
             timestamp: firebase.database.ServerValue.TIMESTAMP
         });
 
     } catch (saveErr) {
         console.error("Virhe:", saveErr);
+        if (isLikelyNetworkError(saveErr)) {
+            const queuedCount = enqueueVisitorQueueItem({
+                type: 'create',
+                targetHost,
+                eventId,
+                nickname: nick,
+                from: fromValue,
+                message: messageValue,
+                queuedAt: Date.now()
+            });
+            setLoading(false);
+            setError('');
+            setStatus((t.queueSaved || 'Queued ({0})').replace('{0}', queuedCount));
+            return;
+        }
         setLoading(false);
         setStatus('');
         setError("System Error: " + saveErr.message);
@@ -391,7 +832,7 @@ window.handleVisitorSign = async function() {
         }
 
         userHistory = [];
-        const nickLower = nick.toLowerCase();
+        const nickNorm = normalizeNickname(nick);
 
         logsSnap.forEach(evtLogs => {
             const eventKey = evtLogs.key;
@@ -400,7 +841,7 @@ window.handleVisitorSign = async function() {
                 let attended = false;
                 evtLogs.forEach(log => {
                     const val = log.val();
-                    if (val && val.nickname && val.nickname.toLowerCase() === nickLower) attended = true;
+                    if (val && val.nickname && normalizeNickname(val.nickname) === nickNorm) attended = true;
                 });
                 if (attended) userHistory.push(evtData);
             }
@@ -486,6 +927,64 @@ window.handleVisitorSign = async function() {
     showVisitorModalWithLang(nick, userHistory, stats);
 };
 
+window.updateDuplicateLogMessage = async function() {
+    const t = visitorTranslations[currentLang] || visitorTranslations.fi;
+    const msgInput = document.getElementById('vv-message');
+    const errorEl = document.getElementById('vv-error');
+    const statusEl = document.getElementById('vv-status');
+    const btn = document.getElementById('btn-update-duplicate-message');
+
+    const setError = (msg) => {
+        if (!errorEl) return;
+        errorEl.innerText = msg || '';
+        errorEl.style.display = msg ? 'block' : 'none';
+    };
+    const setStatus = (msg) => {
+        if (!statusEl) return;
+        statusEl.innerText = msg || '';
+        statusEl.style.display = msg ? 'block' : 'none';
+    };
+
+    if (!currentDuplicateContext || !currentDuplicateContext.logKey) return;
+
+    const newMessage = msgInput ? msgInput.value.trim() : '';
+    if (!newMessage) {
+        setError(t.duplicateUpdateNeedMsg || 'Write message first.');
+        if (msgInput) msgInput.classList.add('input-error');
+        return;
+    }
+
+    if (msgInput) msgInput.classList.remove('input-error');
+    setError('');
+
+    if (btn) btn.disabled = true;
+    try {
+        await firebase.database().ref(`miitit/${currentDuplicateContext.targetHost}/logs/${currentDuplicateContext.eventId}/${currentDuplicateContext.logKey}`).update({
+            message: newMessage,
+            messageUpdatedAt: firebase.database.ServerValue.TIMESTAMP
+        });
+        hideDuplicatePanel();
+        setStatus(t.duplicateUpdated || 'Updated.');
+    } catch (err) {
+        if (isLikelyNetworkError(err)) {
+            const queuedCount = enqueueVisitorQueueItem({
+                type: 'updateMessage',
+                targetHost: currentDuplicateContext.targetHost,
+                eventId: currentDuplicateContext.eventId,
+                logKey: currentDuplicateContext.logKey,
+                message: newMessage,
+                queuedAt: Date.now()
+            });
+            setStatus((t.queueSavedUpdate || 'Update queued ({0})').replace('{0}', queuedCount));
+            hideDuplicatePanel();
+        } else {
+            setError(`System Error: ${err.message}`);
+        }
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+};
+
 window.setVisitorExpiredState = function(isExpired) {
     window.isVisitorExpired = isExpired;
     const form = document.querySelector('#visitor-view .card-form');
@@ -555,6 +1054,31 @@ function showVisitorModalWithLang(nick, history, stats) {
         badgeText = t.badges[Math.floor(Math.random() * t.badges.length)];
     }
     badgeEl.innerText = badgeText;
+
+    const oldDashboard = document.getElementById('up-visitor-mini-dashboard');
+    if (oldDashboard) oldDashboard.remove();
+
+    const milestoneBase = Math.max(10, Math.ceil(stats.totalVisits / 10) * 10);
+    const nextMilestone = milestoneBase <= stats.totalVisits ? milestoneBase + 10 : milestoneBase;
+    const missingToMilestone = Math.max(0, nextMilestone - stats.totalVisits);
+    const miniDashboard = document.createElement('div');
+    miniDashboard.id = 'up-visitor-mini-dashboard';
+    miniDashboard.className = 'visitor-mini-dashboard';
+    miniDashboard.innerHTML = `
+        <div class="visitor-mini-card">
+            <div class="visitor-mini-label">${t.miniVisits || 'Visits'}</div>
+            <div class="visitor-mini-value">${stats.totalVisits}</div>
+        </div>
+        <div class="visitor-mini-card">
+            <div class="visitor-mini-label">${t.miniStreak || 'Streak'}</div>
+            <div class="visitor-mini-value">${stats.streakCount || 0}</div>
+        </div>
+        <div class="visitor-mini-card">
+            <div class="visitor-mini-label">${t.miniMilestone || 'Next'}</div>
+            <div class="visitor-mini-value">${nextMilestone} (-${missingToMilestone})</div>
+        </div>
+    `;
+    badgeEl.insertAdjacentElement('afterend', miniDashboard);
 
     if (stats.specialMessage) {
         const specialBox = document.createElement('div');
@@ -680,6 +1204,42 @@ function showVisitorModalWithLang(nick, history, stats) {
     }
 }
 
+function initVisitorInputBindings() {
+    ['vv-nickname', 'vv-from', 'vv-message'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el || el.dataset.enterBound) return;
+        el.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                window.handleVisitorSign();
+            }
+        });
+        el.dataset.enterBound = '1';
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        initVisitorInputBindings();
+        initVisitorNicknameAssist();
+        if (typeof window.renderVisitorQuickActions === 'function') {
+            window.renderVisitorQuickActions();
+        }
+        window.flushVisitorQueue(false);
+    });
+} else {
+    initVisitorInputBindings();
+    initVisitorNicknameAssist();
+    if (typeof window.renderVisitorQuickActions === 'function') {
+        window.renderVisitorQuickActions();
+    }
+    window.flushVisitorQueue(false);
+}
+
+window.addEventListener('online', () => {
+    window.flushVisitorQueue(true);
+});
+
 // Tämä funktio palauttaa kaiken ennalleen
 function closeAndResetVisitorModal(goToGeo) {
     const modal = document.getElementById('user-profile-modal');
@@ -702,6 +1262,11 @@ function closeAndResetVisitorModal(goToGeo) {
         const el = document.getElementById(id);
         if(el) el.value = "";
     });
+    hideVisitorAutocomplete();
+    hideDuplicatePanel();
+    if (typeof window.renderVisitorQuickActions === 'function') {
+        window.renderVisitorQuickActions();
+    }
 
     // 5. Ohjaus tai fokusointi
     if (goToGeo) {

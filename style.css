@@ -428,6 +428,60 @@ body.theme-light .card.archived {
     margin-bottom: 6px;
 }
 
+#vv-quick-actions {
+    margin: 0 0 10px 0;
+    padding: 10px;
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    background: var(--highlight-bg);
+}
+
+#vv-quick-actions .btn {
+    margin: 0;
+}
+
+#vv-duplicate-panel {
+    margin: 0 0 10px 0;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(245, 158, 11, 0.55);
+    background: rgba(245, 158, 11, 0.12);
+    text-align: left;
+}
+
+#vv-duplicate-info {
+    font-size: 0.9em;
+    color: var(--text-color);
+    line-height: 1.35;
+}
+
+.visitor-mini-dashboard {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(80px, 1fr));
+    gap: 8px;
+    margin: 10px 0 12px 0;
+}
+
+.visitor-mini-card {
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    background: var(--highlight-bg);
+    padding: 8px;
+    text-align: center;
+}
+
+.visitor-mini-label {
+    font-size: 0.75em;
+    color: #888;
+    margin-bottom: 4px;
+}
+
+.visitor-mini-value {
+    font-size: 1.05em;
+    font-weight: bold;
+    color: var(--header-color);
+}
+
 /* Kirjauksen jälkeinen profiilimodaali (visitor) */
 #user-profile-modal .modal-content {
     background: linear-gradient(180deg, var(--vv-modal-bg-start) 0%, var(--vv-modal-bg-end) 100%);
