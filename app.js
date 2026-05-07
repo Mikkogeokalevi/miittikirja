@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.23.0 - Premium Visitor UX
+// Versio: 7.24.0 - Visitor hotfixes
 // ==========================================
 
-const APP_VERSION = "7.23.0";
+const APP_VERSION = "7.24.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -149,16 +149,33 @@ async function openVisitorGuestbook(uid, eventId) {
     window.currentVisitorSpecialMessage = "";
     currentEventId = eventId; // Varmuuden vuoksi myös app.js:n omaan muuttujaan
     lastAttendeeCount = null;
-    
-    db.ref('miitit/' + uid + '/events/' + eventId).once('value', snap => {
+
+    const showVisitorViewOnly = () => {
+        if(visitorView) visitorView.style.display = 'block';
+        if(loginView) loginView.style.display = 'none';
+        if(adminView) adminView.style.display = 'none';
+        if(userView) userView.style.display = 'none';
+        if(guestbookView) guestbookView.style.display = 'none';
+        const statsView = document.getElementById('stats-view');
+        if(statsView) statsView.style.display = 'none';
+    };
+
+    try {
+        const eventRef = db.ref('miitit/' + uid + '/events/' + eventId);
+        const timeoutMs = 12000;
+        const snap = await Promise.race([
+            eventRef.once('value'),
+            new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('EVENT_FETCH_TIMEOUT')), timeoutMs);
+            })
+        ]);
         const evt = snap.val();
-        
+
         if(!evt) {
             alert(`Miittiä ei löytynyt!\n\nEtsintätiedot:\nEventID: ${eventId}\nOmistaja-UID: ${uid}\n\nTarkista onko miitti poistettu tai onko QR-koodi vanhentunut.`);
-            if(loadingOverlay) loadingOverlay.style.display = 'none';
             return;
         }
-        
+
         currentEventGcCode = evt.gc || null;
         window.currentVisitorPreSignMessage = (typeof evt.preSignMessage === 'string') ? evt.preSignMessage.trim() : "";
         window.currentVisitorSpecialMessage = (typeof evt.specialMessage === 'string') ? evt.specialMessage.trim() : "";
@@ -170,8 +187,7 @@ async function openVisitorGuestbook(uid, eventId) {
 
         const nameEl = document.getElementById('vv-event-name');
         const infoEl = document.getElementById('vv-event-info');
-        
-        // Asetetaan miitin nimi ja aika
+
         if(nameEl) nameEl.innerText = evt.name;
         if(infoEl) infoEl.innerText = `${evt.date} klo ${evt.time || '-'}`;
 
@@ -195,23 +211,19 @@ async function openVisitorGuestbook(uid, eventId) {
                 }
             }
         }
-        
-        // Varmistetaan näkymät
-        if(visitorView) visitorView.style.display = 'block';
-        if(loginView) loginView.style.display = 'none';
-        if(adminView) adminView.style.display = 'none';
-        if(userView) userView.style.display = 'none';
-        if(guestbookView) guestbookView.style.display = 'none';
-        const statsView = document.getElementById('stats-view');
-        if(statsView) statsView.style.display = 'none';
-        
-        if(loadingOverlay) loadingOverlay.style.display = 'none';
-        
-    }, (error) => {
+
+        showVisitorViewOnly();
+    } catch (error) {
         console.error("Virhe haettaessa miittiä:", error);
-        alert("Virhe tietokantayhteydessä:\n" + error.message);
+        if (error && error.message === 'EVENT_FETCH_TIMEOUT') {
+            alert("Yhteys on hidas tai katkolla. Päivitä sivu ja yritä uudelleen.");
+        } else {
+            alert("Virhe tietokantayhteydessä:\n" + error.message);
+        }
+        showVisitorViewOnly();
+    } finally {
         if(loadingOverlay) loadingOverlay.style.display = 'none';
-    });
+    }
 }
 
 // HUOM: Vanha 'btnVisitorSign.onclick' poistettu täältä.

@@ -45,7 +45,8 @@ const visitorTranslations = {
         miniVisits: "Käynnit",
         miniStreak: "Putki",
         miniMilestone: "Seuraava",
-        fuzzyDidYouMean: "Tarkoititko: {0}?"
+        fuzzyDidYouMean: "Tarkoititko: {0}?",
+        rememberedPrefillStatus: "Muistetut tiedot lisätty kenttiin. Tarkista ja paina TALLENNA KÄYNTI."
     },
     en: {
         title: "Mikkokalevi's Digital Guestbook",
@@ -88,7 +89,8 @@ const visitorTranslations = {
         miniVisits: "Visits",
         miniStreak: "Streak",
         miniMilestone: "Next",
-        fuzzyDidYouMean: "Did you mean: {0}?"
+        fuzzyDidYouMean: "Did you mean: {0}?",
+        rememberedPrefillStatus: "Remembered profile loaded into fields. Review and press SIGN LOGBOOK."
     },
     sv: {
         title: "Mikkokalevis Digitala Gästbok",
@@ -131,7 +133,8 @@ const visitorTranslations = {
         miniVisits: "Besök",
         miniStreak: "Putke",
         miniMilestone: "Nästa",
-        fuzzyDidYouMean: "Menade du: {0}?"
+        fuzzyDidYouMean: "Menade du: {0}?",
+        rememberedPrefillStatus: "Sparad profil ifylld i fälten. Kontrollera och tryck SIGNERA LOGGBOKEN."
     },
     et: {
         title: "Mikkokalevi digitaalne külalisteraamat",
@@ -174,7 +177,8 @@ const visitorTranslations = {
         miniVisits: "Külastused",
         miniStreak: "Seeria",
         miniMilestone: "Järgmine",
-        fuzzyDidYouMean: "Kas mõtlesid: {0}?"
+        fuzzyDidYouMean: "Kas mõtlesid: {0}?",
+        rememberedPrefillStatus: "Salvestatud profiil täideti väljadele. Kontrolli ja vajuta SALVESTA KÜLASTUS."
     }
 };
 
@@ -186,9 +190,14 @@ const VISITOR_QUEUE_KEY = 'mk_visitor_queue';
 let currentDuplicateContext = null;
 let currentDuplicateMeta = null;
 const visitorNicknameCacheByHost = {};
+const ORGANIZER_NICKNAME_ALIASES = new Set(['mikkokalevi']);
 
 function normalizeNickname(value) {
     return (value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function isOrganizerNickname(normNick) {
+    return ORGANIZER_NICKNAME_ALIASES.has(normNick || '');
 }
 
 function levenshteinDistance(a, b) {
@@ -496,13 +505,29 @@ function initVisitorNicknameAssist() {
 }
 
 window.useRememberedVisitorProfile = async function() {
+    const t = visitorTranslations[currentLang] || visitorTranslations.fi;
     const profile = getSavedVisitorProfile();
     if (!profile.nickname) return;
     const nickEl = document.getElementById('vv-nickname');
     const fromEl = document.getElementById('vv-from');
+    const msgEl = document.getElementById('vv-message');
+    const statusEl = document.getElementById('vv-status');
+    const errorEl = document.getElementById('vv-error');
+
     if (nickEl) nickEl.value = profile.nickname;
-    if (fromEl && !fromEl.value.trim()) fromEl.value = profile.from || '';
-    await window.handleVisitorSign();
+    if (fromEl) fromEl.value = profile.from || '';
+    if (msgEl && msgEl.classList) msgEl.classList.remove('input-error');
+    if (errorEl) {
+        errorEl.innerText = '';
+        errorEl.style.display = 'none';
+    }
+    if (statusEl) {
+        statusEl.innerText = t.rememberedPrefillStatus || 'Remembered profile loaded.';
+        statusEl.style.display = 'block';
+    }
+
+    hideVisitorAutocomplete();
+    if (nickEl && typeof nickEl.focus === 'function') nickEl.focus();
 };
 
 window.flushVisitorQueue = async function(showStatus = false) {
@@ -846,6 +871,17 @@ window.handleVisitorSign = async function() {
                 if (attended) userHistory.push(evtData);
             }
         });
+
+        if (isOrganizerNickname(nickNorm)) {
+            const currentEvent = eventsMap[eventId];
+            const currentEventDate = currentEvent?.date || '';
+            miittiEvents.forEach(evt => {
+                if (currentEventDate && evt.date > currentEventDate) return;
+                if (!userHistory.some(h => h.key === evt.key)) {
+                    userHistory.push(evt);
+                }
+            });
+        }
 
         userHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
         stats.totalVisits = userHistory.length;
