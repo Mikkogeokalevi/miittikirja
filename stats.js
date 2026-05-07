@@ -1,6 +1,6 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.7.3 - Top: yksittäisen login pituus
+// Versio: 7.8.0 - Omat puuttuvat osallistumiset
 // ==========================================
 
 let allStatsData = {
@@ -12,6 +12,7 @@ let chartInstances = {};
 let mapInstance = null;
 let statsLogUserNames = [];
 let currentStatsLogSearchSnapshot = { rows: [], sourceMode: 'both' };
+const ORGANIZER_NICKNAME_KEY = 'mikkokalevi';
 
 function normalizeNickname(name) {
     return (name || '').replace(/[\s\u00A0]+/g, ' ').trim().toLowerCase();
@@ -130,8 +131,23 @@ function updateStatsView(data) {
         }
     });
 
-    const organizerAttended = totalEvents - countCancelled;
-    window.currentOrganizerStats = { count: organizerAttended };
+    const todayStr = new Date().toISOString().split('T')[0];
+    const realizedEvents = data.filter(e => {
+        const isCancelled = (e.name || '').includes('/ PERUTTU /');
+        const isFuture = (e.date || '') > todayStr;
+        return !isCancelled && !isFuture;
+    });
+    const organizerAttended = realizedEvents.reduce((sum, evt) => {
+        const names = Array.isArray(evt.attendeeNames) ? evt.attendeeNames : [];
+        const hasOrganizer = names.some(name => normalizeNickname(name) === ORGANIZER_NICKNAME_KEY);
+        return sum + (hasOrganizer ? 1 : 0);
+    }, 0);
+    const organizerMissing = Math.max(0, realizedEvents.length - organizerAttended);
+    window.currentOrganizerStats = {
+        count: organizerAttended,
+        realizedCount: realizedEvents.length,
+        missingCount: organizerMissing
+    };
 
     // 2. Lasketaan uniikit nimimerkit
     const uniqueNames = new Set();
@@ -159,7 +175,10 @@ function updateStatsView(data) {
                 
                 <div style="border-top:1px solid #555; padding-top:8px; margin-top:8px;">Omat osallistumiset:</div>
                 <div style="border-top:1px solid #555; padding-top:8px; margin-top:8px; text-align:right; color:var(--header-color);">
-                    <strong>${organizerAttended}</strong> kpl <span style="font-size:0.7em; color:#888; font-weight:normal;">(Toteutuneet)</span>
+                    <strong>${organizerAttended}</strong> / ${realizedEvents.length} kpl <span style="font-size:0.7em; color:#888; font-weight:normal;">(Toteutuneet)</span>
+                    <div style="font-size:0.8em; color:${organizerMissing > 0 ? '#ffcc80' : '#8bc34a'}; margin-top:2px;">
+                        Puuttuu: ${organizerMissing}
+                    </div>
                 </div>
             </div>
             <div style="margin-top:10px; border-top:1px dashed #555; padding-top:10px; text-align:center;">
@@ -194,10 +213,10 @@ function updateStatsView(data) {
     renderFirstTimersTopEvents(data);
     renderOneTimers(data);
     renderLongestStreaks(data);
+    renderOrganizerMissingParticipation(data);
     
     renderYearHeatmap(data);
 
-    const todayStr = new Date().toISOString().split('T')[0];
     const filteredForLists = data.filter(e => {
         const isCancelled = e.name.includes("/ PERUTTU /");
         const isFuture = e.date > todayStr; 
@@ -242,14 +261,7 @@ function renderUserRegistry(data) {
     data.forEach(e => { if(e.attendeeNames) e.attendeeNames.forEach(n => map[n] = (map[n] || 0) + 1); });
     const sorted = Object.entries(map).sort((a,b) => b[1] - a[1]);
     
-    // --- HOST ---
     let html = "";
-    if (window.currentOrganizerStats && window.currentOrganizerStats.count > 0) {
-        html += `<div class="stats-row" style="background:rgba(255, 140, 0, 0.1); border-left:3px solid #FF8C00; padding-left:5px;">
-            <span>👑 Mikkokalevi <span style="font-size:0.8em; color:#888;">(Järjestäjä)</span></span> 
-            <strong>${window.currentOrganizerStats.count}</strong>
-        </div>`;
-    }
 
     const limit = 50;
     const listToShow = sorted.slice(0, limit);
@@ -1034,15 +1046,43 @@ function renderTopUsersList(data) {
     const el = document.getElementById('stats-top-users');
     if(!el) return;
 
-    let html = "";
-    if (window.currentOrganizerStats && window.currentOrganizerStats.count > 0) {
-        html += `<div class="stats-row" style="background:rgba(255, 140, 0, 0.1); border-left:3px solid #FF8C00; padding-left:5px;">
-            <span>👑 Mikkokalevi</span> <strong>${window.currentOrganizerStats.count} miittiä</strong>
-        </div>`;
+    const html = sorted.map(([name, count], i) => `<div class="stats-row"><span>${i+1}. ${name}</span> <strong>${count} miittiä</strong></div>`).join('');
+    el.innerHTML = html;
+}
+
+function renderOrganizerMissingParticipation(data) {
+    const el = document.getElementById('stats-organizer-missing');
+    if (!el) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const pastEvents = (data || []).filter(evt => {
+        const isCancelled = (evt.name || '').includes('/ PERUTTU /');
+        const isFuture = (evt.date || '') > todayStr;
+        return !isCancelled && !isFuture;
+    });
+
+    const missing = pastEvents.filter(evt => {
+        const names = Array.isArray(evt.attendeeNames) ? evt.attendeeNames : [];
+        return !names.some(name => normalizeNickname(name) === ORGANIZER_NICKNAME_KEY);
+    });
+
+    const attendedCount = pastEvents.length - missing.length;
+    const header = `<div style="font-size:0.9em; color:#bbb; margin-bottom:8px;">Kirjattuna: <strong>${attendedCount}</strong> / ${pastEvents.length} • Puuttuu: <strong>${missing.length}</strong></div>`;
+
+    if (missing.length === 0) {
+        el.innerHTML = `${header}<div style="color:#8bc34a;">Ei puuttuvia osallistumisia nykyisellä suodatuksella.</div>`;
+        return;
     }
 
-    html += sorted.map(([name, count], i) => `<div class="stats-row"><span>${i+1}. ${name}</span> <strong>${count} miittiä</strong></div>`).join('');
-    el.innerHTML = html;
+    const rows = [...missing]
+        .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+        .map((evt, i) => {
+            const seq = evt.seqNumber ? ` #${evt.seqNumber}` : '';
+            return `<div class="stats-row clickable" onclick="openGuestbook('${evt.key}')"><span>${i + 1}. ${escapeHtml(evt.name || 'Nimetön miitti')}${seq}</span><strong>${escapeHtml(evt.date || '')}</strong></div>`;
+        })
+        .join('');
+
+    el.innerHTML = `${header}${rows}`;
 }
 
 // ... KAIKKI MUUT FUNKTIOT ENNALLAAN ...
