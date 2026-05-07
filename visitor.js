@@ -43,6 +43,8 @@ const visitorTranslations = {
         queueSavedUpdate: "Yhteys katkesi — viestin päivitys tallennettiin jonoon ({0}).",
         queueFlushed: "Jonosta lähetetty kirjauksia: {0}",
         miniVisits: "Käynnit",
+        miniWordsLocal: "Miittikirja sanat",
+        miniWordsNet: "Geocaching.com sanat",
         miniWordsTotal: "Sanat yht.",
         miniWordsAvg: "Keskim. / logi",
         miniWordsMax: "Pisin {0}",
@@ -91,6 +93,8 @@ const visitorTranslations = {
         queueSavedUpdate: "Connection lost — message update queued ({0}).",
         queueFlushed: "Queued entries sent: {0}",
         miniVisits: "Visits",
+        miniWordsLocal: "Guestbook Words",
+        miniWordsNet: "Geocaching.com Words",
         miniWordsTotal: "Words Total",
         miniWordsAvg: "Avg / log",
         miniWordsMax: "Longest {0}",
@@ -139,6 +143,8 @@ const visitorTranslations = {
         queueSavedUpdate: "Uppkopplingen bröts — meddelandeuppdatering köades ({0}).",
         queueFlushed: "Skickat från kö: {0}",
         miniVisits: "Besök",
+        miniWordsLocal: "Gästbok ord",
+        miniWordsNet: "Geocaching.com ord",
         miniWordsTotal: "Ord totalt",
         miniWordsAvg: "Snitt / logg",
         miniWordsMax: "Längsta {0}",
@@ -187,6 +193,8 @@ const visitorTranslations = {
         queueSavedUpdate: "Võrguühendus katkes — sõnumi uuendus pandi järjekorda ({0}).",
         queueFlushed: "Järjekorrast saadetud kirjeid: {0}",
         miniVisits: "Külastused",
+        miniWordsLocal: "Külalisteraamatu sõnad",
+        miniWordsNet: "Geocaching.com sõnad",
         miniWordsTotal: "Sõnu kokku",
         miniWordsAvg: "Keskm. / logi",
         miniWordsMax: "Pikim {0}",
@@ -214,6 +222,20 @@ function normalizeNickname(value) {
 
 function isOrganizerNickname(normNick) {
     return ORGANIZER_NICKNAME_ALIASES.has(normNick || '');
+}
+
+function splitVisitorMessageSources(message) {
+    const raw = (message || '').trim();
+    if (!raw) return { local: '', net: '' };
+
+    const parts = raw.split('|').map(p => p.trim()).filter(Boolean);
+    const netParts = parts.filter(p => p.startsWith('🌐:')).map(p => p.replace(/^🌐:\s*/, '').trim()).filter(Boolean);
+    const localParts = parts.filter(p => !p.startsWith('🌐:')).filter(Boolean);
+
+    return {
+        local: localParts.join(' | ').trim(),
+        net: netParts.join(' | ').trim()
+    };
 }
 
 function levenshteinDistance(a, b) {
@@ -834,6 +856,8 @@ window.handleVisitorSign = async function() {
         nextEvent: null,
         streakCount: 0,
         streakStartLabel: "",
+        messageWordLocalTotal: 0,
+        messageWordNetTotal: 0,
         messageWordTotal: 0,
         messageWordAvg: 0,
         messageWordMax: 0,
@@ -891,7 +915,13 @@ window.handleVisitorSign = async function() {
                         attended = true;
                         const msg = (val.message || '').trim();
                         if (msg) {
-                            const words = msg.split(/\s+/).filter(Boolean).length;
+                            const split = splitVisitorMessageSources(msg);
+                            const localWords = split.local ? split.local.split(/\s+/).filter(Boolean).length : 0;
+                            const netWords = split.net ? split.net.split(/\s+/).filter(Boolean).length : 0;
+                            const words = localWords + netWords;
+
+                            stats.messageWordLocalTotal += localWords;
+                            stats.messageWordNetTotal += netWords;
                             stats.messageWordTotal += words;
                             if (words > stats.messageWordMax) stats.messageWordMax = words;
                         }
@@ -1132,17 +1162,17 @@ function showVisitorModalWithLang(nick, history, stats) {
     miniDashboard.className = 'visitor-mini-dashboard';
     miniDashboard.innerHTML = `
         <div class="visitor-mini-card">
+            <div class="visitor-mini-label">${t.miniWordsLocal || 'Guestbook Words'}</div>
+            <div class="visitor-mini-value">${stats.messageWordLocalTotal || 0}</div>
+        </div>
+        <div class="visitor-mini-card">
+            <div class="visitor-mini-label">${t.miniWordsNet || 'Geocaching.com Words'}</div>
+            <div class="visitor-mini-value">${stats.messageWordNetTotal || 0}</div>
+        </div>
+        <div class="visitor-mini-card">
             <div class="visitor-mini-label">${t.miniWordsTotal || 'Words Total'}</div>
             <div class="visitor-mini-value">${stats.messageWordTotal || 0}</div>
-        </div>
-        <div class="visitor-mini-card">
-            <div class="visitor-mini-label">${t.miniStreak || 'Streak'}</div>
-            <div class="visitor-mini-value">${stats.streakCount || 0}</div>
-        </div>
-        <div class="visitor-mini-card">
-            <div class="visitor-mini-label">${t.miniWordsAvg || 'Avg / log'}</div>
-            <div class="visitor-mini-value">${stats.messageWordAvg || 0}</div>
-            <div class="visitor-mini-subvalue">${longestWordsText}</div>
+            <div class="visitor-mini-subvalue">${t.miniStreak || 'Streak'} ${stats.streakCount || 0}</div>
         </div>
     `;
     badgeEl.insertAdjacentElement('afterend', miniDashboard);

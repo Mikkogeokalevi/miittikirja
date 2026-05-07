@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.24.0 - Visitor hotfixes
+// Versio: 7.24.1 - Visitor source word split
 // ==========================================
 
-const APP_VERSION = "7.24.0";
+const APP_VERSION = "7.24.1";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
