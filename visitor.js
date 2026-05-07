@@ -1,6 +1,6 @@
 // ==========================================
 // MK MIITTIKIRJA - VISITOR.JS
-// Versio: 1.4.2 - Remembered Message + Clear Mini Dashboard
+// Versio: 1.4.3 - Visitor Summary Card Layout
 // ==========================================
 
 const visitorTranslations = {
@@ -48,6 +48,9 @@ const visitorTranslations = {
         miniWordsTotal: "Sanat yht.",
         miniWordsAvg: "Keskim. / logi",
         miniWordsMax: "Pisin {0}",
+        miniWordsSummaryTitle: "Viestiyhteenveto",
+        miniWordsSummaryHelp: "Näet tässä omien kirjauksiesi sanamäärät lähteittäin.",
+        miniStreakNow: "Putki nyt: {0} peräkkäistä miittiä",
         miniStreak: "Putki",
         miniMilestone: "Seuraava",
         miniMilestoneMissing: "Puuttuu {0}",
@@ -98,6 +101,9 @@ const visitorTranslations = {
         miniWordsTotal: "Words Total",
         miniWordsAvg: "Avg / log",
         miniWordsMax: "Longest {0}",
+        miniWordsSummaryTitle: "Message Summary",
+        miniWordsSummaryHelp: "This shows your word counts across your own sign-ins by source.",
+        miniStreakNow: "Current streak: {0} events in a row",
         miniStreak: "Streak",
         miniMilestone: "Next",
         miniMilestoneMissing: "Remaining {0}",
@@ -148,6 +154,9 @@ const visitorTranslations = {
         miniWordsTotal: "Ord totalt",
         miniWordsAvg: "Snitt / logg",
         miniWordsMax: "Längsta {0}",
+        miniWordsSummaryTitle: "Meddelandesammanfattning",
+        miniWordsSummaryHelp: "Här ser du ordmängden i dina egna registreringar per källa.",
+        miniStreakNow: "Nuvarande putke: {0} event i rad",
         miniStreak: "Putke",
         miniMilestone: "Nästa",
         miniMilestoneMissing: "Kvar {0}",
@@ -198,6 +207,9 @@ const visitorTranslations = {
         miniWordsTotal: "Sõnu kokku",
         miniWordsAvg: "Keskm. / logi",
         miniWordsMax: "Pikim {0}",
+        miniWordsSummaryTitle: "Sõnumi kokkuvõte",
+        miniWordsSummaryHelp: "Siit näed oma kirjete sõnade arvu allikate kaupa.",
+        miniStreakNow: "Praegune seeria: {0} järjestikust miitti",
         miniStreak: "Seeria",
         miniMilestone: "Järgmine",
         miniMilestoneMissing: "Puudu {0}",
@@ -1156,23 +1168,34 @@ function showVisitorModalWithLang(nick, history, stats) {
     const oldDashboard = document.getElementById('up-visitor-mini-dashboard');
     if (oldDashboard) oldDashboard.remove();
 
-    const longestWordsText = (t.miniWordsMax || 'Longest {0}').replace('{0}', stats.messageWordMax || 0);
+    const streakLine = (stats.streakCount > 1)
+        ? (t.miniStreakNow || 'Current streak: {0} events in a row').replace('{0}', stats.streakCount)
+        : '';
+
     const miniDashboard = document.createElement('div');
     miniDashboard.id = 'up-visitor-mini-dashboard';
     miniDashboard.className = 'visitor-mini-dashboard';
     miniDashboard.innerHTML = `
-        <div class="visitor-mini-card">
-            <div class="visitor-mini-label">${t.miniWordsLocal || 'Guestbook Words'}</div>
-            <div class="visitor-mini-value">${stats.messageWordLocalTotal || 0}</div>
-        </div>
-        <div class="visitor-mini-card">
-            <div class="visitor-mini-label">${t.miniWordsNet || 'Geocaching.com Words'}</div>
-            <div class="visitor-mini-value">${stats.messageWordNetTotal || 0}</div>
-        </div>
-        <div class="visitor-mini-card">
-            <div class="visitor-mini-label">${t.miniWordsTotal || 'Words Total'}</div>
-            <div class="visitor-mini-value">${stats.messageWordTotal || 0}</div>
-            <div class="visitor-mini-subvalue">${t.miniStreak || 'Streak'} ${stats.streakCount || 0}</div>
+        <div class="visitor-summary-card">
+            <div class="visitor-summary-title">${t.miniWordsSummaryTitle || 'Message Summary'}</div>
+            <div class="visitor-summary-help">${t.miniWordsSummaryHelp || 'This shows your word counts across your own sign-ins by source.'}</div>
+
+            <div class="visitor-summary-metrics">
+                <div class="visitor-summary-metric">
+                    <span class="visitor-summary-metric-label">${t.miniWordsLocal || 'Guestbook Words'}</span>
+                    <span class="visitor-summary-metric-value">${stats.messageWordLocalTotal || 0}</span>
+                </div>
+                <div class="visitor-summary-metric">
+                    <span class="visitor-summary-metric-label">${t.miniWordsNet || 'Geocaching.com Words'}</span>
+                    <span class="visitor-summary-metric-value">${stats.messageWordNetTotal || 0}</span>
+                </div>
+            </div>
+
+            <div class="visitor-summary-line">
+                ${t.miniWordsTotal || 'Words Total'}: <strong>${stats.messageWordTotal || 0}</strong>
+                · ${t.miniWordsAvg || 'Avg / log'}: <strong>${stats.messageWordAvg || 0}</strong>
+            </div>
+            ${streakLine ? `<div class="visitor-summary-line visitor-summary-streak">${streakLine}</div>` : ''}
         </div>
     `;
     badgeEl.insertAdjacentElement('afterend', miniDashboard);

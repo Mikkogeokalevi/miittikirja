@@ -456,36 +456,73 @@ body.theme-light .card.archived {
 }
 
 .visitor-mini-dashboard {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(80px, 1fr));
-    gap: 8px;
+    display: block;
     margin: 10px 0 12px 0;
 }
 
-.visitor-mini-card {
+.visitor-summary-card {
     border: 1px dashed var(--border-color);
-    border-radius: 8px;
+    border-radius: 10px;
     background: var(--highlight-bg);
-    padding: 8px;
-    text-align: center;
+    padding: 12px;
 }
 
-.visitor-mini-label {
-    font-size: 0.75em;
+.visitor-summary-title {
+    font-size: 0.95em;
+    font-weight: 700;
+    color: var(--header-color);
+}
+
+.visitor-summary-help {
+    font-size: 0.82em;
+    color: #888;
+    margin-top: 3px;
+    line-height: 1.35;
+}
+
+.visitor-summary-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(110px, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.visitor-summary-metric {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--card-bg, #ffffff) 75%, transparent);
+    padding: 8px;
+}
+
+.visitor-summary-metric-label {
+    display: block;
+    font-size: 0.78em;
     color: #888;
     margin-bottom: 4px;
 }
 
-.visitor-mini-value {
-    font-size: 1.05em;
-    font-weight: bold;
+.visitor-summary-metric-value {
+    display: block;
+    font-size: 1.1em;
+    font-weight: 700;
     color: var(--header-color);
 }
 
-.visitor-mini-subvalue {
-    font-size: 0.75em;
-    color: #888;
-    margin-top: 4px;
+.visitor-summary-line {
+    margin-top: 10px;
+    font-size: 0.88em;
+    color: var(--text-color);
+}
+
+.visitor-summary-streak {
+    margin-top: 6px;
+    color: var(--secondary-color);
+}
+
+@media (max-width: 520px) {
+    .visitor-summary-metrics {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Kirjauksen jälkeinen profiilimodaali (visitor) */

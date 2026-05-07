@@ -1,9 +1,9 @@
 // ==========================================
 // MK MIITTIKIRJA - APP.JS
-// Versio: 7.24.1 - Visitor source word split
+// Versio: 7.24.2 - Visitor summary card UI
 // ==========================================
 
-const APP_VERSION = "7.24.1";
+const APP_VERSION = "7.24.2";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
