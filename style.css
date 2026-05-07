@@ -482,6 +482,12 @@ body.theme-light .card.archived {
     color: var(--header-color);
 }
 
+.visitor-mini-subvalue {
+    font-size: 0.75em;
+    color: #888;
+    margin-top: 4px;
+}
+
 /* Kirjauksen jälkeinen profiilimodaali (visitor) */
 #user-profile-modal .modal-content {
     background: linear-gradient(180deg, var(--vv-modal-bg-start) 0%, var(--vv-modal-bg-end) 100%);

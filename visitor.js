@@ -1,6 +1,6 @@
 // ==========================================
 // MK MIITTIKIRJA - VISITOR.JS
-// Versio: 1.4.1 - Fuzzy Nickname Assist
+// Versio: 1.4.2 - Remembered Message + Clear Mini Dashboard
 // ==========================================
 
 const visitorTranslations = {
@@ -43,10 +43,12 @@ const visitorTranslations = {
         queueSavedUpdate: "Yhteys katkesi — viestin päivitys tallennettiin jonoon ({0}).",
         queueFlushed: "Jonosta lähetetty kirjauksia: {0}",
         miniVisits: "Käynnit",
+        miniReturns: "Paluukerrat",
         miniStreak: "Putki",
         miniMilestone: "Seuraava",
+        miniMilestoneMissing: "Puuttuu {0}",
         fuzzyDidYouMean: "Tarkoititko: {0}?",
-        rememberedPrefillStatus: "Muistetut tiedot lisätty kenttiin. Tarkista ja paina TALLENNA KÄYNTI."
+        rememberedPrefillStatus: "Muistetut tiedot (myös viesti) lisätty kenttiin. Tarkista ja paina TALLENNA KÄYNTI."
     },
     en: {
         title: "Mikkokalevi's Digital Guestbook",
@@ -87,10 +89,12 @@ const visitorTranslations = {
         queueSavedUpdate: "Connection lost — message update queued ({0}).",
         queueFlushed: "Queued entries sent: {0}",
         miniVisits: "Visits",
+        miniReturns: "Return Visits",
         miniStreak: "Streak",
         miniMilestone: "Next",
+        miniMilestoneMissing: "Remaining {0}",
         fuzzyDidYouMean: "Did you mean: {0}?",
-        rememberedPrefillStatus: "Remembered profile loaded into fields. Review and press SIGN LOGBOOK."
+        rememberedPrefillStatus: "Remembered profile (including message) loaded into fields. Review and press SIGN LOGBOOK."
     },
     sv: {
         title: "Mikkokalevis Digitala Gästbok",
@@ -131,10 +135,12 @@ const visitorTranslations = {
         queueSavedUpdate: "Uppkopplingen bröts — meddelandeuppdatering köades ({0}).",
         queueFlushed: "Skickat från kö: {0}",
         miniVisits: "Besök",
+        miniReturns: "Återbesök",
         miniStreak: "Putke",
         miniMilestone: "Nästa",
+        miniMilestoneMissing: "Kvar {0}",
         fuzzyDidYouMean: "Menade du: {0}?",
-        rememberedPrefillStatus: "Sparad profil ifylld i fälten. Kontrollera och tryck SIGNERA LOGGBOKEN."
+        rememberedPrefillStatus: "Sparad profil (även meddelande) ifylld i fälten. Kontrollera och tryck SIGNERA LOGGBOKEN."
     },
     et: {
         title: "Mikkokalevi digitaalne külalisteraamat",
@@ -175,10 +181,12 @@ const visitorTranslations = {
         queueSavedUpdate: "Võrguühendus katkes — sõnumi uuendus pandi järjekorda ({0}).",
         queueFlushed: "Järjekorrast saadetud kirjeid: {0}",
         miniVisits: "Külastused",
+        miniReturns: "Tagasikülastused",
         miniStreak: "Seeria",
         miniMilestone: "Järgmine",
+        miniMilestoneMissing: "Puudu {0}",
         fuzzyDidYouMean: "Kas mõtlesid: {0}?",
-        rememberedPrefillStatus: "Salvestatud profiil täideti väljadele. Kontrolli ja vajuta SALVESTA KÜLASTUS."
+        rememberedPrefillStatus: "Salvestatud profiil (koos sõnumiga) täideti väljadele. Kontrolli ja vajuta SALVESTA KÜLASTUS."
     }
 };
 
@@ -397,13 +405,14 @@ function writeJsonToStorage(key, value) {
 }
 
 function getSavedVisitorProfile() {
-    return readJsonFromStorage(VISITOR_PROFILE_KEY, { nickname: '', from: '' });
+    return readJsonFromStorage(VISITOR_PROFILE_KEY, { nickname: '', from: '', message: '' });
 }
 
-function saveVisitorProfile(nickname, from) {
+function saveVisitorProfile(nickname, from, message) {
     writeJsonToStorage(VISITOR_PROFILE_KEY, {
         nickname: (nickname || '').trim(),
-        from: (from || '').trim()
+        from: (from || '').trim(),
+        message: (message || '').trim()
     });
 }
 
@@ -516,6 +525,7 @@ window.useRememberedVisitorProfile = async function() {
 
     if (nickEl) nickEl.value = profile.nickname;
     if (fromEl) fromEl.value = profile.from || '';
+    if (msgEl) msgEl.value = profile.message || '';
     if (msgEl && msgEl.classList) msgEl.classList.remove('input-error');
     if (errorEl) {
         errorEl.innerText = '';
@@ -725,7 +735,7 @@ window.handleVisitorSign = async function() {
         return;
     }
 
-    saveVisitorProfile(nick, fromValue);
+    saveVisitorProfile(nick, fromValue, messageValue);
     if (typeof window.renderVisitorQuickActions === 'function') {
         window.renderVisitorQuickActions();
     }
@@ -1097,13 +1107,15 @@ function showVisitorModalWithLang(nick, history, stats) {
     const milestoneBase = Math.max(10, Math.ceil(stats.totalVisits / 10) * 10);
     const nextMilestone = milestoneBase <= stats.totalVisits ? milestoneBase + 10 : milestoneBase;
     const missingToMilestone = Math.max(0, nextMilestone - stats.totalVisits);
+    const returnVisits = Math.max(0, stats.totalVisits - 1);
+    const milestoneMissingText = (t.miniMilestoneMissing || 'Remaining {0}').replace('{0}', missingToMilestone);
     const miniDashboard = document.createElement('div');
     miniDashboard.id = 'up-visitor-mini-dashboard';
     miniDashboard.className = 'visitor-mini-dashboard';
     miniDashboard.innerHTML = `
         <div class="visitor-mini-card">
-            <div class="visitor-mini-label">${t.miniVisits || 'Visits'}</div>
-            <div class="visitor-mini-value">${stats.totalVisits}</div>
+            <div class="visitor-mini-label">${t.miniReturns || 'Return Visits'}</div>
+            <div class="visitor-mini-value">${returnVisits}</div>
         </div>
         <div class="visitor-mini-card">
             <div class="visitor-mini-label">${t.miniStreak || 'Streak'}</div>
@@ -1111,7 +1123,8 @@ function showVisitorModalWithLang(nick, history, stats) {
         </div>
         <div class="visitor-mini-card">
             <div class="visitor-mini-label">${t.miniMilestone || 'Next'}</div>
-            <div class="visitor-mini-value">${nextMilestone} (-${missingToMilestone})</div>
+            <div class="visitor-mini-value">${nextMilestone}</div>
+            <div class="visitor-mini-subvalue">${milestoneMissingText}</div>
         </div>
     `;
     badgeEl.insertAdjacentElement('afterend', miniDashboard);
