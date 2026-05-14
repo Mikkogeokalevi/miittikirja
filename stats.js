@@ -1,12 +1,146 @@
 // ==========================================
 // STATS.JS - Tilastojen laskenta ja hienot graafit
-// Versio: 7.10.0 - Retention + top-kävijätrendi
+// Versio: 7.11.0 - Export my events
 // ==========================================
 
 let allStatsData = {
     events: [],
     attendees: {}
+
 };
+
+function initMyEventsExportBindings() {
+    const exportBtn = document.getElementById('btn-export-my-events');
+    if (exportBtn && !exportBtn.dataset.bound) {
+        exportBtn.onclick = exportMyMiittiEventsCsv;
+        exportBtn.dataset.bound = '1';
+    }
+
+    const exportNamesBtn = document.getElementById('btn-export-my-event-names');
+    if (exportNamesBtn && !exportNamesBtn.dataset.bound) {
+        exportNamesBtn.onclick = exportMyMiittiEventNamesTxt;
+        exportNamesBtn.dataset.bound = '1';
+    }
+}
+
+function exportMyMiittiEventsCsv() {
+    const events = Array.isArray(allStatsData.events) ? allStatsData.events : [];
+    if (!events.length) {
+        alert('Ei ladattavia miittejä. Avaa tilastot ensin.');
+        return;
+    }
+
+    const miittiEvents = [...events]
+        .filter(e => ((e.type || 'miitti').toLowerCase() === 'miitti'))
+        .filter(e => !(e.name || '').includes('/ PERUTTU /'))
+        .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+
+    if (!miittiEvents.length) {
+        alert('Ei ladattavia miittejä (tyyppi=miitti).');
+        return;
+    }
+
+    const header = [
+        'Pvm',
+        'Miitti',
+        'Tyyppi',
+        'Juokseva nro',
+        'Kävijöitä (uniikit)',
+        'Kirjauksia',
+        'Miittiviesti sanat',
+        'Geocaching.com sanat',
+        'Sanat yhteensä',
+        'GC-koodi',
+        'Paikka',
+        'Koordinaatit'
+    ];
+
+    const lines = [header.map(csvEscape).join(';')];
+    miittiEvents.forEach(evt => {
+        const logs = Array.isArray(evt.logs) ? evt.logs : [];
+
+        let localWords = 0;
+        let netWords = 0;
+        logs.forEach(log => {
+            const sources = splitMessageSources(sanitizeMessageForStats(log?.message || ''));
+            localWords += countWords(sources.local);
+            netWords += countWords(sources.net);
+        });
+
+        const coords = evt.coords
+            ? `${evt.coords.lat ?? ''},${evt.coords.lng ?? ''}`
+            : (evt.lat && evt.lng ? `${evt.lat},${evt.lng}` : '');
+
+        lines.push([
+            evt.date || '',
+            evt.name || '',
+            (evt.type || 'miitti'),
+            (evt.seqNumber ?? ''),
+            (evt.attendeeCount ?? ''),
+            logs.length,
+            localWords,
+            netWords,
+            (localWords + netWords),
+            (evt.gc || evt.gcCode || ''),
+            (evt.location || evt.loc || ''),
+            coords
+        ].map(csvEscape).join(';'));
+    });
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+    const fileName = `miittikirja_omat_miitit_${stamp}.csv`;
+
+    const blob = new Blob(["\uFEFF" + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function exportMyMiittiEventNamesTxt() {
+    const events = Array.isArray(allStatsData.events) ? allStatsData.events : [];
+    if (!events.length) {
+        alert('Ei ladattavia miittejä. Avaa tilastot ensin.');
+        return;
+    }
+
+    const miittiEvents = [...events]
+        .filter(e => ((e.type || 'miitti').toLowerCase() === 'miitti'))
+        .filter(e => !(e.name || '').includes('/ PERUTTU /'))
+        .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+
+    const names = miittiEvents
+        .map(e => (e.name || '').trim())
+        .filter(Boolean);
+
+    if (!names.length) {
+        alert('Ei ladattavia nimiä.');
+        return;
+    }
+
+    const text = names.join(', ');
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+    const fileName = `miittikirja_omat_miitit_nimet_${stamp}.txt`;
+
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
 
 let chartInstances = {};
 let mapInstance = null;
@@ -70,6 +204,7 @@ async function initStats() {
         populateYearFilter(events);
         updateStatsView(events);
         initUserLogSearchBindings();
+        initMyEventsExportBindings();
         runUserLogSearch(window.currentFilteredData || events);
 
     } catch (e) {

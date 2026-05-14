@@ -305,7 +305,16 @@
 
         <div id="tab-lists" class="tab-content">
             <div class="card">
-                <h3>👥 Kävijäluettelo</h3>
+                <h3>� Lataa omat miitit</h3>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button id="btn-export-my-events" class="btn btn-gray btn-small" style="min-width:160px;">Lataa kaikki tiedot (CSV)</button>
+                    <button id="btn-export-my-event-names" class="btn btn-gray btn-small" style="min-width:160px;">Lataa nimet (TXT)</button>
+                </div>
+                <small style="color:#888; display:block; margin-top:6px;">* Mukana ovat kaikki tapahtumat jotka löytyvät omasta miittikirjastasi.</small>
+            </div>
+
+            <div class="card">
+                <h3>�👥 Kävijäluettelo</h3>
                 <div id="stats-user-registry" class="scroll-box" style="max-height: 400px;"></div>
                 <small style="color:#888;">* Näytetään max 50 aktiivisinta haun perusteella</small>
             </div>
