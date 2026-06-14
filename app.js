@@ -672,6 +672,12 @@ function loadEvents() {
         const summaryUserMiittiFuture = document.getElementById('summary-user-miitti-future');
         if (summaryUserMiittiFuture) summaryUserMiittiFuture.innerText = `Tulevat (${futureMiittiCount})`;
 
+        const pastMiittiCount = pastEvents.filter(e => (e.type || 'miitti').toLowerCase() === 'miitti').length;
+        const summaryMiittiPast = document.getElementById('summary-miitti-past');
+        if (summaryMiittiPast) summaryMiittiPast.innerText = `Menneet (${pastMiittiCount})`;
+        const summaryUserMiittiPast = document.getElementById('summary-user-miitti-past');
+        if (summaryUserMiittiPast) summaryUserMiittiPast.innerText = `Menneet (${pastMiittiCount})`;
+
         // Yhdistetään renderöintijonoon
         const displayQueue = [...futureEvents, ...pastEvents];
 
