@@ -666,6 +666,12 @@ function loadEvents() {
         // Menneet: Ennen tätä päivää -> LASKEVA järjestys (Eilinen, Viime vuonna...)
         const pastEvents = events.filter(e => e.date < todayStr).reverse();
 
+        const futureMiittiCount = futureEvents.filter(e => (e.type || 'miitti').toLowerCase() === 'miitti').length;
+        const summaryMiittiFuture = document.getElementById('summary-miitti-future');
+        if (summaryMiittiFuture) summaryMiittiFuture.innerText = `Tulevat (${futureMiittiCount})`;
+        const summaryUserMiittiFuture = document.getElementById('summary-user-miitti-future');
+        if (summaryUserMiittiFuture) summaryUserMiittiFuture.innerText = `Tulevat (${futureMiittiCount})`;
+
         // Yhdistetään renderöintijonoon
         const displayQueue = [...futureEvents, ...pastEvents];
 
