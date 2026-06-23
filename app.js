@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.24.7";
+const APP_VERSION = "7.24.8";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -336,6 +336,11 @@ function renderGuestbookSummary(eventKey, logs) {
     const box = document.getElementById('gb-summary');
     if (!box) return;
 
+    const prevMainOpen = !!document.getElementById('gb-summary-details')?.open;
+    const prevFirstOpen = !!document.getElementById('gb-summary-first')?.open;
+    const prevReturningOpen = !!document.getElementById('gb-summary-returning')?.open;
+    const prevLocationsOpen = !!document.getElementById('gb-summary-locations')?.open;
+
     const safeLogs = Array.isArray(logs) ? logs : [];
     if (safeLogs.length === 0) {
         box.style.display = 'none';
@@ -414,35 +419,53 @@ function renderGuestbookSummary(eventKey, logs) {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5);
 
+    const mainOpen = prevMainOpen;
+    const firstOpen = prevFirstOpen;
+    const returningOpen = prevReturningOpen;
+    const locationsOpen = prevLocationsOpen;
+
     box.innerHTML = `
-        <h3 style="margin-top:0;">📌 Yhteenveto</h3>
-        <div style="display:grid; grid-template-columns: 1fr auto; gap:6px; font-size:0.95em;">
-            <div>Uniikit kävijät:</div><div style="text-align:right;"><strong>${uniqueCount}</strong></div>
-            <div>Ensikertalaiset:</div><div style="text-align:right;"><strong>${firstTimers.length}</strong></div>
-            <div>Palaavat:</div><div style="text-align:right;"><strong>${returning.length}</strong></div>
-            <div>Viestien keskipituus:</div><div style="text-align:right;"><strong>${avgWords}</strong> sanaa</div>
-        </div>
+        <details id="gb-summary-details" ${mainOpen ? 'open' : ''}>
+            <summary style="cursor:pointer; font-weight:bold;">
+                📌 Yhteenveto —
+                <span style="font-weight:normal;">
+                    Uniikit <strong>${uniqueCount}</strong>
+                    · Ensikertalaiset <strong>${firstTimers.length}</strong>
+                    · Palaavat <strong>${returning.length}</strong>
+                    · Avg <strong>${avgWords}</strong> sanaa
+                </span>
+            </summary>
 
-        ${firstTimerPreview.length ? `
-            <div style="margin-top:10px; border-top:1px dashed var(--dotted-border); padding-top:10px;">
-                <div style="font-weight:bold; margin-bottom:6px;">✨ Ensikertalaiset (max 10)</div>
-                <div style="font-size:0.95em; color:#555;">${firstTimerPreview.join(', ')}${firstTimerOverflow > 0 ? ` … (+${firstTimerOverflow})` : ''}</div>
-            </div>
-        ` : ''}
+            <div style="margin-top:10px;">
+                <div style="display:grid; grid-template-columns: 1fr auto; gap:6px; font-size:0.95em;">
+                    <div>Uniikit kävijät:</div><div style="text-align:right;"><strong>${uniqueCount}</strong></div>
+                    <div>Ensikertalaiset:</div><div style="text-align:right;"><strong>${firstTimers.length}</strong></div>
+                    <div>Palaavat:</div><div style="text-align:right;"><strong>${returning.length}</strong></div>
+                    <div>Viestien keskipituus:</div><div style="text-align:right;"><strong>${avgWords}</strong> sanaa</div>
+                </div>
 
-        ${returningTop.length ? `
-            <div style="margin-top:10px; border-top:1px dashed var(--dotted-border); padding-top:10px;">
-                <div style="font-weight:bold; margin-bottom:6px;">🏆 Palaavat (top 10 käyntimäärä)</div>
-                ${returningTop.map(r => `<div class="stats-row"><span>${r.name}</span><strong>${r.count}</strong></div>`).join('')}
-            </div>
-        ` : ''}
+                ${firstTimerPreview.length ? `
+                    <details id="gb-summary-first" style="margin-top:10px;" ${firstOpen ? 'open' : ''}>
+                        <summary style="cursor:pointer; font-weight:bold;">✨ Ensikertalaiset (max 10)</summary>
+                        <div style="margin-top:6px; font-size:0.95em; color:#555;">${firstTimerPreview.join(', ')}${firstTimerOverflow > 0 ? ` … (+${firstTimerOverflow})` : ''}</div>
+                    </details>
+                ` : ''}
 
-        ${topLocations.length ? `
-            <div style="margin-top:10px; border-top:1px dashed var(--dotted-border); padding-top:10px;">
-                <div style="font-weight:bold; margin-bottom:6px;">🏘️ Top paikkakunnat</div>
-                ${topLocations.map(([loc, c]) => `<div class="stats-row"><span>${loc}</span><strong>${c}</strong></div>`).join('')}
+                ${returningTop.length ? `
+                    <details id="gb-summary-returning" style="margin-top:10px;" ${returningOpen ? 'open' : ''}>
+                        <summary style="cursor:pointer; font-weight:bold;">🏆 Palaavat (top 10 käyntimäärä)</summary>
+                        <div style="margin-top:6px;">${returningTop.map(r => `<div class="stats-row"><span>${r.name}</span><strong>${r.count}</strong></div>`).join('')}</div>
+                    </details>
+                ` : ''}
+
+                ${topLocations.length ? `
+                    <details id="gb-summary-locations" style="margin-top:10px;" ${locationsOpen ? 'open' : ''}>
+                        <summary style="cursor:pointer; font-weight:bold;">🏘️ Top paikkakunnat</summary>
+                        <div style="margin-top:6px;">${topLocations.map(([loc, c]) => `<div class="stats-row"><span>${loc}</span><strong>${c}</strong></div>`).join('')}</div>
+                    </details>
+                ` : ''}
             </div>
-        ` : ''}
+        </details>
     `;
     box.style.display = 'block';
 }
