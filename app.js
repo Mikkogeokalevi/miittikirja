@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.24.6";
+const APP_VERSION = "7.24.7";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -38,6 +38,8 @@ let wakeLock = null;
 
 let nicknameFirstSeenEventKeyIndex = null;
 let nicknameFirstSeenIndexUid = null;
+let nicknameTotalVisitCountIndex = null;
+let nicknameTotalVisitIndexUid = null;
 
 // Tilamuuttuja live-päivityksille
 let lastAttendeeCount = null;
@@ -273,16 +275,24 @@ function normalizeNicknameStats(name) {
 
 async function ensureNicknameFirstSeenIndex() {
     if (!currentUser || !currentUser.uid) return null;
-    if (nicknameFirstSeenEventKeyIndex && nicknameFirstSeenIndexUid === currentUser.uid) {
+    if (
+        nicknameFirstSeenEventKeyIndex &&
+        nicknameFirstSeenIndexUid === currentUser.uid &&
+        nicknameTotalVisitCountIndex &&
+        nicknameTotalVisitIndexUid === currentUser.uid
+    ) {
         return nicknameFirstSeenEventKeyIndex;
     }
 
     nicknameFirstSeenEventKeyIndex = {};
     nicknameFirstSeenIndexUid = currentUser.uid;
+    nicknameTotalVisitCountIndex = {};
+    nicknameTotalVisitIndexUid = currentUser.uid;
 
     try {
         const snap = await db.ref('miitit/' + currentUser.uid + '/logs').once('value');
         const index = {};
+        const totalVisitCount = {};
 
         // Käydään eventit aikajärjestyksessä (vanhin -> uusin)
         const orderedEvents = Array.isArray(globalEventList) ? globalEventList : [];
@@ -293,6 +303,8 @@ async function ensureNicknameFirstSeenIndex() {
             const eventLogsSnap = snap.child(eventKey);
             if (!eventLogsSnap.exists()) return;
 
+            const seenInThisEvent = new Set();
+
             eventLogsSnap.forEach(child => {
                 const nickRaw = (child.val()?.nickname || '').trim();
                 const norm = normalizeNicknameStats(nickRaw);
@@ -300,14 +312,22 @@ async function ensureNicknameFirstSeenIndex() {
                 if (!index[norm]) {
                     index[norm] = eventKey;
                 }
+
+                if (!seenInThisEvent.has(norm)) {
+                    seenInThisEvent.add(norm);
+                    totalVisitCount[norm] = (totalVisitCount[norm] || 0) + 1;
+                }
             });
         });
 
         nicknameFirstSeenEventKeyIndex = index;
+        nicknameTotalVisitCountIndex = totalVisitCount;
         return nicknameFirstSeenEventKeyIndex;
     } catch (e) {
         nicknameFirstSeenEventKeyIndex = null;
         nicknameFirstSeenIndexUid = null;
+        nicknameTotalVisitCountIndex = null;
+        nicknameTotalVisitIndexUid = null;
         return null;
     }
 }
@@ -334,11 +354,30 @@ function renderGuestbookSummary(eventKey, logs) {
     });
     const uniqueCount = uniqueMap.size;
 
+    // Keskimääräinen viestin pituus (sanat) tässä miitissä
+    let msgCount = 0;
+    let wordSum = 0;
+    safeLogs.forEach(l => {
+        const msg = (l?.message || '').trim();
+        if (!msg) return;
+        const words = msg.split(/\s+/).filter(Boolean).length;
+        if (words <= 0) return;
+        msgCount += 1;
+        wordSum += words;
+    });
+    const avgWords = msgCount > 0 ? Math.round((wordSum / msgCount) * 10) / 10 : 0;
+
     const returning = [];
     const firstTimers = [];
 
     const index = nicknameFirstSeenEventKeyIndex;
-    if (!index || nicknameFirstSeenIndexUid !== currentUser?.uid) {
+    const totals = nicknameTotalVisitCountIndex;
+    if (
+        !index ||
+        nicknameFirstSeenIndexUid !== currentUser?.uid ||
+        !totals ||
+        nicknameTotalVisitIndexUid !== currentUser?.uid
+    ) {
         // Rakennetaan indeksi taustalla ja päivitetään yhteenveto sen jälkeen
         ensureNicknameFirstSeenIndex().then(() => {
             renderGuestbookSummary(eventKey, logs);
@@ -353,6 +392,17 @@ function renderGuestbookSummary(eventKey, logs) {
             }
         });
     }
+
+    const firstTimerPreview = firstTimers.slice(0, 10);
+    const firstTimerOverflow = Math.max(0, firstTimers.length - firstTimerPreview.length);
+
+    const returningTop = (Array.isArray(returning) ? returning : [])
+        .map(name => {
+            const norm = normalizeNicknameStats(name);
+            return { name, count: (totals && norm) ? (totals[norm] || 0) : 0 };
+        })
+        .sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name, 'fi'))
+        .slice(0, 10);
 
     const locationCounts = {};
     uniqueMap.forEach(val => {
@@ -370,7 +420,23 @@ function renderGuestbookSummary(eventKey, logs) {
             <div>Uniikit kävijät:</div><div style="text-align:right;"><strong>${uniqueCount}</strong></div>
             <div>Ensikertalaiset:</div><div style="text-align:right;"><strong>${firstTimers.length}</strong></div>
             <div>Palaavat:</div><div style="text-align:right;"><strong>${returning.length}</strong></div>
+            <div>Viestien keskipituus:</div><div style="text-align:right;"><strong>${avgWords}</strong> sanaa</div>
         </div>
+
+        ${firstTimerPreview.length ? `
+            <div style="margin-top:10px; border-top:1px dashed var(--dotted-border); padding-top:10px;">
+                <div style="font-weight:bold; margin-bottom:6px;">✨ Ensikertalaiset (max 10)</div>
+                <div style="font-size:0.95em; color:#555;">${firstTimerPreview.join(', ')}${firstTimerOverflow > 0 ? ` … (+${firstTimerOverflow})` : ''}</div>
+            </div>
+        ` : ''}
+
+        ${returningTop.length ? `
+            <div style="margin-top:10px; border-top:1px dashed var(--dotted-border); padding-top:10px;">
+                <div style="font-weight:bold; margin-bottom:6px;">🏆 Palaavat (top 10 käyntimäärä)</div>
+                ${returningTop.map(r => `<div class="stats-row"><span>${r.name}</span><strong>${r.count}</strong></div>`).join('')}
+            </div>
+        ` : ''}
+
         ${topLocations.length ? `
             <div style="margin-top:10px; border-top:1px dashed var(--dotted-border); padding-top:10px;">
                 <div style="font-weight:bold; margin-bottom:6px;">🏘️ Top paikkakunnat</div>
