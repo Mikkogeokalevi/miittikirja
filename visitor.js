@@ -868,6 +868,10 @@ window.handleVisitorSign = async function() {
         nextEvent: null,
         streakCount: 0,
         streakStartLabel: "",
+        rankPosition: 0,
+        rankTotal: 0,
+        rankPercentile: 0,
+        topBuddies: [],
         messageWordLocalTotal: 0,
         messageWordNetTotal: 0,
         messageWordTotal: 0,
@@ -916,14 +920,24 @@ window.handleVisitorSign = async function() {
         userHistory = [];
         const nickNorm = normalizeNickname(nick);
 
+        const eventAttendees = {};
+        const visitCountByNick = {};
+
         logsSnap.forEach(evtLogs => {
             const eventKey = evtLogs.key;
             const evtData = eventsMap[eventKey];
             if (evtData) {
                 let attended = false;
+
+                const attendees = new Set();
                 evtLogs.forEach(log => {
                     const val = log.val();
-                    if (val && val.nickname && normalizeNickname(val.nickname) === nickNorm) {
+                    if (!val || !val.nickname) return;
+                    const ln = normalizeNickname(val.nickname);
+                    if (!ln) return;
+                    attendees.add(ln);
+
+                    if (ln === nickNorm) {
                         attended = true;
                         const msg = (val.message || '').trim();
                         if (msg) {
@@ -939,6 +953,13 @@ window.handleVisitorSign = async function() {
                         }
                     }
                 });
+
+                if (attendees.size > 0) {
+                    eventAttendees[eventKey] = attendees;
+                    attendees.forEach(n => {
+                        visitCountByNick[n] = (visitCountByNick[n] || 0) + 1;
+                    });
+                }
                 if (attended) userHistory.push(evtData);
             }
         });
@@ -950,6 +971,12 @@ window.handleVisitorSign = async function() {
                 if (currentEventDate && evt.date > currentEventDate) return;
                 if (!userHistory.some(h => h.key === evt.key)) {
                     userHistory.push(evt);
+
+                    const set = eventAttendees[evt.key];
+                    if (set && !set.has(nickNorm)) {
+                        set.add(nickNorm);
+                        visitCountByNick[nickNorm] = (visitCountByNick[nickNorm] || 0) + 1;
+                    }
                 }
             });
         }
@@ -961,6 +988,31 @@ window.handleVisitorSign = async function() {
         stats.messageWordAvg = stats.totalVisits > 0
             ? Math.round((stats.messageWordTotal / stats.totalVisits) * 10) / 10
             : 0;
+
+        const counts = Object.entries(visitCountByNick)
+            .filter(([k]) => !!k)
+            .sort((a, b) => b[1] - a[1]);
+        stats.rankTotal = counts.length;
+        if (stats.rankTotal > 0) {
+            const position = counts.findIndex(([k]) => k === nickNorm);
+            stats.rankPosition = position >= 0 ? position + 1 : stats.rankTotal;
+            stats.rankPercentile = Math.round((1 - ((stats.rankPosition - 1) / stats.rankTotal)) * 100);
+        }
+
+        const buddyCounts = {};
+        userHistory.forEach(evt => {
+            const set = eventAttendees[evt.key];
+            if (!set) return;
+            set.forEach(other => {
+                if (!other || other === nickNorm) return;
+                if (isOrganizerNickname(other)) return;
+                buddyCounts[other] = (buddyCounts[other] || 0) + 1;
+            });
+        });
+        stats.topBuddies = Object.entries(buddyCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, count]) => ({ name, count }));
 
         const currentEvent = eventsMap[eventId];
         if (currentEvent && typeof currentEvent.specialMessage === 'string') {
@@ -1199,6 +1251,31 @@ function showVisitorModalWithLang(nick, history, stats) {
         </div>
     `;
     badgeEl.insertAdjacentElement('afterend', miniDashboard);
+
+    const oldSocialCard = document.getElementById('up-visitor-social-card');
+    if (oldSocialCard) oldSocialCard.remove();
+    const hasRank = (stats.rankTotal || 0) > 0 && (stats.rankPosition || 0) > 0;
+    const hasBuddies = Array.isArray(stats.topBuddies) && stats.topBuddies.length > 0;
+    if (hasRank || hasBuddies) {
+        const social = document.createElement('div');
+        social.id = 'up-visitor-social-card';
+        social.className = 'visitor-special-message';
+        const rankLine = hasRank
+            ? `<div style="margin-top:6px;">🏅 Kävijärank: <strong>${stats.rankPosition}</strong> / ${stats.rankTotal} (top ${stats.rankPercentile}%)</div>`
+            : '';
+        const buddyHtml = hasBuddies
+            ? `<div style="margin-top:10px;">
+                    <div style="font-weight:bold; margin-bottom:6px;">🤝 Useimmin samoissa miiteissä</div>
+                    ${stats.topBuddies.map(b => `<div class="stats-row"><span>${b.name}</span><strong>${b.count}</strong></div>`).join('')}
+               </div>`
+            : '';
+        social.innerHTML = `
+            <div class="visitor-special-message-title">📊 Sinun yhteisötilastot</div>
+            ${rankLine}
+            ${buddyHtml}
+        `;
+        badgeEl.insertAdjacentElement('afterend', social);
+    }
 
     if (stats.specialMessage) {
         const specialBox = document.createElement('div');
