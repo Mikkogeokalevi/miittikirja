@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.24.4";
+const APP_VERSION = "7.24.5";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -384,6 +384,9 @@ if(btnToggleQr) {
         const area = document.getElementById('qr-display-area');
         const container = document.getElementById('qrcode-container');
         const linkText = document.getElementById('qr-link-text');
+        const linkTools = document.getElementById('qr-link-tools');
+        const linkInput = document.getElementById('qr-link-input');
+        const copyBtn = document.getElementById('btn-copy-qr-link');
         
         if (area.style.display === 'block') {
             area.style.display = 'none';
@@ -395,7 +398,50 @@ if(btnToggleQr) {
         const baseUrl = window.location.href.split('?')[0];
         const guestUrl = `${baseUrl}?event=${currentEventId}&uid=${ownerUid}`;
         
-        if(linkText) linkText.innerText = guestUrl;
+        if(linkText) {
+            linkText.innerText = guestUrl;
+            linkText.style.cursor = 'pointer';
+            linkText.title = 'Avaa linkki uuteen välilehteen';
+            linkText.onclick = () => window.open(guestUrl, '_blank');
+        }
+
+        if (linkInput) {
+            linkInput.value = guestUrl;
+            linkInput.onclick = () => linkInput.select();
+        }
+
+        if (linkTools) {
+            linkTools.style.display = 'block';
+        }
+
+        if (copyBtn && !copyBtn.dataset.bound) {
+            copyBtn.dataset.bound = '1';
+            copyBtn.onclick = async () => {
+                try {
+                    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                        await navigator.clipboard.writeText(guestUrl);
+                    } else {
+                        const ta = document.createElement('textarea');
+                        ta.value = guestUrl;
+                        ta.setAttribute('readonly', '');
+                        ta.style.position = 'fixed';
+                        ta.style.left = '-9999px';
+                        ta.style.top = '0';
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                    }
+                    copyBtn.innerText = '✅ Kopioitu!';
+                    setTimeout(() => {
+                        copyBtn.innerText = '📋 Kopioi linkki';
+                    }, 2000);
+                } catch (e) {
+                    alert('Kopiointi epäonnistui. Voit valita linkin kentästä ja kopioida käsin.');
+                }
+            };
+        }
+
         window.setQrLanguage(currentQrLang);
 
         new QRCode(container, {
