@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.24.5";
+const APP_VERSION = "7.24.6";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -35,6 +35,9 @@ let currentEventArchived = false;
 let globalEventList = []; 
 let isAdminMode = true; 
 let wakeLock = null; 
+
+let nicknameFirstSeenEventKeyIndex = null;
+let nicknameFirstSeenIndexUid = null;
 
 // Tilamuuttuja live-päivityksille
 let lastAttendeeCount = null;
@@ -262,6 +265,120 @@ function customConfirm(title, message) {
         if(yesBtn) yesBtn.onclick = function() { handleResponse(true); };
         if(noBtn) noBtn.onclick = function() { handleResponse(false); };
     });
+}
+
+function normalizeNicknameStats(name) {
+    return (name || '').replace(/[\s\u00A0]+/g, ' ').trim().toLowerCase();
+}
+
+async function ensureNicknameFirstSeenIndex() {
+    if (!currentUser || !currentUser.uid) return null;
+    if (nicknameFirstSeenEventKeyIndex && nicknameFirstSeenIndexUid === currentUser.uid) {
+        return nicknameFirstSeenEventKeyIndex;
+    }
+
+    nicknameFirstSeenEventKeyIndex = {};
+    nicknameFirstSeenIndexUid = currentUser.uid;
+
+    try {
+        const snap = await db.ref('miitit/' + currentUser.uid + '/logs').once('value');
+        const index = {};
+
+        // Käydään eventit aikajärjestyksessä (vanhin -> uusin)
+        const orderedEvents = Array.isArray(globalEventList) ? globalEventList : [];
+        orderedEvents.forEach(evt => {
+            const eventKey = evt?.key;
+            if (!eventKey) return;
+
+            const eventLogsSnap = snap.child(eventKey);
+            if (!eventLogsSnap.exists()) return;
+
+            eventLogsSnap.forEach(child => {
+                const nickRaw = (child.val()?.nickname || '').trim();
+                const norm = normalizeNicknameStats(nickRaw);
+                if (!norm) return;
+                if (!index[norm]) {
+                    index[norm] = eventKey;
+                }
+            });
+        });
+
+        nicknameFirstSeenEventKeyIndex = index;
+        return nicknameFirstSeenEventKeyIndex;
+    } catch (e) {
+        nicknameFirstSeenEventKeyIndex = null;
+        nicknameFirstSeenIndexUid = null;
+        return null;
+    }
+}
+
+function renderGuestbookSummary(eventKey, logs) {
+    const box = document.getElementById('gb-summary');
+    if (!box) return;
+
+    const safeLogs = Array.isArray(logs) ? logs : [];
+    if (safeLogs.length === 0) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+
+    const uniqueMap = new Map();
+    safeLogs.forEach(l => {
+        const nickRaw = (l?.nickname || '').trim();
+        const key = normalizeNicknameStats(nickRaw);
+        if (!key) return;
+        if (!uniqueMap.has(key)) {
+            uniqueMap.set(key, { raw: nickRaw, from: (l?.from || '').trim() });
+        }
+    });
+    const uniqueCount = uniqueMap.size;
+
+    const returning = [];
+    const firstTimers = [];
+
+    const index = nicknameFirstSeenEventKeyIndex;
+    if (!index || nicknameFirstSeenIndexUid !== currentUser?.uid) {
+        // Rakennetaan indeksi taustalla ja päivitetään yhteenveto sen jälkeen
+        ensureNicknameFirstSeenIndex().then(() => {
+            renderGuestbookSummary(eventKey, logs);
+        });
+    } else {
+        uniqueMap.forEach((val, key) => {
+            const earliestKey = index[key] || null;
+            if (!earliestKey || earliestKey === eventKey) {
+                firstTimers.push(val.raw);
+            } else {
+                returning.push(val.raw);
+            }
+        });
+    }
+
+    const locationCounts = {};
+    uniqueMap.forEach(val => {
+        const loc = (val.from || '').trim();
+        if (!loc) return;
+        locationCounts[loc] = (locationCounts[loc] || 0) + 1;
+    });
+    const topLocations = Object.entries(locationCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+    box.innerHTML = `
+        <h3 style="margin-top:0;">📌 Yhteenveto</h3>
+        <div style="display:grid; grid-template-columns: 1fr auto; gap:6px; font-size:0.95em;">
+            <div>Uniikit kävijät:</div><div style="text-align:right;"><strong>${uniqueCount}</strong></div>
+            <div>Ensikertalaiset:</div><div style="text-align:right;"><strong>${firstTimers.length}</strong></div>
+            <div>Palaavat:</div><div style="text-align:right;"><strong>${returning.length}</strong></div>
+        </div>
+        ${topLocations.length ? `
+            <div style="margin-top:10px; border-top:1px dashed var(--dotted-border); padding-top:10px;">
+                <div style="font-weight:bold; margin-bottom:6px;">🏘️ Top paikkakunnat</div>
+                ${topLocations.map(([loc, c]) => `<div class="stats-row"><span>${loc}</span><strong>${c}</strong></div>`).join('')}
+            </div>
+        ` : ''}
+    `;
+    box.style.display = 'block';
 }
 
 // ==========================================
@@ -942,6 +1059,8 @@ function loadAttendees(eventKey) {
         const listEl = document.getElementById('attendee-list'); if(!listEl) return;
         listEl.innerHTML = ""; const logs = [];
         snapshot.forEach(child => { logs.push({key: child.key, ...child.val()}); });
+
+        renderGuestbookSummary(eventKey, logs);
         
         // Lajittelu: Uusin ensin
         logs.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
