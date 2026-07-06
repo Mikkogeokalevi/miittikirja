@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.25.4";
+const APP_VERSION = "7.25.5";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -67,8 +67,13 @@ async function getPastEventsForImportStatus() {
 
     // Prefer the same source as the main event list if available
     let events = [];
-    if (Array.isArray(window.globalEventList) && window.globalEventList.length > 0) {
-        events = window.globalEventList.map(e => ({ ...(e || {}) }));
+    let source = 'db';
+    const hasGlobalEventList = (typeof globalEventList !== 'undefined') && Array.isArray(globalEventList) && globalEventList.length > 0;
+    const hasWindowGlobalEventList = Array.isArray(window.globalEventList) && window.globalEventList.length > 0;
+    if (hasGlobalEventList || hasWindowGlobalEventList) {
+        const src = hasGlobalEventList ? globalEventList : window.globalEventList;
+        events = src.map(e => ({ ...(e || {}) }));
+        source = hasGlobalEventList ? 'globalEventList' : 'window.globalEventList';
         // Ensure key field exists (main list uses key)
         events.forEach(e => {
             if (!e.key && e.id) e.key = e.id;
@@ -103,6 +108,8 @@ async function getPastEventsForImportStatus() {
         });
 
     past.__mk_meta = {
+        source,
+        uid: currentUser.uid,
         totalEvents: events.length,
         totalRows: rows.length,
         unparseableDates: rows.filter(e => !e.__dateKey).length,
@@ -158,7 +165,7 @@ window.exportNetImportStatusCSV = async function() {
         downloadTextFile(filename, rows.join('\n'));
         if (noteEl) {
             noteEl.innerText = meta
-                ? `Valmis: ${past.length} miittiä. (eventit: ${meta.totalEvents}, kelvolliset: ${meta.totalRows}, pvm-tulkinta epäonnistui: ${meta.unparseableDates})`
+                ? `Valmis: ${past.length} miittiä. (lähde: ${meta.source}, uid: ${meta.uid}, eventit: ${meta.totalEvents}, kelvolliset: ${meta.totalRows}, pvm-tulkinta epäonnistui: ${meta.unparseableDates})`
                 : `Valmis: ${past.length} miittiä.`;
         }
     } catch (e) {
@@ -188,7 +195,7 @@ window.exportNetImportStatusTXT = async function() {
         downloadTextFile(filename, lines.join('\n'));
         if (noteEl) {
             noteEl.innerText = meta
-                ? `Valmis: ${past.length} miittiä. (eventit: ${meta.totalEvents}, kelvolliset: ${meta.totalRows}, pvm-tulkinta epäonnistui: ${meta.unparseableDates})`
+                ? `Valmis: ${past.length} miittiä. (lähde: ${meta.source}, uid: ${meta.uid}, eventit: ${meta.totalEvents}, kelvolliset: ${meta.totalRows}, pvm-tulkinta epäonnistui: ${meta.unparseableDates})`
                 : `Valmis: ${past.length} miittiä.`;
         }
     } catch (e) {
