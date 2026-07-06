@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.25.5";
+const APP_VERSION = "7.25.6";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -206,6 +206,56 @@ window.exportNetImportStatusTXT = async function() {
 window.closeNetImportStatusModal = function() {
     const modal = document.getElementById('net-import-status-modal');
     if (modal) modal.style.display = 'none';
+};
+
+window.openNetImportStatusOverviewModal = async function() {
+    if (!currentUser) return;
+    const modal = document.getElementById('net-import-status-modal');
+    const listEl = document.getElementById('net-import-status-list');
+    if (!modal || !listEl) return;
+
+    listEl.innerHTML = 'Ladataan...';
+    modal.style.display = 'block';
+
+    try {
+        const past = await getPastEventsForImportStatus();
+        if (!Array.isArray(past) || past.length === 0) {
+            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Ei menneitä miittejä.</div>';
+            return;
+        }
+
+        listEl.innerHTML = '';
+        past.forEach(evt => {
+            const row = document.createElement('div');
+            row.className = 'card';
+            row.style.padding = '10px';
+            row.style.marginBottom = '8px';
+
+            const ts = evt.netLogsImportedAt || 0;
+            const total = evt.netLogsImportedTotal || 0;
+            const changed = evt.netLogsImportedChanged || 0;
+            const when = ts ? new Date(ts).toLocaleString('fi-FI') : 'ei ajettu';
+            const extra = ts ? ` (${changed}/${total})` : '';
+            const statusColor = ts ? '#4caf50' : '#b71c1c';
+            const title = `${evt.__dateKey || (evt.date || '')} ${evt.name || ''}`.trim();
+
+            row.innerHTML = `
+                <div style="display:flex; justify-content:space-between; gap:10px;">
+                    <div style="min-width:0;">
+                        <div style="font-weight:bold;">${title}</div>
+                        <div style="font-size:0.9em; color:${statusColor};">🌐 import: ${when}${extra}</div>
+                    </div>
+                    <div style="display:flex; align-items:center;">
+                        <button class="btn btn-small btn-green" style="width:auto;" onclick="closeNetImportStatusModal(); openGuestbook('${evt.key}')">📖 Avaa</button>
+                    </div>
+                </div>
+            `;
+
+            listEl.appendChild(row);
+        });
+    } catch (e) {
+        listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#b71c1c;">Virhe ladattaessa.</div>';
+    }
 };
 
 // Alustetaan Firebase
@@ -1998,6 +2048,11 @@ if (btnStatsNetImportCSV) btnStatsNetImportCSV.onclick = () => {
 const btnStatsNetImportTXT = document.getElementById('btn-stats-net-import-txt');
 if (btnStatsNetImportTXT) btnStatsNetImportTXT.onclick = () => {
     if (typeof exportNetImportStatusTXT === 'function') exportNetImportStatusTXT();
+};
+
+const btnStatsNetImportModal = document.getElementById('btn-stats-net-import-modal');
+if (btnStatsNetImportModal) btnStatsNetImportModal.onclick = () => {
+    if (typeof openNetImportStatusOverviewModal === 'function') openNetImportStatusOverviewModal();
 };
 
 window.closeModal = () => { 
