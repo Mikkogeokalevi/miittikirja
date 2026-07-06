@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.24.9";
+const APP_VERSION = "7.25.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1047,6 +1047,25 @@ window.openGuestbook = function(eventKey) {
         document.getElementById('gb-date').innerText = evt.date;
         document.getElementById('gb-gc').innerText = evt.gc;
         document.getElementById('gb-loc').innerText = evt.location || '-';
+
+        const importEl = document.getElementById('gb-net-import');
+        if (importEl) {
+            const ts = evt.netLogsImportedAt || 0;
+            const total = evt.netLogsImportedTotal || 0;
+            const changed = evt.netLogsImportedChanged || 0;
+            if (ts) {
+                const dt = new Date(ts);
+                const when = dt.toLocaleString('fi-FI');
+                const extra = (total || changed)
+                    ? ` (${changed}/${total})`
+                    : '';
+                importEl.innerText = `🌐 import: ${when}${extra}`;
+                importEl.style.color = '#666';
+                importEl.style.fontSize = '0.85em';
+            } else {
+                importEl.innerText = '';
+            }
+        }
         
         const coordsEl = document.getElementById('gb-coords');
         if(evt.coords) {
@@ -1109,6 +1128,64 @@ window.openGuestbook = function(eventKey) {
     
     window.scrollTo(0,0);
     loadAttendees(eventKey);
+};
+
+window.openNetImportStatusModal = async function() {
+    if (!currentUser) return;
+    const modal = document.getElementById('net-import-status-modal');
+    const listEl = document.getElementById('net-import-status-list');
+    if (!modal || !listEl) return;
+
+    listEl.innerHTML = 'Ladataan...';
+    modal.style.display = 'block';
+
+    try {
+        const snap = await db.ref('miitit/' + currentUser.uid + '/events').once('value');
+        const events = [];
+        snap.forEach(ch => events.push({ key: ch.key, ...(ch.val() || {}) }));
+        events.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        const past = events
+            .filter(e => (e.date || '') < todayStr)
+            .filter(e => !(e.name || '').includes('/ PERUTTU /'));
+
+        if (past.length === 0) {
+            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Ei menneitä miittejä.</div>';
+            return;
+        }
+
+        listEl.innerHTML = '';
+        past.forEach(evt => {
+            const row = document.createElement('div');
+            row.className = 'card';
+            row.style.padding = '10px';
+            row.style.marginBottom = '8px';
+
+            const ts = evt.netLogsImportedAt || 0;
+            const total = evt.netLogsImportedTotal || 0;
+            const changed = evt.netLogsImportedChanged || 0;
+            const when = ts ? new Date(ts).toLocaleString('fi-FI') : 'ei ajettu';
+            const extra = ts ? ` (${changed}/${total})` : '';
+            const statusColor = ts ? '#4caf50' : '#b71c1c';
+
+            row.innerHTML = `
+                <div style="display:flex; justify-content:space-between; gap:10px;">
+                    <div style="min-width:0;">
+                        <div style="font-weight:bold;">${evt.date || ''} ${evt.name || ''}</div>
+                        <div style="font-size:0.9em; color:${statusColor};">🌐 import: ${when}${extra}</div>
+                    </div>
+                    <div style="display:flex; align-items:center;">
+                        <button class="btn btn-small btn-green" style="width:auto;" onclick="openGuestbook('${evt.key}')">📖 Avaa</button>
+                    </div>
+                </div>
+            `;
+
+            listEl.appendChild(row);
+        });
+    } catch (e) {
+        listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#b71c1c;">Virhe ladattaessa.</div>';
+    }
 };
 
 // UUSI: Tarkista nettilogi -toiminto
@@ -1432,6 +1509,14 @@ if (fileInputSync) {
                 ? `\n\n⚠ HUOM: Tiedostossa oli vain ${totalLogsInFile} lokia.\nJos geocaching.com antaa rajatun GPX:n, kaikki osallistujat eivät näy tässä synkronoinnissa.`
                 : "";
             
+            const totalImportable = Math.max(0, attendedLikeCount - skippedOwnerCount - skippedEmptyFinderCount);
+            const changed = addedCount + updatedCount;
+            await db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({
+                netLogsImportedAt: firebase.database.ServerValue.TIMESTAMP,
+                netLogsImportedTotal: totalImportable,
+                netLogsImportedChanged: changed
+            });
+
             alert(`GPX-synkronointi valmis!\n\n- Kätkön tiedot päivitetty.\n- Tiedoston lokit yhteensä: ${totalLogsInFile}\n- Attended/Webcam-lokit tiedostossa: ${attendedLikeCount}\n- Ohitettu (ei Attended/Webcam): ${skippedNonAttendedCount}\n- Ohitettu (tyhjä nimimerkki): ${skippedEmptyFinderCount}\n- Ohitettu (järjestäjä): ${skippedOwnerCount}\n- Lisätty ${addedCount} uutta kävijää.\n- Päivitetty viesti ${updatedCount} olemassa olevalle kävijälle.${lowLogWarning}`);
         } else {
             alert("Kätkön tiedot päivitetty GPX-tiedostosta!\n\n- Tiedoston lokit yhteensä: 0\n(Tiedostossa ei ollut lokimerkintöjä tai lukeminen epäonnistui).");
@@ -1667,6 +1752,14 @@ if(btnSaveMass) {
         }
 
         alert(`Massatuonti valmis!\n\n- Lisätty uusia: ${addedCount}\n- Päivitetty olemassa olevia: ${updatedCount}\n- Ei muutosta: ${unchangedCount}`);
+
+        const total = addedCount + updatedCount + unchangedCount;
+        const changed = addedCount + updatedCount;
+        await db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({
+            netLogsImportedAt: firebase.database.ServerValue.TIMESTAMP,
+            netLogsImportedTotal: total,
+            netLogsImportedChanged: changed
+        });
         if(massModal) massModal.style.display = "none";
     };
 }
