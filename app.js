@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.25.1";
+const APP_VERSION = "7.25.2";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -22,6 +22,17 @@ function parseEventDate(dateStr) {
         const [y, m, d] = dateStr.split('-').map(n => parseInt(n, 10));
         const dt = new Date(y, (m - 1), d);
         if (!Number.isNaN(dt.getTime())) return dt;
+    }
+    // Finnish common: D.M.YYYY or DD.MM.YYYY (also with /)
+    if (typeof dateStr === 'string') {
+        const m1 = dateStr.match(/^(\d{1,2})[\./](\d{1,2})[\./](\d{4})$/);
+        if (m1) {
+            const d = parseInt(m1[1], 10);
+            const m = parseInt(m1[2], 10);
+            const y = parseInt(m1[3], 10);
+            const dt = new Date(y, (m - 1), d);
+            if (!Number.isNaN(dt.getTime())) return dt;
+        }
     }
     const dt = new Date(dateStr);
     if (Number.isNaN(dt.getTime())) return null;
