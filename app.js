@@ -15,66 +15,117 @@ const firebaseConfig = {
     appId: "1:588536838615:web:148de0581bbd46c42c7392"
 };
 
-window.renderNetImportStatusOverview = async function() {
-    if (!currentUser) return;
-    const listEl = document.getElementById('stats-net-import-status-list');
-    if (!listEl) return;
+function parseEventDate(dateStr) {
+    if (!dateStr) return null;
+    // Expected: YYYY-MM-DD. If something else, fall back to Date parsing.
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        const [y, m, d] = dateStr.split('-').map(n => parseInt(n, 10));
+        const dt = new Date(y, (m - 1), d);
+        if (!Number.isNaN(dt.getTime())) return dt;
+    }
+    const dt = new Date(dateStr);
+    if (Number.isNaN(dt.getTime())) return null;
+    return dt;
+}
 
-    listEl.innerHTML = 'Ladataan...';
+async function getPastEventsForImportStatus() {
+    if (!currentUser) return [];
+    const snap = await db.ref('miitit/' + currentUser.uid + '/events').once('value');
+    const events = [];
+    snap.forEach(ch => events.push({ key: ch.key, ...(ch.val() || {}) }));
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const past = events
+        .filter(e => !(e.name || '').includes('/ PERUTTU /'))
+        .filter(e => {
+            const d = parseEventDate(e.date);
+            if (!d) return false;
+            d.setHours(0, 0, 0, 0);
+            return d < today;
+        })
+        .sort((a, b) => {
+            const da = parseEventDate(a.date);
+            const dbb = parseEventDate(b.date);
+            return (dbb ? dbb.getTime() : 0) - (da ? da.getTime() : 0);
+        });
+
+    return past;
+}
+
+function downloadTextFile(filename, content) {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+function csvEscape(v) {
+    const s = String(v ?? '');
+    if (/["\n,;]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+}
+
+window.exportNetImportStatusCSV = async function() {
+    if (!currentUser) return;
+    const noteEl = document.getElementById('stats-net-import-status-note');
+    if (noteEl) noteEl.innerText = 'Haetaan...';
 
     try {
-        const snap = await db.ref('miitit/' + currentUser.uid + '/events').once('value');
-        const events = [];
-        snap.forEach(ch => events.push({ key: ch.key, ...(ch.val() || {}) }));
-        events.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+        const past = await getPastEventsForImportStatus();
+        const header = ['date','name','gc','netLogsImportedAt','importWhenFi','netLogsImportedChanged','netLogsImportedTotal'];
+        const rows = [header.join(';')];
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const past = events
-            .filter(e => {
-                if (!e.date) return false;
-                const d = new Date(e.date);
-                if (Number.isNaN(d.getTime())) return false;
-                return d < today;
-            })
-            .filter(e => !(e.name || '').includes('/ PERUTTU /'));
-
-        if (past.length === 0) {
-            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Ei menneitä miittejä.</div>';
-            return;
-        }
-
-        listEl.innerHTML = '';
         past.forEach(evt => {
-            const row = document.createElement('div');
-            row.className = 'card';
-            row.style.padding = '10px';
-            row.style.marginBottom = '8px';
+            const ts = evt.netLogsImportedAt || '';
+            const whenFi = ts ? new Date(ts).toLocaleString('fi-FI') : '';
+            rows.push([
+                csvEscape(evt.date || ''),
+                csvEscape(evt.name || ''),
+                csvEscape(evt.gc || ''),
+                csvEscape(ts),
+                csvEscape(whenFi),
+                csvEscape(evt.netLogsImportedChanged || 0),
+                csvEscape(evt.netLogsImportedTotal || 0)
+            ].join(';'));
+        });
 
+        const filename = `import-status-${new Date().toISOString().slice(0,10)}.csv`;
+        downloadTextFile(filename, rows.join('\n'));
+        if (noteEl) noteEl.innerText = `Valmis: ${past.length} miittiä.`;
+    } catch (e) {
+        if (noteEl) noteEl.innerText = 'Virhe haussa.';
+    }
+};
+
+window.exportNetImportStatusTXT = async function() {
+    if (!currentUser) return;
+    const noteEl = document.getElementById('stats-net-import-status-note');
+    if (noteEl) noteEl.innerText = 'Haetaan...';
+
+    try {
+        const past = await getPastEventsForImportStatus();
+        const lines = [];
+        past.forEach(evt => {
             const ts = evt.netLogsImportedAt || 0;
             const total = evt.netLogsImportedTotal || 0;
             const changed = evt.netLogsImportedChanged || 0;
             const when = ts ? new Date(ts).toLocaleString('fi-FI') : 'ei ajettu';
             const extra = ts ? ` (${changed}/${total})` : '';
-            const statusColor = ts ? '#4caf50' : '#b71c1c';
-
-            row.innerHTML = `
-                <div style="display:flex; justify-content:space-between; gap:10px;">
-                    <div style="min-width:0;">
-                        <div style="font-weight:bold;">${evt.date || ''} ${evt.name || ''}</div>
-                        <div style="font-size:0.9em; color:${statusColor};">🌐 import: ${when}${extra}</div>
-                    </div>
-                    <div style="display:flex; align-items:center;">
-                        <button class="btn btn-small btn-green" style="width:auto;" onclick="openGuestbook('${evt.key}')">📖 Avaa</button>
-                    </div>
-                </div>
-            `;
-
-            listEl.appendChild(row);
+            lines.push(`${evt.date || ''} ${evt.name || ''} | 🌐 import: ${when}${extra}`);
         });
+
+        const filename = `import-status-${new Date().toISOString().slice(0,10)}.txt`;
+        downloadTextFile(filename, lines.join('\n'));
+        if (noteEl) noteEl.innerText = `Valmis: ${past.length} miittiä.`;
     } catch (e) {
-        listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#b71c1c;">Virhe ladattaessa.</div>';
+        if (noteEl) noteEl.innerText = 'Virhe haussa.';
     }
 };
 
@@ -1865,9 +1916,14 @@ if(btnEmailLogin) btnEmailLogin.onclick = () => auth.signInWithEmailAndPassword(
 const btnEmailReg = document.getElementById('btn-email-register');
 if(btnEmailReg) btnEmailReg.onclick = () => auth.createUserWithEmailAndPassword(document.getElementById('email-input').value, document.getElementById('password-input').value);
 
-const btnStatsNetImport = document.getElementById('btn-stats-net-import');
-if (btnStatsNetImport) btnStatsNetImport.onclick = () => {
-    if (typeof renderNetImportStatusOverview === 'function') renderNetImportStatusOverview();
+const btnStatsNetImportCSV = document.getElementById('btn-stats-net-import-csv');
+if (btnStatsNetImportCSV) btnStatsNetImportCSV.onclick = () => {
+    if (typeof exportNetImportStatusCSV === 'function') exportNetImportStatusCSV();
+};
+
+const btnStatsNetImportTXT = document.getElementById('btn-stats-net-import-txt');
+if (btnStatsNetImportTXT) btnStatsNetImportTXT.onclick = () => {
+    if (typeof exportNetImportStatusTXT === 'function') exportNetImportStatusTXT();
 };
 
 window.closeModal = () => { 
@@ -1882,7 +1938,8 @@ const openStats = () => {
     const statsView = document.getElementById('stats-view');
     if(statsView) statsView.style.display = 'block';
     if (typeof initStats === 'function') initStats();
-    if (typeof renderNetImportStatusOverview === 'function') renderNetImportStatusOverview();
+    const noteEl = document.getElementById('stats-net-import-status-note');
+    if (noteEl) noteEl.innerText = '';
 };
 
 const btnStats = document.getElementById('btn-show-stats');
