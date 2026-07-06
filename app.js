@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.25.2";
+const APP_VERSION = "7.25.3";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -39,27 +39,67 @@ function parseEventDate(dateStr) {
     return dt;
 }
 
+function normalizeEventDateKey(dateVal) {
+    if (!dateVal) return null;
+    // If numeric timestamp
+    if (typeof dateVal === 'number' && Number.isFinite(dateVal)) {
+        const dt = new Date(dateVal);
+        if (Number.isNaN(dt.getTime())) return null;
+        return dt.toISOString().slice(0, 10);
+    }
+    const s = String(dateVal).trim();
+    if (!s) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const m1 = s.match(/^(\d{1,2})[\./](\d{1,2})[\./](\d{4})$/);
+    if (m1) {
+        const d = String(parseInt(m1[1], 10)).padStart(2, '0');
+        const m = String(parseInt(m1[2], 10)).padStart(2, '0');
+        const y = String(parseInt(m1[3], 10));
+        return `${y}-${m}-${d}`;
+    }
+    const dt = parseEventDate(s);
+    if (!dt) return null;
+    return dt.toISOString().slice(0, 10);
+}
+
 async function getPastEventsForImportStatus() {
     if (!currentUser) return [];
-    const snap = await db.ref('miitit/' + currentUser.uid + '/events').once('value');
-    const events = [];
-    snap.forEach(ch => events.push({ key: ch.key, ...(ch.val() || {}) }));
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Prefer the same source as the main event list if available
+    let events = [];
+    if (Array.isArray(window.globalEventList) && window.globalEventList.length > 0) {
+        events = window.globalEventList.map(e => ({ ...(e || {}) }));
+        // Ensure key field exists (main list uses key)
+        events.forEach(e => {
+            if (!e.key && e.id) e.key = e.id;
+        });
+    } else {
+        const snap = await db.ref('miitit/' + currentUser.uid + '/events').once('value');
+        snap.forEach(ch => events.push({ key: ch.key, ...(ch.val() || {}) }));
+    }
 
-    const past = events
+    const todayKey = new Date().toISOString().slice(0, 10);
+
+    const rows = events
         .filter(e => !(e.name || '').includes('/ PERUTTU /'))
+        .map(e => {
+            const dateKey = normalizeEventDateKey(e.date);
+            return { ...e, __dateKey: dateKey };
+        });
+
+    const past = rows
         .filter(e => {
-            const d = parseEventDate(e.date);
-            if (!d) return false;
-            d.setHours(0, 0, 0, 0);
-            return d < today;
+            // If date is missing/unparseable, still include (so it doesn't disappear)
+            if (!e.__dateKey) return true;
+            return e.__dateKey < todayKey;
         })
         .sort((a, b) => {
-            const da = parseEventDate(a.date);
-            const dbb = parseEventDate(b.date);
-            return (dbb ? dbb.getTime() : 0) - (da ? da.getTime() : 0);
+            const da = a.__dateKey || '';
+            const dbb = b.__dateKey || '';
+            if (da === dbb) return 0;
+            if (!da) return 1;
+            if (!dbb) return -1;
+            return dbb.localeCompare(da);
         });
 
     return past;
