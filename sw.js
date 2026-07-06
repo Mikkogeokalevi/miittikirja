@@ -1,4 +1,4 @@
-const SW_VERSION = 'mk-sw-7.25.3';
+const SW_VERSION = 'mk-sw-7.25.4';
 const RUNTIME_CACHE = `${SW_VERSION}-runtime`;
 
 self.addEventListener('install', (event) => {

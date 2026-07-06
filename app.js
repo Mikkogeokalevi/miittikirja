@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.25.3";
+const APP_VERSION = "7.25.4";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -25,7 +25,7 @@ function parseEventDate(dateStr) {
     }
     // Finnish common: D.M.YYYY or DD.MM.YYYY (also with /)
     if (typeof dateStr === 'string') {
-        const m1 = dateStr.match(/^(\d{1,2})[\./](\d{1,2})[\./](\d{4})$/);
+        const m1 = dateStr.trim().match(/^(\d{1,2})\s*[\./]\s*(\d{1,2})\s*[\./]\s*(\d{4})\s*$/);
         if (m1) {
             const d = parseInt(m1[1], 10);
             const m = parseInt(m1[2], 10);
@@ -50,7 +50,7 @@ function normalizeEventDateKey(dateVal) {
     const s = String(dateVal).trim();
     if (!s) return null;
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-    const m1 = s.match(/^(\d{1,2})[\./](\d{1,2})[\./](\d{4})$/);
+    const m1 = s.match(/^(\d{1,2})\s*[\./]\s*(\d{1,2})\s*[\./]\s*(\d{4})\s*$/);
     if (m1) {
         const d = String(parseInt(m1[1], 10)).padStart(2, '0');
         const m = String(parseInt(m1[2], 10)).padStart(2, '0');
@@ -102,6 +102,12 @@ async function getPastEventsForImportStatus() {
             return dbb.localeCompare(da);
         });
 
+    past.__mk_meta = {
+        totalEvents: events.length,
+        totalRows: rows.length,
+        unparseableDates: rows.filter(e => !e.__dateKey).length,
+        pastCount: past.length
+    };
     return past;
 }
 
@@ -130,6 +136,7 @@ window.exportNetImportStatusCSV = async function() {
 
     try {
         const past = await getPastEventsForImportStatus();
+        const meta = past && past.__mk_meta ? past.__mk_meta : null;
         const header = ['date','name','gc','netLogsImportedAt','importWhenFi','netLogsImportedChanged','netLogsImportedTotal'];
         const rows = [header.join(';')];
 
@@ -149,7 +156,11 @@ window.exportNetImportStatusCSV = async function() {
 
         const filename = `import-status-${new Date().toISOString().slice(0,10)}.csv`;
         downloadTextFile(filename, rows.join('\n'));
-        if (noteEl) noteEl.innerText = `Valmis: ${past.length} miittiä.`;
+        if (noteEl) {
+            noteEl.innerText = meta
+                ? `Valmis: ${past.length} miittiä. (eventit: ${meta.totalEvents}, kelvolliset: ${meta.totalRows}, pvm-tulkinta epäonnistui: ${meta.unparseableDates})`
+                : `Valmis: ${past.length} miittiä.`;
+        }
     } catch (e) {
         if (noteEl) noteEl.innerText = 'Virhe haussa.';
     }
@@ -162,6 +173,7 @@ window.exportNetImportStatusTXT = async function() {
 
     try {
         const past = await getPastEventsForImportStatus();
+        const meta = past && past.__mk_meta ? past.__mk_meta : null;
         const lines = [];
         past.forEach(evt => {
             const ts = evt.netLogsImportedAt || 0;
@@ -174,7 +186,11 @@ window.exportNetImportStatusTXT = async function() {
 
         const filename = `import-status-${new Date().toISOString().slice(0,10)}.txt`;
         downloadTextFile(filename, lines.join('\n'));
-        if (noteEl) noteEl.innerText = `Valmis: ${past.length} miittiä.`;
+        if (noteEl) {
+            noteEl.innerText = meta
+                ? `Valmis: ${past.length} miittiä. (eventit: ${meta.totalEvents}, kelvolliset: ${meta.totalRows}, pvm-tulkinta epäonnistui: ${meta.unparseableDates})`
+                : `Valmis: ${past.length} miittiä.`;
+        }
     } catch (e) {
         if (noteEl) noteEl.innerText = 'Virhe haussa.';
     }
