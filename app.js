@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.25.0";
+const APP_VERSION = "7.25.1";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -13,6 +13,11 @@ const firebaseConfig = {
     storageBucket: "perhekalenteri-projekti.appspot.com",
     messagingSenderId: "588536838615",
     appId: "1:588536838615:web:148de0581bbd46c42c7392"
+};
+
+window.closeNetImportStatusModal = function() {
+    const modal = document.getElementById('net-import-status-modal');
+    if (modal) modal.style.display = 'none';
 };
 
 // Alustetaan Firebase
@@ -1145,9 +1150,15 @@ window.openNetImportStatusModal = async function() {
         snap.forEach(ch => events.push({ key: ch.key, ...(ch.val() || {}) }));
         events.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
-        const todayStr = new Date().toISOString().split('T')[0];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         const past = events
-            .filter(e => (e.date || '') < todayStr)
+            .filter(e => {
+                if (!e.date) return false;
+                const d = new Date(e.date);
+                if (Number.isNaN(d.getTime())) return false;
+                return d < today;
+            })
             .filter(e => !(e.name || '').includes('/ PERUTTU /'));
 
         if (past.length === 0) {
@@ -1176,7 +1187,7 @@ window.openNetImportStatusModal = async function() {
                         <div style="font-size:0.9em; color:${statusColor};">🌐 import: ${when}${extra}</div>
                     </div>
                     <div style="display:flex; align-items:center;">
-                        <button class="btn btn-small btn-green" style="width:auto;" onclick="openGuestbook('${evt.key}')">📖 Avaa</button>
+                        <button class="btn btn-small btn-green" style="width:auto;" onclick="closeNetImportStatusModal(); openGuestbook('${evt.key}')">📖 Avaa</button>
                     </div>
                 </div>
             `;
@@ -1792,7 +1803,7 @@ const btnEmailReg = document.getElementById('btn-email-register');
 if(btnEmailReg) btnEmailReg.onclick = () => auth.createUserWithEmailAndPassword(document.getElementById('email-input').value, document.getElementById('password-input').value);
 
 window.closeModal = () => { 
-    ['edit-modal','mass-modal','log-edit-modal','confirm-modal'].forEach(id => {
+    ['edit-modal','mass-modal','log-edit-modal','confirm-modal','net-import-status-modal'].forEach(id => {
         const el = document.getElementById(id); if(el) el.style.display = "none";
     });
 };
