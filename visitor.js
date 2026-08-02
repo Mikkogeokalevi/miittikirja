@@ -868,6 +868,8 @@ window.handleVisitorSign = async function() {
         nextEvent: null,
         streakCount: 0,
         streakStartLabel: "",
+        longestStreak: 0,
+        hometown: "",
         rankPosition: 0,
         rankTotal: 0,
         rankPercentile: 0,
@@ -981,13 +983,38 @@ window.handleVisitorSign = async function() {
             });
         }
 
-        userHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
         stats.totalVisits = userHistory.length;
-        stats.isFirstTime = (stats.totalVisits <= 1);
-        stats.isMilestone = (stats.totalVisits % 10 === 0) || stats.isFirstTime;
-        stats.messageWordAvg = stats.totalVisits > 0
-            ? Math.round((stats.messageWordTotal / stats.totalVisits) * 10) / 10
-            : 0;
+
+        // Calculate hometown (most common "from")
+        const fromCounts = {};
+        userHistory.forEach(evt => {
+            const from = (evt.from || '').trim();
+            if (from) {
+                fromCounts[from] = (fromCounts[from] || 0) + 1;
+            }
+        });
+        const fromEntries = Object.entries(fromCounts);
+        if (fromEntries.length > 0) {
+            fromEntries.sort((a, b) => b[1] - a[1]);
+            stats.hometown = fromEntries[0][0];
+        }
+
+        // Calculate longest streak ever
+        if (userHistory.length > 0) {
+            let longest = 1;
+            let current = 1;
+            for (let i = 1; i < userHistory.length; i++) {
+                const prevIdx = miittiEvents.findIndex(e => e.key === userHistory[i - 1].key);
+                const currIdx = miittiEvents.findIndex(e => e.key === userHistory[i].key);
+                if (prevIdx >= 0 && currIdx >= 0 && currIdx === prevIdx + 1) {
+                    current++;
+                    if (current > longest) longest = current;
+                } else {
+                    current = 1;
+                }
+            }
+            stats.longestStreak = longest;
+        }
 
         const counts = Object.entries(visitCountByNick)
             .filter(([k]) => !!k)
@@ -1234,7 +1261,11 @@ function showVisitorModalWithLang(nick, history, stats) {
     if (oldDashboard) oldDashboard.remove();
 
     const streakLine = (stats.streakCount > 1)
-        ? (t.miniStreakNow || 'Current streak: {0} events in a row').replace('{0}', stats.streakCount)
+        ? (t.miniStreakNow || 'Putki: {0} miittiä').replace('{0}', stats.streakCount)
+        : '';
+
+    const longestStreakLine = (stats.longestStreak > 1)
+        ? `Ennätysputki: <strong>${stats.longestStreak}</strong> miittiä`
         : '';
 
     const miniDashboard = document.createElement('div');
@@ -1242,25 +1273,47 @@ function showVisitorModalWithLang(nick, history, stats) {
     miniDashboard.className = 'visitor-mini-dashboard';
     miniDashboard.innerHTML = `
         <div class="visitor-summary-card">
-            <div class="visitor-summary-title">${t.miniWordsSummaryTitle || 'Message Summary'}</div>
-            <div class="visitor-summary-help">${t.miniWordsSummaryHelp || 'This shows your word counts across your own sign-ins by source.'}</div>
+            <div class="visitor-summary-title">📊 Tilastot (Mikkokalevin miitit)</div>
 
             <div class="visitor-summary-metrics">
                 <div class="visitor-summary-metric">
-                    <span class="visitor-summary-metric-label">${t.miniWordsLocal || 'Guestbook Words'}</span>
+                    <span class="visitor-summary-metric-label">Miittejä yhteensä</span>
+                    <span class="visitor-summary-metric-value">${stats.totalVisits || 0}</span>
+                </div>
+                ${stats.hometown ? `
+                <div class="visitor-summary-metric">
+                    <span class="visitor-summary-metric-label">Kotipaikkakunta</span>
+                    <span class="visitor-summary-metric-value">${stats.hometown}</span>
+                </div>
+                ` : ''}
+            </div>
+
+            ${streakLine || longestStreakLine ? `
+            <div class="visitor-summary-line">
+                ${streakLine ? `<span>${streakLine}</span>` : ''}
+                ${streakLine && longestStreakLine ? ' · ' : ''}
+                ${longestStreakLine ? `<span>${longestStreakLine}</span>` : ''}
+            </div>
+            ` : ''}
+
+            <div class="visitor-summary-title" style="margin-top:12px;">${t.miniWordsSummaryTitle || 'Viestien sanamäärät'}</div>
+            <div class="visitor-summary-help">${t.miniWordsSummaryHelp || 'Näyttää sanamäärät eri lähteistä.'}</div>
+
+            <div class="visitor-summary-metrics">
+                <div class="visitor-summary-metric">
+                    <span class="visitor-summary-metric-label">${t.miniWordsLocal || 'Vieraskirja'}</span>
                     <span class="visitor-summary-metric-value">${stats.messageWordLocalTotal || 0}</span>
                 </div>
                 <div class="visitor-summary-metric">
-                    <span class="visitor-summary-metric-label">${t.miniWordsNet || 'Geocaching.com Words'}</span>
+                    <span class="visitor-summary-metric-label">${t.miniWordsNet || 'Geocaching.com'}</span>
                     <span class="visitor-summary-metric-value">${stats.messageWordNetTotal || 0}</span>
                 </div>
             </div>
 
             <div class="visitor-summary-line">
-                ${t.miniWordsTotal || 'Words Total'}: <strong>${stats.messageWordTotal || 0}</strong>
-                · ${t.miniWordsAvg || 'Avg / log'}: <strong>${stats.messageWordAvg || 0}</strong>
+                ${t.miniWordsTotal || 'Yhteensä'}: <strong>${stats.messageWordTotal || 0}</strong>
+                · ${t.miniWordsAvg || 'Keskiarvo'}: <strong>${stats.messageWordAvg || 0}</strong>
             </div>
-            ${streakLine ? `<div class="visitor-summary-line visitor-summary-streak">${streakLine}</div>` : ''}
         </div>
     `;
     badgeEl.insertAdjacentElement('afterend', miniDashboard);
