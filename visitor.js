@@ -983,6 +983,9 @@ window.handleVisitorSign = async function() {
             });
         }
 
+        // Sort userHistory by date (oldest first) for correct streak calculation
+        userHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
+
         stats.totalVisits = userHistory.length;
 
         // Calculate hometown (most common "from")
