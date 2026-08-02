@@ -1000,7 +1000,11 @@ window.handleVisitorSign = async function() {
         }
 
         // Calculate longest streak ever
-        if (userHistory.length > 0) {
+        if (isOrganizerNickname(nickNorm)) {
+            // Organizer is in all their own events, so longest streak = total visits
+            stats.longestStreak = userHistory.length;
+        } else if (userHistory.length > 0) {
+            // For regular visitors, calculate longest consecutive streak
             let longest = 1;
             let current = 1;
             for (let i = 1; i < userHistory.length; i++) {
@@ -1260,9 +1264,7 @@ function showVisitorModalWithLang(nick, history, stats) {
     const oldDashboard = document.getElementById('up-visitor-mini-dashboard');
     if (oldDashboard) oldDashboard.remove();
 
-    const streakLine = (stats.streakCount > 1)
-        ? (t.miniStreakNow || 'Putki: {0} miittiä').replace('{0}', stats.streakCount)
-        : '';
+    const streakLine = (t.miniStreakNow || 'Putki: {0} miittiä').replace('{0}', stats.streakCount || 1);
 
     const longestStreakLine = (stats.longestStreak > 1)
         ? `Ennätysputki: <strong>${stats.longestStreak}</strong> miittiä`
@@ -1280,21 +1282,16 @@ function showVisitorModalWithLang(nick, history, stats) {
                     <span class="visitor-summary-metric-label">Miittejä yhteensä</span>
                     <span class="visitor-summary-metric-value">${stats.totalVisits || 0}</span>
                 </div>
-                ${stats.hometown ? `
                 <div class="visitor-summary-metric">
                     <span class="visitor-summary-metric-label">Kotipaikkakunta</span>
-                    <span class="visitor-summary-metric-value">${stats.hometown}</span>
+                    <span class="visitor-summary-metric-value">${stats.hometown || 'Ei tietoa'}</span>
                 </div>
-                ` : ''}
             </div>
 
-            ${streakLine || longestStreakLine ? `
             <div class="visitor-summary-line">
-                ${streakLine ? `<span>${streakLine}</span>` : ''}
-                ${streakLine && longestStreakLine ? ' · ' : ''}
-                ${longestStreakLine ? `<span>${longestStreakLine}</span>` : ''}
+                <span>${streakLine}</span>
+                ${longestStreakLine ? ` · <span>${longestStreakLine}</span>` : ''}
             </div>
-            ` : ''}
 
             <div class="visitor-summary-title" style="margin-top:12px;">${t.miniWordsSummaryTitle || 'Viestien sanamäärät'}</div>
             <div class="visitor-summary-help">${t.miniWordsSummaryHelp || 'Näyttää sanamäärät eri lähteistä.'}</div>
