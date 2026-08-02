@@ -999,17 +999,17 @@ window.handleVisitorSign = async function() {
             stats.hometown = fromEntries[0][0];
         }
 
-        // Calculate longest streak ever
+        // Calculate longest streak ever (using all events, not just miittis)
         if (isOrganizerNickname(nickNorm)) {
             // Organizer is in all their own events, so longest streak = total visits
             stats.longestStreak = userHistory.length;
         } else if (userHistory.length > 0) {
-            // For regular visitors, calculate longest consecutive streak
+            // For regular visitors, calculate longest consecutive streak across all events
             let longest = 1;
             let current = 1;
             for (let i = 1; i < userHistory.length; i++) {
-                const prevIdx = miittiEvents.findIndex(e => e.key === userHistory[i - 1].key);
-                const currIdx = miittiEvents.findIndex(e => e.key === userHistory[i].key);
+                const prevIdx = allHostEvents.findIndex(e => e.key === userHistory[i - 1].key);
+                const currIdx = allHostEvents.findIndex(e => e.key === userHistory[i].key);
                 if (prevIdx >= 0 && currIdx >= 0 && currIdx === prevIdx + 1) {
                     current++;
                     if (current > longest) longest = current;
@@ -1086,32 +1086,37 @@ window.handleVisitorSign = async function() {
             
             stats.greeting = greeting;
             
-            // Putkilaskuri (vain miitit)
-            const currentIsMiitti = currentEvent && isMiittiEvent(currentEvent);
-            if (currentIsMiitti && !stats.isFirstTime && miittiEvents.length > 0) {
-                const currentEventIndex = miittiEvents.findIndex(e => e.key === eventId);
-                if (currentEventIndex > 0) {
-                    const previousEventKey = miittiEvents[currentEventIndex - 1].key;
-                    const attendedPrevious = userHistory.some(e => e.key === previousEventKey);
-                    if (attendedPrevious) {
-                        let streak = 0;
-                        let globalIdx = currentEventIndex;
-                        let historyIdx = userHistory.length - 1;
-                        while (globalIdx >= 0 && historyIdx >= 0) {
-                            if (miittiEvents[globalIdx].key === userHistory[historyIdx].key) { streak++; globalIdx--; historyIdx--; } else { break; }
+            // Putkilaskuri (kaikki tapahtumat)
+            if (!stats.isFirstTime && allHostEvents.length > 0) {
+                const currentEventIndex = allHostEvents.findIndex(e => e.key === eventId);
+                if (currentEventIndex >= 0) {
+                    let streak = 0;
+                    let globalIdx = currentEventIndex;
+                    let historyIdx = userHistory.length - 1;
+                    // Count consecutive events backwards from current event
+                    while (globalIdx >= 0 && historyIdx >= 0) {
+                        if (allHostEvents[globalIdx].key === userHistory[historyIdx].key) {
+                            streak++;
+                            globalIdx--;
+                            historyIdx--;
+                        } else {
+                            break;
                         }
+                    }
+                    stats.streakCount = streak;
+                    if (streak > 1) {
                         stats.streakText = window.MK_Messages.getStreakMessage(streak);
-                        stats.streakCount = streak;
-                        const startEvent = miittiEvents[globalIdx + 1];
+                        const startEvent = allHostEvents[globalIdx + 1];
                         if (startEvent) {
                             const num = startEvent.seqNumber ? `#${startEvent.seqNumber}` : "";
                             stats.streakStartLabel = `${num} ${startEvent.name}`.trim();
                         }
                     } else {
+                        // Streak is 1 (just this event)
                         const lastVisitEvent = userHistory[userHistory.length - 2];
                         if (lastVisitEvent) {
                             const daysDiff = Math.floor((new Date() - new Date(lastVisitEvent.date)) / (1000 * 60 * 60 * 24));
-                            const lastVisitGlobalIndex = miittiEvents.findIndex(e => e.key === lastVisitEvent.key);
+                            const lastVisitGlobalIndex = allHostEvents.findIndex(e => e.key === lastVisitEvent.key);
                             const missedCount = (currentEventIndex - lastVisitGlobalIndex) - 1;
                             stats.streakText = window.MK_Messages.getMissedMessage(daysDiff, missedCount);
                         }
@@ -1281,10 +1286,6 @@ function showVisitorModalWithLang(nick, history, stats) {
                 <div class="visitor-summary-metric">
                     <span class="visitor-summary-metric-label">Miittejä yhteensä</span>
                     <span class="visitor-summary-metric-value">${stats.totalVisits || 0}</span>
-                </div>
-                <div class="visitor-summary-metric">
-                    <span class="visitor-summary-metric-label">Kotipaikkakunta</span>
-                    <span class="visitor-summary-metric-value">${stats.hometown || 'Ei tietoa'}</span>
                 </div>
             </div>
 
