@@ -1009,10 +1009,23 @@ window.handleVisitorSign = async function() {
                 buddyCounts[other] = (buddyCounts[other] || 0) + 1;
             });
         });
+
+        // Calculate total event count per buddy
+        const buddyTotals = {};
+        Object.keys(eventAttendees).forEach(evtKey => {
+            const set = eventAttendees[evtKey];
+            if (!set) return;
+            set.forEach(other => {
+                if (!other) return;
+                if (isOrganizerNickname(other)) return;
+                buddyTotals[other] = (buddyTotals[other] || 0) + 1;
+            });
+        });
+
         stats.topBuddies = Object.entries(buddyCounts)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 5)
-            .map(([name, count]) => ({ name, count }));
+            .map(([name, count]) => ({ name, count, total: buddyTotals[name] || 0 }));
 
         const currentEvent = eventsMap[eventId];
         if (currentEvent && typeof currentEvent.specialMessage === 'string') {
@@ -1266,11 +1279,12 @@ function showVisitorModalWithLang(nick, history, stats) {
         const buddyHtml = hasBuddies
             ? `<div style="margin-top:10px;">
                     <div style="font-weight:bold; margin-bottom:6px;">🤝 Useimmin samoissa miiteissä</div>
-                    ${stats.topBuddies.map(b => `<div class="stats-row"><span>${b.name}</span><strong>${b.count}</strong></div>`).join('')}
+                    <div style="font-size:0.85em; color:#888; margin-bottom:6px;">Yhteisiä miittejä sinun kanssa</div>
+                    ${stats.topBuddies.map(b => `<div class="stats-row"><span>${b.name}</span><strong>${b.count} / ${b.total}</strong></div>`).join('')}
                </div>`
             : '';
         social.innerHTML = `
-            <div class="visitor-special-message-title">📊 Sinun yhteisötilastot</div>
+            <div class="visitor-special-message-title">📊 Sinun yhteisötilastot (Mikkokalevin miitit)</div>
             ${rankLine}
             ${buddyHtml}
         `;
