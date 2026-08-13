@@ -277,11 +277,17 @@ function updateStatsView(data) {
         const hasOrganizer = names.some(name => normalizeNickname(name) === ORGANIZER_NICKNAME_KEY);
         return sum + (hasOrganizer ? 1 : 0);
     }, 0);
-    const organizerMissing = Math.max(0, realizedEvents.length - organizerAttended);
+    const missingEvents = realizedEvents.filter(evt => {
+        const names = Array.isArray(evt.attendeeNames) ? evt.attendeeNames : [];
+        const hasOrganizer = names.some(name => normalizeNickname(name) === ORGANIZER_NICKNAME_KEY);
+        return !hasOrganizer;
+    });
+    const organizerMissing = missingEvents.length;
     window.currentOrganizerStats = {
         count: organizerAttended,
         realizedCount: realizedEvents.length,
-        missingCount: organizerMissing
+        missingCount: organizerMissing,
+        missingEvents: missingEvents
     };
 
     // 2. Lasketaan uniikit nimimerkit
@@ -311,8 +317,8 @@ function updateStatsView(data) {
                 <div style="border-top:1px solid #555; padding-top:8px; margin-top:8px;">Omat osallistumiset:</div>
                 <div style="border-top:1px solid #555; padding-top:8px; margin-top:8px; text-align:right; color:var(--header-color);">
                     <strong>${organizerAttended}</strong> / ${realizedEvents.length} kpl <span style="font-size:0.7em; color:#888; font-weight:normal;">(Toteutuneet)</span>
-                    <div style="font-size:0.8em; color:${organizerMissing > 0 ? '#ffcc80' : '#8bc34a'}; margin-top:2px;">
-                        Puuttuu: ${organizerMissing}
+                    <div style="font-size:0.8em; color:${organizerMissing > 0 ? '#ffcc80' : '#8bc34a'}; margin-top:2px; cursor:${organizerMissing > 0 ? 'pointer' : 'default'};" onclick="${organizerMissing > 0 ? 'showMissingEvents()' : ''}">
+                        Puuttuu: ${organizerMissing} ${organizerMissing > 0 ? '👆' : ''}
                     </div>
                 </div>
             </div>
@@ -2056,4 +2062,44 @@ function renderCharts(data) {
         },
         options: { scales: { y: { beginAtZero: true } } }
     });
+}
+
+function showMissingEvents() {
+    const stats = window.currentOrganizerStats;
+    if (!stats || !stats.missingEvents || stats.missingEvents.length === 0) {
+        alert('Ei puuttuvia osallistumisia.');
+        return;
+    }
+
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center;
+        z-index: 10000;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: var(--bg-color); color: var(--text-color);
+        padding: 20px; border-radius: 8px; max-width: 500px; max-height: 80vh;
+        overflow-y: auto; position: relative;
+    `;
+
+    const sortedMissing = [...stats.missingEvents].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    content.innerHTML = `
+        <h2 style="margin-top: 0;">Puuttuvat osallistumiset (${stats.missingEvents.length})</h2>
+        <p style="color: #888; font-size: 0.9em;">Miitit joissa järjestäjä ei ole kirjautunut:</p>
+        ${sortedMissing.map(evt => `
+            <div style="padding: 10px; border-bottom: 1px solid #444; cursor: pointer;" onclick="window.openGuestbook('${evt.key}'); document.body.removeChild(modal);">
+                <strong>${evt.name}</strong><br>
+                <small style="color: #888;">📅 ${evt.date} • 👤 ${evt.attendeeCount || 0} osallistujaa</small>
+            </div>
+        `).join('')}
+        <button onclick="document.body.removeChild(modal);" style="margin-top: 15px; padding: 10px 20px; cursor: pointer;">Sulje</button>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+    modal.onclick = (e) => { if (e.target === modal) document.body.removeChild(modal); };
 }
