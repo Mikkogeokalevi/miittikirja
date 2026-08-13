@@ -2090,16 +2090,32 @@ function showMissingEvents() {
     content.innerHTML = `
         <h2 style="margin-top: 0;">Puuttuvat osallistumiset (${stats.missingEvents.length})</h2>
         <p style="color: #888; font-size: 0.9em;">Miitit joissa järjestäjä ei ole kirjautunut:</p>
-        ${sortedMissing.map(evt => `
-            <div style="padding: 10px; border-bottom: 1px solid #444; cursor: pointer;" onclick="window.openGuestbook('${evt.key}'); document.body.removeChild(modal);">
-                <strong>${evt.name}</strong><br>
-                <small style="color: #888;">📅 ${evt.date} • 👤 ${evt.attendeeCount || 0} osallistujaa</small>
-            </div>
-        `).join('')}
-        <button onclick="document.body.removeChild(modal);" style="margin-top: 15px; padding: 10px 20px; cursor: pointer;">Sulje</button>
+        <div id="missing-events-list"></div>
+        <button id="close-missing-modal" style="margin-top: 15px; padding: 10px 20px; cursor: pointer;">Sulje</button>
     `;
+
+    const listEl = content.querySelector('#missing-events-list');
+    sortedMissing.forEach(evt => {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding: 10px; border-bottom: 1px solid #444; cursor: pointer;';
+        item.innerHTML = `<strong>${evt.name}</strong><br><small style="color: #888;">📅 ${evt.date} • 👤 ${evt.attendeeCount || 0} osallistujaa</small>`;
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (window.openGuestbook) window.openGuestbook(evt.key);
+            document.body.removeChild(modal);
+        });
+        listEl.appendChild(item);
+    });
+
+    const closeBtn = content.querySelector('#close-missing-modal');
+    closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.body.removeChild(modal);
+    });
 
     modal.appendChild(content);
     document.body.appendChild(modal);
-    modal.onclick = (e) => { if (e.target === modal) document.body.removeChild(modal); };
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) document.body.removeChild(modal);
+    });
 }
