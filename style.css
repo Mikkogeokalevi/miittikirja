@@ -555,6 +555,19 @@ body.theme-light .card.archived {
     margin-top: 8px;
     text-align: center;
 }
+.visitor-badge-chip {
+    cursor: pointer;
+}
+.visitor-badge-info {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: var(--highlight-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.82em;
+    text-align: center;
+    color: var(--text-color);
+}
 
 .visitor-summary-metric-value {
     display: block;
