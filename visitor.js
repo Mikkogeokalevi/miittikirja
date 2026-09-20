@@ -60,7 +60,7 @@ const visitorTranslations = {
         nextRankProgress: "Vielä {0} käyntiä → {1}",
         nextRankMaxed: "Korkein titteli saavutettu! 👑",
         badgeCollectionTitle: "🏅 Saavutukset",
-        badgeNames: { first: "Ensikertalainen", ten: "10 miittiä", twentyFive: "25 miittiä", fifty: "50 miittiä", streak5: "Putki 5+", streak10: "Putki 10+", wordMaster: "Sanamestari", milestone: "Juhlakerta", vip: "VIP" },
+        badgeNames: { first: "Ensikertalainen", ten: "10 miittiä", twentyFive: "25 miittiä", fifty: "50 miittiä", hundred: "100 miittiä", rankSeikkailija: "Satunnainen seikkailija", rankAktiivi: "Aktiivikävijä", rankVakio: "Vakiokasvo", rankKonkari: "Konkari", vip: "VIP", streak5: "Putki 5+", streak10: "Putki 10+", streak20: "Putki 20+", streak30: "Putki 30+", streak40: "Putki 40+", wordMaster: "Sanamestari", poet: "Runoilija", chatter: "Sanailija", nightOwl: "Yökävijä", earlyBird: "Aamuvirkku", podium: "Kärkikolmikko", topTen: "TOP 10", buddy: "Miittikamu", traveler: "Matkailija", veteran: "Vuosikävijä", milestone: "Juhlakerta" },
         rememberedPrefillStatus: "Muistetut tiedot (myös viesti) lisätty kenttiin. Tarkista ja paina TALLENNA KÄYNTI."
     },
     en: {
@@ -119,7 +119,7 @@ const visitorTranslations = {
         nextRankProgress: "{0} visits to go → {1}",
         nextRankMaxed: "Highest title reached! 👑",
         badgeCollectionTitle: "🏅 Achievements",
-        badgeNames: { first: "First timer", ten: "10 meets", twentyFive: "25 meets", fifty: "50 meets", streak5: "Streak 5+", streak10: "Streak 10+", wordMaster: "Word master", milestone: "Milestone", vip: "VIP" },
+        badgeNames: { first: "First timer", ten: "10 meets", twentyFive: "25 meets", fifty: "50 meets", hundred: "100 meets", rankSeikkailija: "Occasional adventurer", rankAktiivi: "Active visitor", rankVakio: "Regular", rankKonkari: "Veteran", vip: "VIP", streak5: "Streak 5+", streak10: "Streak 10+", streak20: "Streak 20+", streak30: "Streak 30+", streak40: "Streak 40+", wordMaster: "Word master", poet: "Poet", chatter: "Chatterbox", nightOwl: "Night owl", earlyBird: "Early bird", podium: "Podium", topTen: "Top 10", buddy: "Meet buddy", traveler: "Traveler", veteran: "Multi-year visitor", milestone: "Milestone" },
         rememberedPrefillStatus: "Remembered profile (including message) loaded into fields. Review and press SIGN LOGBOOK."
     },
     sv: {
@@ -178,7 +178,7 @@ const visitorTranslations = {
         nextRankProgress: "{0} besök kvar → {1}",
         nextRankMaxed: "Högsta titeln uppnådd! 👑",
         badgeCollectionTitle: "🏅 Utmärkelser",
-        badgeNames: { first: "Första gången", ten: "10 möten", twentyFive: "25 möten", fifty: "50 möten", streak5: "Putke 5+", streak10: "Putke 10+", wordMaster: "Ordmästare", milestone: "Jubileum", vip: "VIP" },
+        badgeNames: { first: "Första gången", ten: "10 möten", twentyFive: "25 möten", fifty: "50 möten", hundred: "100 möten", rankSeikkailija: "Sporadisk äventyrare", rankAktiivi: "Aktiv besökare", rankVakio: "Stamgäst", rankKonkari: "Veteran", vip: "VIP", streak5: "Putke 5+", streak10: "Putke 10+", streak20: "Putke 20+", streak30: "Putke 30+", streak40: "Putke 40+", wordMaster: "Ordmästare", poet: "Poet", chatter: "Pratkvarn", nightOwl: "Nattuggla", earlyBird: "Morgonpigg", podium: "Pallplats", topTen: "Topp 10", buddy: "Möteskompis", traveler: "Resande", veteran: "Flerårsbesökare", milestone: "Jubileum" },
         rememberedPrefillStatus: "Sparad profil (även meddelande) ifylld i fälten. Kontrollera och tryck SIGNERA LOGGBOKEN."
     },
     et: {
@@ -237,7 +237,7 @@ const visitorTranslations = {
         nextRankProgress: "Veel {0} külastust → {1}",
         nextRankMaxed: "Kõrgeim tiitel saavutatud! 👑",
         badgeCollectionTitle: "🏅 Saavutused",
-        badgeNames: { first: "Esimest korda", ten: "10 kohtumist", twentyFive: "25 kohtumist", fifty: "50 kohtumist", streak5: "Seeria 5+", streak10: "Seeria 10+", wordMaster: "Sõnameister", milestone: "Tähtpäev", vip: "VIP" },
+        badgeNames: { first: "Esimest korda", ten: "10 kohtumist", twentyFive: "25 kohtumist", fifty: "50 kohtumist", hundred: "100 kohtumist", rankSeikkailija: "Juhuslik seikleja", rankAktiivi: "Aktiivne külaline", rankVakio: "Püsikülaline", rankKonkari: "Veteran", vip: "VIP", streak5: "Seeria 5+", streak10: "Seeria 10+", streak20: "Seeria 20+", streak30: "Seeria 30+", streak40: "Seeria 40+", wordMaster: "Sõnameister", poet: "Luuletaja", chatter: "Jutustaja", nightOwl: "Öökull", earlyBird: "Varajane", podium: "Podium", topTen: "Top 10", buddy: "Kohtumissõber", traveler: "Reisija", veteran: "Pikaajaline külaline", milestone: "Tähtpäev" },
         rememberedPrefillStatus: "Salvestatud profiil (koos sõnumiga) täideti väljadele. Kontrolli ja vajuta SALVESTA KÜLASTUS."
     }
 };
@@ -972,6 +972,8 @@ async function computeVisitorStats(targetHost, eventId, nick, virtualLog) {
         const visitCountByNick = {};
         const fromCounts = {};
         let messageCount = 0;
+        let hasNightLog = false;
+        let hasMorningLog = false;
 
         logsSnap.forEach(evtLogs => {
             const eventKey = evtLogs.key;
@@ -989,6 +991,11 @@ async function computeVisitorStats(targetHost, eventId, nick, virtualLog) {
 
                     if (ln === nickNorm) {
                         attended = true;
+                        if (val.timestamp) {
+                            const h = new Date(val.timestamp).getHours();
+                            if (h >= 22 || h < 5) hasNightLog = true;
+                            if (h >= 5 && h < 8) hasMorningLog = true;
+                        }
                         const fromVal = (val.from || '').trim();
                         if (fromVal) {
                             fromCounts[fromVal] = (fromCounts[fromVal] || 0) + 1;
@@ -1030,6 +1037,11 @@ async function computeVisitorStats(targetHost, eventId, nick, virtualLog) {
                     visitCountByNick[ln] = (visitCountByNick[ln] || 0) + 1;
                     if (ln === nickNorm) {
                         userHistory.push(evtData);
+                        if (virtualLog.timestamp) {
+                            const vh = new Date(virtualLog.timestamp).getHours();
+                            if (vh >= 22 || vh < 5) hasNightLog = true;
+                            if (vh >= 5 && vh < 8) hasMorningLog = true;
+                        }
                         const fromVal = (virtualLog.from || '').trim();
                         if (fromVal) fromCounts[fromVal] = (fromCounts[fromVal] || 0) + 1;
                         const msg = (virtualLog.message || '').trim();
@@ -1071,6 +1083,7 @@ async function computeVisitorStats(targetHost, eventId, nick, virtualLog) {
 
         stats.totalVisits = userHistory.length;
         stats.isFirstTime = userHistory.length === 1;
+        const visitYears = new Set(userHistory.map(e => (e.date || '').slice(0, 4)).filter(Boolean)).size;
 
         // Päivää edellisestä käynnistä (edellinen tapahtuma ennen nykyistä)
         const currentHistIdx = userHistory.findIndex(e => e.key === eventId);
@@ -1154,15 +1167,39 @@ async function computeVisitorStats(targetHost, eventId, nick, virtualLog) {
 
         // Badge-kokoelma (saavutukset)
         stats.badges = [];
+        // Käyntimäärät
         if (stats.totalVisits >= 1) stats.badges.push({ icon: '🎉', key: 'first' });
         if (stats.totalVisits >= 10) stats.badges.push({ icon: '🥉', key: 'ten' });
         if (stats.totalVisits >= 25) stats.badges.push({ icon: '🥈', key: 'twentyFive' });
         if (stats.totalVisits >= 50) stats.badges.push({ icon: '🥇', key: 'fifty' });
+        if (stats.totalVisits >= 100) stats.badges.push({ icon: '💯', key: 'hundred' });
+        // Saavutetut tittelit (rajat synkassa getRankTitle:n kanssa)
+        if (stats.totalVisits >= 2) stats.badges.push({ icon: '🚶', key: 'rankSeikkailija' });
+        if (stats.totalVisits >= 11) stats.badges.push({ icon: '⭐', key: 'rankAktiivi' });
+        if (stats.totalVisits >= 21) stats.badges.push({ icon: '🏠', key: 'rankVakio' });
+        if (stats.totalVisits >= 41) stats.badges.push({ icon: '🎖️', key: 'rankKonkari' });
+        if (stats.totalVisits >= 61) stats.badges.push({ icon: '👑', key: 'vip' });
+        // Putket
         if (stats.longestStreak >= 5) stats.badges.push({ icon: '🔥', key: 'streak5' });
         if (stats.longestStreak >= 10) stats.badges.push({ icon: '💥', key: 'streak10' });
+        if (stats.longestStreak >= 20) stats.badges.push({ icon: '⚡', key: 'streak20' });
+        if (stats.longestStreak >= 30) stats.badges.push({ icon: '🌪️', key: 'streak30' });
+        if (stats.longestStreak >= 40) stats.badges.push({ icon: '🚀', key: 'streak40' });
+        // Viestit
         if (stats.messageWordTotal >= 500) stats.badges.push({ icon: '✍️', key: 'wordMaster' });
-        if (stats.isMilestone) stats.badges.push({ icon: '🏆', key: 'milestone' });
-        if (stats.totalVisits > 60) stats.badges.push({ icon: '👑', key: 'vip' });
+        if (stats.messageWordMax >= 50) stats.badges.push({ icon: '📖', key: 'poet' });
+        if (messageCount >= 20) stats.badges.push({ icon: '💬', key: 'chatter' });
+        // Ajankohdat (kirjausajankohdan mukaan)
+        if (hasNightLog) stats.badges.push({ icon: '🦉', key: 'nightOwl' });
+        if (hasMorningLog) stats.badges.push({ icon: '🌅', key: 'earlyBird' });
+        // Yhteisö
+        if (stats.rankPosition > 0 && stats.rankPosition <= 3) stats.badges.push({ icon: '🏆', key: 'podium' });
+        else if (stats.rankPosition > 0 && stats.rankPosition <= 10) stats.badges.push({ icon: '🏅', key: 'topTen' });
+        if (stats.topBuddies.length > 0 && stats.topBuddies[0].count >= 10) stats.badges.push({ icon: '🤝', key: 'buddy' });
+        if (fromEntries.length >= 3) stats.badges.push({ icon: '🌍', key: 'traveler' });
+        if (visitYears >= 3) stats.badges.push({ icon: '�️', key: 'veteran' });
+        // Erikois
+        if (stats.isMilestone) stats.badges.push({ icon: '🎊', key: 'milestone' });
 
         const currentEvent = eventsMap[eventId];
         if (currentEvent && typeof currentEvent.specialMessage === 'string') {
