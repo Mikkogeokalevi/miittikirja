@@ -75,6 +75,7 @@
     --vv-theme-btn-text: #2a4a75;
     --vv-theme-btn-active-bg: #2e64aa;
     --vv-theme-btn-active-text: #ffffff;
+    --vv-focus-ring: rgba(46, 100, 170, 0.16);
 }
 
 body[data-visitor-theme="forest"] {
@@ -117,6 +118,7 @@ body[data-visitor-theme="forest"] {
     --vv-theme-btn-text: #2b5b45;
     --vv-theme-btn-active-bg: #2f7a58;
     --vv-theme-btn-active-text: #ffffff;
+    --vv-focus-ring: rgba(47, 122, 88, 0.16);
 }
 
 /* --- LIGHT TEEMA (Päivä) --- */
@@ -1444,4 +1446,275 @@ body.theme-blue .calendar-cell.intensity-5 {
         padding: 6px;
         font-size: 0.85em;
     }
+}
+
+/* ==========================================
+   VISITOR PREMIUM REFRESH
+   Moderni fontti, pehmeät pinnat, hero-otsikko,
+   pilli-kielivalikko, focus-renkaat, gradient-CTA
+   ========================================== */
+
+#visitor-view {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    border: 1px solid var(--vv-border);
+    border-radius: 24px;
+    box-shadow: 0 24px 60px var(--vv-shadow);
+    padding: 24px 20px 80px 20px;
+}
+
+#visitor-view input,
+#visitor-view textarea {
+    font-family: inherit;
+    border-radius: 12px;
+    border: 1.5px solid var(--vv-input-border);
+    padding: 14px 16px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#visitor-view input:focus,
+#visitor-view textarea:focus {
+    outline: none;
+    border-color: var(--vv-theme-btn-active-bg);
+    box-shadow: 0 0 0 4px var(--vv-focus-ring);
+}
+
+/* Nimikenttä — tärkein kenttä, korostetaan */
+#visitor-view #vv-nickname {
+    font-size: 1.15em;
+    font-weight: 600;
+    border-width: 2px;
+}
+
+/* --- Hero-otsikko --- */
+#visitor-view #vv-ui-title {
+    font-size: 0.8em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--vv-muted-color);
+    margin: 4px 0 2px 0;
+}
+
+#visitor-view #vv-event-name {
+    font-size: 1.9em;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1.15;
+    margin: 0;
+}
+
+#visitor-view #vv-event-name::after {
+    content: "";
+    display: block;
+    width: 64px;
+    height: 3px;
+    margin: 10px auto 0;
+    border-radius: 999px;
+    background: var(--vv-theme-btn-active-bg);
+    opacity: 0.55;
+}
+
+/* --- Kielivalikko: pienet pillit --- */
+.vv-lang-switch {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.vv-lang-btn {
+    border: 1.5px solid var(--vv-theme-btn-border);
+    background: var(--vv-theme-btn-bg);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 1.15em;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.55;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+}
+
+.vv-lang-btn.active {
+    opacity: 1;
+    background: var(--vv-theme-btn-active-bg);
+    border-color: var(--vv-theme-btn-active-bg);
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px var(--vv-shadow);
+}
+
+/* --- Teemanvaihto: pieni hover-nosto --- */
+.visitor-theme-btn {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.visitor-theme-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px var(--vv-shadow);
+}
+
+/* --- Tapahtuman infokortti --- */
+#visitor-view .vv-event-info-card {
+    text-align: center;
+    border-radius: 14px;
+}
+
+#visitor-view #vv-event-info {
+    margin: 0;
+    font-weight: 600;
+    color: var(--vv-text-color);
+}
+
+/* --- Lomakekortti --- */
+#visitor-view .card-form {
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: 0 8px 24px var(--vv-card-shadow);
+}
+
+#visitor-view #vv-ui-subtitle {
+    color: var(--vv-heading-color);
+    font-size: 1.15em;
+    font-weight: 700;
+    margin-bottom: 14px;
+}
+
+.vv-field-hint {
+    display: block;
+    color: var(--vv-muted-color);
+    margin: -4px 0 12px 4px;
+    font-size: 0.8em;
+    font-style: italic;
+    text-align: left;
+}
+
+/* --- CTA-nappi --- */
+#visitor-view #btn-visitor-sign {
+    font-size: 1.15em;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    padding: 16px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%);
+    box-shadow: 0 6px 18px rgba(46, 125, 50, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+#visitor-view #btn-visitor-sign:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 9px 24px rgba(46, 125, 50, 0.42);
+}
+
+#visitor-view #btn-visitor-sign:active {
+    transform: translateY(1px) scale(0.99);
+    box-shadow: 0 3px 10px rgba(46, 125, 50, 0.3);
+}
+
+/* --- Muistutus: pehmeä infolaatikko --- */
+#visitor-view #vv-ui-reminder {
+    color: var(--vv-muted-color);
+    background: var(--vv-theme-btn-bg);
+    border: 1px dashed var(--vv-theme-btn-border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+    text-align: center;
+    margin: 16px 0 0 0;
+}
+
+/* --- Autocomplete --- */
+#visitor-view .autocomplete-list {
+    left: 0;
+    width: 100%;
+    background: var(--vv-card-bg);
+    border: 1px solid var(--vv-card-border);
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 12px 28px var(--vv-shadow);
+    overflow: hidden;
+}
+
+#visitor-view .autocomplete-item {
+    border-bottom: 1px solid var(--vv-card-border);
+    color: var(--vv-text-color);
+}
+
+#visitor-view .autocomplete-item:hover {
+    background: var(--vv-theme-btn-bg);
+}
+
+/* --- Quick actions & duplicate --- */
+#visitor-view #vv-quick-actions {
+    border: 1px dashed var(--vv-theme-btn-border);
+    background: var(--vv-theme-btn-bg);
+    border-radius: 12px;
+}
+
+#visitor-view #vv-duplicate-panel {
+    border-radius: 12px;
+}
+
+/* --- Virhe/status pehmeämmin --- */
+#visitor-view #vv-error,
+#visitor-view #vv-status {
+    border-radius: 12px;
+}
+
+/* --- Viestilaatikot --- */
+#visitor-view .visitor-pre-sign-message,
+#visitor-view .visitor-special-message {
+    border-radius: 14px;
+}
+
+/* --- Profiilimodaali: badget, palkki, yhteenvetokortit --- */
+#user-profile-modal .visitor-badge-chip {
+    background: var(--vv-card-bg);
+    border: 1px solid var(--vv-card-border);
+    box-shadow: 0 2px 6px var(--vv-card-shadow);
+    color: var(--vv-text-color);
+    font-weight: 600;
+    padding: 6px 12px;
+}
+
+#user-profile-modal .visitor-badge-chip.locked {
+    box-shadow: none;
+    background: transparent;
+}
+
+#user-profile-modal .visitor-badge-info {
+    background: var(--vv-theme-btn-bg);
+    border: 1px solid var(--vv-theme-btn-border);
+    color: var(--vv-modal-text);
+    border-radius: 10px;
+}
+
+#user-profile-modal .visitor-progress-bar {
+    background: var(--vv-theme-btn-bg);
+    border: 1px solid var(--vv-theme-btn-border);
+    height: 12px;
+}
+
+#user-profile-modal .visitor-progress-fill {
+    background: linear-gradient(90deg, var(--vv-theme-btn-active-bg), var(--vv-post-border));
+}
+
+#user-profile-modal .visitor-summary-card {
+    background: var(--vv-card-bg);
+    border: 1px solid var(--vv-card-border);
+    border-radius: 14px;
+}
+
+#user-profile-modal .visitor-summary-metric {
+    border: 1px solid var(--vv-card-border);
+    border-radius: 10px;
+    background: var(--vv-theme-btn-bg);
+}
+
+#user-profile-modal .visitor-summary-title,
+#user-profile-modal .visitor-summary-metric-value {
+    color: var(--vv-modal-text);
+}
+
+#user-profile-modal .visitor-summary-line,
+#user-profile-modal .visitor-progress-label {
+    color: var(--vv-modal-text);
 }

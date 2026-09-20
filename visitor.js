@@ -722,7 +722,11 @@ window.setVisitorLanguage = function(lang) {
 
     ['btn-lang-fi', 'btn-lang-en', 'btn-lang-sv', 'btn-lang-et'].forEach(id => {
         const el = document.getElementById(id);
-        if(el) el.style.opacity = (id === `btn-lang-${lang}`) ? "1" : "0.5";
+        if(el) {
+            const isActive = (id === `btn-lang-${lang}`);
+            el.style.opacity = isActive ? "1" : "0.5";
+            el.classList.toggle('active', isActive);
+        }
     });
 
     if (typeof window.updateVisitorExpiryNotice === 'function') {
