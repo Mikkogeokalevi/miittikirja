@@ -55,6 +55,12 @@ const visitorTranslations = {
         miniMilestone: "Seuraava",
         miniMilestoneMissing: "Puuttuu {0}",
         fuzzyDidYouMean: "Tarkoititko: {0}?",
+        lastVisitDays: "Edellinen käyntisi {0} päivää sitten",
+        lastVisitToday: "Kävit miitissä jo aiemmin tänään!",
+        nextRankProgress: "Vielä {0} käyntiä → {1}",
+        nextRankMaxed: "Korkein titteli saavutettu! 👑",
+        badgeCollectionTitle: "🏅 Saavutukset",
+        badgeNames: { first: "Ensikertalainen", ten: "10 miittiä", twentyFive: "25 miittiä", fifty: "50 miittiä", streak5: "Putki 5+", streak10: "Putki 10+", wordMaster: "Sanamestari", milestone: "Juhlakerta", vip: "VIP" },
         rememberedPrefillStatus: "Muistetut tiedot (myös viesti) lisätty kenttiin. Tarkista ja paina TALLENNA KÄYNTI."
     },
     en: {
@@ -108,6 +114,12 @@ const visitorTranslations = {
         miniMilestone: "Next",
         miniMilestoneMissing: "Remaining {0}",
         fuzzyDidYouMean: "Did you mean: {0}?",
+        lastVisitDays: "Last visit {0} days ago",
+        lastVisitToday: "You already visited a meet today!",
+        nextRankProgress: "{0} visits to go → {1}",
+        nextRankMaxed: "Highest title reached! 👑",
+        badgeCollectionTitle: "🏅 Achievements",
+        badgeNames: { first: "First timer", ten: "10 meets", twentyFive: "25 meets", fifty: "50 meets", streak5: "Streak 5+", streak10: "Streak 10+", wordMaster: "Word master", milestone: "Milestone", vip: "VIP" },
         rememberedPrefillStatus: "Remembered profile (including message) loaded into fields. Review and press SIGN LOGBOOK."
     },
     sv: {
@@ -161,6 +173,12 @@ const visitorTranslations = {
         miniMilestone: "Nästa",
         miniMilestoneMissing: "Kvar {0}",
         fuzzyDidYouMean: "Menade du: {0}?",
+        lastVisitDays: "Senaste besöket för {0} dagar sedan",
+        lastVisitToday: "Du besökte redan ett möte idag!",
+        nextRankProgress: "{0} besök kvar → {1}",
+        nextRankMaxed: "Högsta titeln uppnådd! 👑",
+        badgeCollectionTitle: "🏅 Utmärkelser",
+        badgeNames: { first: "Första gången", ten: "10 möten", twentyFive: "25 möten", fifty: "50 möten", streak5: "Putke 5+", streak10: "Putke 10+", wordMaster: "Ordmästare", milestone: "Jubileum", vip: "VIP" },
         rememberedPrefillStatus: "Sparad profil (även meddelande) ifylld i fälten. Kontrollera och tryck SIGNERA LOGGBOKEN."
     },
     et: {
@@ -214,6 +232,12 @@ const visitorTranslations = {
         miniMilestone: "Järgmine",
         miniMilestoneMissing: "Puudu {0}",
         fuzzyDidYouMean: "Kas mõtlesid: {0}?",
+        lastVisitDays: "Eelmine külastus {0} päeva tagasi",
+        lastVisitToday: "Külastasid täna juba kohtumist!",
+        nextRankProgress: "Veel {0} külastust → {1}",
+        nextRankMaxed: "Kõrgeim tiitel saavutatud! 👑",
+        badgeCollectionTitle: "🏅 Saavutused",
+        badgeNames: { first: "Esimest korda", ten: "10 kohtumist", twentyFive: "25 kohtumist", fifty: "50 kohtumist", streak5: "Seeria 5+", streak10: "Seeria 10+", wordMaster: "Sõnameister", milestone: "Tähtpäev", vip: "VIP" },
         rememberedPrefillStatus: "Salvestatud profiil (koos sõnumiga) täideti väljadele. Kontrolli ja vajuta SALVESTA KÜLASTUS."
     }
 };
@@ -283,7 +307,7 @@ async function getVisitorNicknameIndex(targetHost) {
 
     snap.forEach(eventLogs => {
         eventLogs.forEach(log => {
-            const nick = (log.val()?.nickname || '').trim();
+            const nick = ((log.val() || {}).nickname || '').trim();
             if (!nick) return;
             const norm = normalizeNickname(nick);
             if (!norm || seen.has(norm)) return;
@@ -333,7 +357,7 @@ function findBestFuzzyNick(inputNorm, index) {
 
     let best = null;
     for (const item of index) {
-        if (!item?.norm || item.norm === inputNorm) continue;
+        if (!item || !item.norm || item.norm === inputNorm) continue;
 
         const distance = levenshteinDistance(inputNorm, item.norm);
         const maxLen = Math.max(inputNorm.length, item.norm.length);
@@ -432,7 +456,7 @@ function readJsonFromStorage(key, fallbackValue) {
         const raw = localStorage.getItem(key);
         if (!raw) return fallbackValue;
         const parsed = JSON.parse(raw);
-        return parsed ?? fallbackValue;
+        return parsed != null ? parsed : fallbackValue;
     } catch (e) {
         return fallbackValue;
     }
@@ -510,7 +534,7 @@ function renderDuplicatePanel() {
         return;
     }
 
-    const timeText = currentDuplicateMeta?.timestamp ? formatVisitorTimestamp(currentDuplicateMeta.timestamp) : '';
+    const timeText = (currentDuplicateMeta && currentDuplicateMeta.timestamp) ? formatVisitorTimestamp(currentDuplicateMeta.timestamp) : '';
     info.innerText = timeText
         ? (t.duplicateInfoTime || '').replace('{0}', timeText)
         : (t.duplicateInfoNoTime || '');
@@ -782,7 +806,9 @@ window.handleVisitorSign = async function() {
         window.renderVisitorQuickActions();
     }
 
-    const targetHost = window.currentVisitorTargetUid || "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
+    const targetHost = window.currentVisitorTargetUid
+        || (typeof MK_Config !== 'undefined' && MK_Config.HOST_UID)
+        || "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
     const eventId = window.currentEventId;
 
     if (!eventId) return alert("Virhe: Tapahtuman tunnistetta ei löytynyt.");
@@ -869,6 +895,9 @@ window.handleVisitorSign = async function() {
         streakCount: 0,
         streakStartLabel: "",
         longestStreak: 0,
+        daysSinceLastVisit: null,
+        nextRank: null,
+        badges: [],
         hometown: "",
         rankPosition: 0,
         rankTotal: 0,
@@ -894,6 +923,11 @@ window.handleVisitorSign = async function() {
         });
         
         allHostEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // Putkilaskentaa varten: perutut tapahtumat ohitetaan (niihin ei voi osallistua)
+        const streakEvents = allHostEvents.filter(e => !(e.name || '').includes("/ PERUTTU /"));
+        const streakIndexByKey = {};
+        streakEvents.forEach((e, i) => { streakIndexByKey[e.key] = i; });
 
         const isMiittiEvent = (evt) => {
             const type = (evt.type || '').toLowerCase();
@@ -924,6 +958,8 @@ window.handleVisitorSign = async function() {
 
         const eventAttendees = {};
         const visitCountByNick = {};
+        const fromCounts = {};
+        let messageCount = 0;
 
         logsSnap.forEach(evtLogs => {
             const eventKey = evtLogs.key;
@@ -941,8 +977,13 @@ window.handleVisitorSign = async function() {
 
                     if (ln === nickNorm) {
                         attended = true;
+                        const fromVal = (val.from || '').trim();
+                        if (fromVal) {
+                            fromCounts[fromVal] = (fromCounts[fromVal] || 0) + 1;
+                        }
                         const msg = (val.message || '').trim();
                         if (msg) {
+                            messageCount++;
                             const split = splitVisitorMessageSources(msg);
                             const localWords = split.local ? split.local.split(/\s+/).filter(Boolean).length : 0;
                             const netWords = split.net ? split.net.split(/\s+/).filter(Boolean).length : 0;
@@ -968,8 +1009,8 @@ window.handleVisitorSign = async function() {
 
         if (isOrganizerNickname(nickNorm)) {
             const currentEvent = eventsMap[eventId];
-            const currentEventDate = currentEvent?.date || '';
-            miittiEvents.forEach(evt => {
+            const currentEventDate = (currentEvent && currentEvent.date) || '';
+            streakEvents.forEach(evt => {
                 if (currentEventDate && evt.date > currentEventDate) return;
                 if (!userHistory.some(h => h.key === evt.key)) {
                     userHistory.push(evt);
@@ -987,33 +1028,41 @@ window.handleVisitorSign = async function() {
         userHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
 
         stats.totalVisits = userHistory.length;
+        stats.isFirstTime = userHistory.length === 1;
 
-        // Calculate hometown (most common "from")
-        const fromCounts = {};
-        userHistory.forEach(evt => {
-            const from = (evt.from || '').trim();
-            if (from) {
-                fromCounts[from] = (fromCounts[from] || 0) + 1;
-            }
-        });
+        // Päivää edellisestä käynnistä (edellinen tapahtuma ennen nykyistä)
+        const currentHistIdx = userHistory.findIndex(e => e.key === eventId);
+        if (currentHistIdx > 0) {
+            const prevVisit = userHistory[currentHistIdx - 1];
+            stats.daysSinceLastVisit = Math.max(0, Math.floor((new Date() - new Date(prevVisit.date)) / (1000 * 60 * 60 * 24)));
+        }
+        stats.isMilestone = stats.totalVisits >= 10 && stats.totalVisits % 10 === 0;
+        stats.messageWordAvg = messageCount > 0
+            ? Math.round((stats.messageWordTotal / messageCount) * 10) / 10
+            : 0;
+
+        // Kävijän yleisin "Mistä tulet" -arvo omista kirjauksista
         const fromEntries = Object.entries(fromCounts);
         if (fromEntries.length > 0) {
             fromEntries.sort((a, b) => b[1] - a[1]);
             stats.hometown = fromEntries[0][0];
         }
 
+        // Osallistutujen tapahtumien indeksit streakEvents-listassa (perutut ohitettu)
+        const attendedIdx = userHistory
+            .map(e => streakIndexByKey[e.key])
+            .filter(i => i !== undefined);
+
         // Calculate longest streak ever (using all events, not just miittis)
         if (isOrganizerNickname(nickNorm)) {
             // Organizer is in all their own events, so longest streak = total visits
-            stats.longestStreak = userHistory.length;
-        } else if (userHistory.length > 0) {
+            stats.longestStreak = attendedIdx.length;
+        } else if (attendedIdx.length > 0) {
             // For regular visitors, calculate longest consecutive streak across all events
             let longest = 1;
             let current = 1;
-            for (let i = 1; i < userHistory.length; i++) {
-                const prevIdx = allHostEvents.findIndex(e => e.key === userHistory[i - 1].key);
-                const currIdx = allHostEvents.findIndex(e => e.key === userHistory[i].key);
-                if (prevIdx >= 0 && currIdx >= 0 && currIdx === prevIdx + 1) {
+            for (let i = 1; i < attendedIdx.length; i++) {
+                if (attendedIdx[i] === attendedIdx[i - 1] + 1) {
                     current++;
                     if (current > longest) longest = current;
                 } else {
@@ -1061,6 +1110,18 @@ window.handleVisitorSign = async function() {
             .slice(0, 5)
             .map(([name, count]) => ({ name, count, total: buddyTotals[name] || 0 }));
 
+        // Badge-kokoelma (saavutukset)
+        stats.badges = [];
+        if (stats.totalVisits >= 1) stats.badges.push({ icon: '🎉', key: 'first' });
+        if (stats.totalVisits >= 10) stats.badges.push({ icon: '🥉', key: 'ten' });
+        if (stats.totalVisits >= 25) stats.badges.push({ icon: '🥈', key: 'twentyFive' });
+        if (stats.totalVisits >= 50) stats.badges.push({ icon: '🥇', key: 'fifty' });
+        if (stats.longestStreak >= 5) stats.badges.push({ icon: '🔥', key: 'streak5' });
+        if (stats.longestStreak >= 10) stats.badges.push({ icon: '💥', key: 'streak10' });
+        if (stats.messageWordTotal >= 500) stats.badges.push({ icon: '✍️', key: 'wordMaster' });
+        if (stats.isMilestone) stats.badges.push({ icon: '🏆', key: 'milestone' });
+        if (stats.totalVisits > 60) stats.badges.push({ icon: '👑', key: 'vip' });
+
         const currentEvent = eventsMap[eventId];
         if (currentEvent && typeof currentEvent.specialMessage === 'string') {
             stats.specialMessage = currentEvent.specialMessage.trim();
@@ -1068,6 +1129,7 @@ window.handleVisitorSign = async function() {
 
         if (window.MK_Messages) {
             stats.title = window.MK_Messages.getRankTitle(stats.totalVisits);
+            stats.nextRank = window.MK_Messages.getNextRank(stats.totalVisits);
             
             // Valitaan viestityyppi satunnaisesti
             const greetingType = Math.random();
@@ -1089,16 +1151,18 @@ window.handleVisitorSign = async function() {
             
             stats.greeting = greeting;
             
-            // Putkilaskuri (kaikki tapahtumat)
-            if (!stats.isFirstTime && allHostEvents.length > 0) {
-                const currentEventIndex = allHostEvents.findIndex(e => e.key === eventId);
-                if (currentEventIndex >= 0) {
+            // Putkilaskuri (kaikki tapahtumat, perutut ohitettu)
+            if (!stats.isFirstTime && streakEvents.length > 0) {
+                const currentEventIndex = streakIndexByKey[eventId];
+                if (currentEventIndex !== undefined) {
                     let streak = 0;
                     let globalIdx = currentEventIndex;
-                    let historyIdx = userHistory.length - 1;
+                    // Aloitetaan viimeisimmästä osallistumisesta joka on <= nykyinen tapahtuma
+                    let historyIdx = attendedIdx.length - 1;
+                    while (historyIdx >= 0 && attendedIdx[historyIdx] > currentEventIndex) historyIdx--;
                     // Count consecutive events backwards from current event
                     while (globalIdx >= 0 && historyIdx >= 0) {
-                        if (allHostEvents[globalIdx].key === userHistory[historyIdx].key) {
+                        if (attendedIdx[historyIdx] === globalIdx) {
                             streak++;
                             globalIdx--;
                             historyIdx--;
@@ -1109,18 +1173,17 @@ window.handleVisitorSign = async function() {
                     stats.streakCount = streak;
                     if (streak > 1) {
                         stats.streakText = window.MK_Messages.getStreakMessage(streak);
-                        const startEvent = allHostEvents[globalIdx + 1];
+                        const startEvent = streakEvents[globalIdx + 1];
                         if (startEvent) {
                             const num = startEvent.seqNumber ? `#${startEvent.seqNumber}` : "";
                             stats.streakStartLabel = `${num} ${startEvent.name}`.trim();
                         }
                     } else {
-                        // Streak is 1 (just this event)
-                        const lastVisitEvent = userHistory[userHistory.length - 2];
-                        if (lastVisitEvent) {
+                        // Streak is 1 (just this event) — edellinen osallistuminen on historyIdx:ssä
+                        if (historyIdx >= 0) {
+                            const lastVisitEvent = streakEvents[attendedIdx[historyIdx]];
                             const daysDiff = Math.floor((new Date() - new Date(lastVisitEvent.date)) / (1000 * 60 * 60 * 24));
-                            const lastVisitGlobalIndex = allHostEvents.findIndex(e => e.key === lastVisitEvent.key);
-                            const missedCount = (currentEventIndex - lastVisitGlobalIndex) - 1;
+                            const missedCount = (currentEventIndex - attendedIdx[historyIdx]) - 1;
                             stats.streakText = window.MK_Messages.getMissedMessage(daysDiff, missedCount);
                         }
                     }
@@ -1272,10 +1335,47 @@ function showVisitorModalWithLang(nick, history, stats) {
     const oldDashboard = document.getElementById('up-visitor-mini-dashboard');
     if (oldDashboard) oldDashboard.remove();
 
-    const streakLine = (t.miniStreakNow || 'Putki: {0} miittiä').replace('{0}', stats.streakCount || 1);
+    // Putkirivi vain oikealle putkelle (>= 2) — "1 miitti putkeen" näyttää hassulta
+    const streakLine = (stats.streakCount >= 2)
+        ? (t.miniStreakNow || 'Putki: {0} miittiä').replace('{0}', stats.streakCount)
+        : '';
+
+    const lastVisitLine = (!stats.isFirstTime && stats.daysSinceLastVisit !== null)
+        ? (stats.daysSinceLastVisit === 0
+            ? (t.lastVisitToday || 'Kävit miitissä jo aiemmin tänään!')
+            : (t.lastVisitDays || 'Edellinen käyntisi {0} päivää sitten').replace('{0}', stats.daysSinceLastVisit))
+        : '';
 
     const longestStreakLine = (stats.longestStreak > 1)
         ? `Ennätysputki: <strong>${stats.longestStreak}</strong> miittiä`
+        : '';
+
+    const infoLines = [streakLine, lastVisitLine, longestStreakLine].filter(Boolean);
+    const streakRowHtml = infoLines.length > 0
+        ? `<div class="visitor-summary-line">${infoLines.map(l => `<span>${l}</span>`).join(' · ')}</div>`
+        : '';
+
+    // Edistymispalkki seuraavaan titteliin
+    let progressHtml = '';
+    if (stats.nextRank) {
+        const remaining = stats.nextRank.at - stats.totalVisits;
+        const span = Math.max(1, stats.nextRank.at - stats.nextRank.prevAt);
+        const done = stats.totalVisits - stats.nextRank.prevAt;
+        const pct = Math.min(100, Math.max(0, Math.round((done / span) * 100)));
+        progressHtml = `
+            <div class="visitor-progress-wrap">
+                <div class="visitor-progress-label">${(t.nextRankProgress || 'Vielä {0} käyntiä → {1}').replace('{0}', remaining).replace('{1}', stats.nextRank.title)}</div>
+                <div class="visitor-progress-bar"><div class="visitor-progress-fill" style="width:${pct}%"></div></div>
+            </div>`;
+    } else if (stats.totalVisits > 60) {
+        progressHtml = `<div class="visitor-progress-wrap"><div class="visitor-progress-label">${t.nextRankMaxed || 'Korkein titteli saavutettu! 👑'}</div></div>`;
+    }
+
+    // Badge-kokoelma
+    const badgeNames = t.badgeNames || {};
+    const badgesHtml = (Array.isArray(stats.badges) && stats.badges.length > 0)
+        ? `<div class="visitor-summary-title" style="margin-top:12px;">${t.badgeCollectionTitle || '🏅 Saavutukset'}</div>
+           <div class="visitor-badge-collection">${stats.badges.map(b => `<span class="visitor-badge-chip">${b.icon} ${badgeNames[b.key] || b.key}</span>`).join('')}</div>`
         : '';
 
     const miniDashboard = document.createElement('div');
@@ -1292,10 +1392,9 @@ function showVisitorModalWithLang(nick, history, stats) {
                 </div>
             </div>
 
-            <div class="visitor-summary-line">
-                <span>${streakLine}</span>
-                ${longestStreakLine ? ` · <span>${longestStreakLine}</span>` : ''}
-            </div>
+            ${progressHtml}
+
+            ${streakRowHtml}
 
             <div class="visitor-summary-title" style="margin-top:12px;">${t.miniWordsSummaryTitle || 'Viestien sanamäärät'}</div>
             <div class="visitor-summary-help">${t.miniWordsSummaryHelp || 'Näyttää sanamäärät eri lähteistä.'}</div>
@@ -1314,7 +1413,10 @@ function showVisitorModalWithLang(nick, history, stats) {
             <div class="visitor-summary-line">
                 ${t.miniWordsTotal || 'Yhteensä'}: <strong>${stats.messageWordTotal || 0}</strong>
                 · ${t.miniWordsAvg || 'Keskiarvo'}: <strong>${stats.messageWordAvg || 0}</strong>
+                ${stats.messageWordMax > 0 ? ` · ${(t.miniWordsMax || 'Pisin {0}').replace('{0}', stats.messageWordMax)}` : ''}
             </div>
+
+            ${badgesHtml}
         </div>
     `;
     badgeEl.insertAdjacentElement('afterend', miniDashboard);

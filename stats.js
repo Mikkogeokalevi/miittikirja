@@ -62,21 +62,21 @@ function exportMyMiittiEventsCsv() {
         let localWords = 0;
         let netWords = 0;
         logs.forEach(log => {
-            const sources = splitMessageSources(sanitizeMessageForStats(log?.message || ''));
+            const sources = splitMessageSources(sanitizeMessageForStats((log || {}).message || ''));
             localWords += countWords(sources.local);
             netWords += countWords(sources.net);
         });
 
         const coords = evt.coords
-            ? `${evt.coords.lat ?? ''},${evt.coords.lng ?? ''}`
+            ? `${evt.coords.lat != null ? evt.coords.lat : ''},${evt.coords.lng != null ? evt.coords.lng : ''}`
             : (evt.lat && evt.lng ? `${evt.lat},${evt.lng}` : '');
 
         lines.push([
             evt.date || '',
             evt.name || '',
             (evt.type || 'miitti'),
-            (evt.seqNumber ?? ''),
-            (evt.attendeeCount ?? ''),
+            (evt.seqNumber != null ? evt.seqNumber : ''),
+            (evt.attendeeCount != null ? evt.attendeeCount : ''),
             logs.length,
             localWords,
             netWords,
@@ -477,7 +477,7 @@ function getDisplayMessageBySource(row, sourceMode) {
 }
 
 function csvEscape(value) {
-    const text = (value ?? '').toString().replace(/"/g, '""');
+    const text = (value != null ? value : '').toString().replace(/"/g, '""');
     return `"${text}"`;
 }
 
@@ -511,7 +511,7 @@ function populateStatsLogUserDatalist(data) {
         .sort((a, b) => a.localeCompare(b, 'fi'))
         .slice(0, 1000);
 
-    renderStatsLogUserAutocomplete(document.getElementById('stats-log-user')?.value || '');
+    renderStatsLogUserAutocomplete((document.getElementById('stats-log-user') || {}).value || '');
 }
 
 function hideStatsLogUserAutocomplete() {
@@ -668,7 +668,7 @@ function exportCurrentUserLogSearch() {
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
-    const userRaw = (document.getElementById('stats-log-user')?.value || 'kaikki').trim().toLowerCase();
+    const userRaw = ((document.getElementById('stats-log-user') || {}).value || 'kaikki').trim().toLowerCase();
     const safeUser = userRaw.replace(/[^a-z0-9åäö_-]+/gi, '_') || 'kaikki';
     const fileName = `miittikirja_logit_${safeUser}_${stamp}.csv`;
 
@@ -692,9 +692,9 @@ function exportCurrentUserLogSearchTxt() {
         return;
     }
 
-    const fromDate = (document.getElementById('stats-log-from')?.value || '').trim();
-    const toDate = (document.getElementById('stats-log-to')?.value || '').trim();
-    const userRaw = (document.getElementById('stats-log-user')?.value || 'kaikki').trim();
+    const fromDate = ((document.getElementById('stats-log-from') || {}).value || '').trim();
+    const toDate = ((document.getElementById('stats-log-to') || {}).value || '').trim();
+    const userRaw = ((document.getElementById('stats-log-user') || {}).value || 'kaikki').trim();
     const sourceLabel = sourceMode === 'both'
         ? 'Molemmat'
         : sourceMode === 'local'
@@ -809,12 +809,12 @@ function runUserLogSearch(data) {
     const listEl = document.getElementById('stats-user-log-results');
     if (!summaryEl || !wordStatsEl || !listEl) return;
 
-    const userFilter = (document.getElementById('stats-log-user')?.value || '').trim().toLowerCase();
-    const fromDate = (document.getElementById('stats-log-from')?.value || '').trim();
-    const toDate = (document.getElementById('stats-log-to')?.value || '').trim();
-    const limitValue = (document.getElementById('stats-log-limit')?.value || '10').trim();
-    const sourceMode = (document.getElementById('stats-log-source')?.value || 'both').trim();
-    const topScope = (document.getElementById('stats-top-scope')?.value || 'filtered').trim();
+    const userFilter = ((document.getElementById('stats-log-user') || {}).value || '').trim().toLowerCase();
+    const fromDate = ((document.getElementById('stats-log-from') || {}).value || '').trim();
+    const toDate = ((document.getElementById('stats-log-to') || {}).value || '').trim();
+    const limitValue = ((document.getElementById('stats-log-limit') || {}).value || '10').trim();
+    const sourceMode = ((document.getElementById('stats-log-source') || {}).value || 'both').trim();
+    const topScope = ((document.getElementById('stats-top-scope') || {}).value || 'filtered').trim();
 
     let rows = flattenEventLogs(data);
 

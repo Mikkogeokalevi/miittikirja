@@ -85,11 +85,37 @@ miitit/
 - Calendar data stored under: `miitit/{userId}/calendar`
 - No interference with other projects in same database
 
-### Mobile Compatibility
+### Mobile Compatibility — TÄRKEIN SÄÄNTÖ
+**Vierasnäkymän (QR-kirjaus) TÄYTYY toimia eri ikäisillä puhelimilla — vanhat iPhonet ja Androidit mukaan lukien.** Miiteillä kävijöillä on kaikenikäisiä laitteita. Paino päivityksissä aina yhteensopivuuteen.
+
+#### JavaScript — sallittu taso: ES2019 (iOS 13 / Chrome 80 edeltävä)
+- ❌ **EI KOSKAAN:** `?.` (optional chaining), `??` (nullish coalescing) — kaataa KOKO tiedoston parsinnassa vanhoilla laitteilla → kirjaus ei toimi ollenkaan
+- ❌ **EI:** `replaceAll`, `flatMap`, `structuredClone`, `matchAll`, `Object.hasOwn`, `.at()`, `findLast`, `toSorted`, `toReversed`
+- ✅ **Korvaukset:** `a?.b` → `(a || {}).b` tai `(a && a.b)`; `x ?? y` → `x != null ? x : y`
+- ✅ **Sallittua:** `const`/`let`, `=>`, `async/await`, template literal, spread, `Set`/`Map`, `Object.entries`, `padStart`, `includes`, `find`/`findIndex`, `for...of`
+- Muista: parse-virhe yhdessä tiedostossa voi rikkoa koko sivun — kaikki tiedostot ladataan samalle sivulle
+
+#### CSS — progressiivinen parannus
+- Uudet ominaisuudet (esim. `color-mix`, `:has()`, `dvh`) vain fallbackin kanssa: kirjoita vanha sääntö ensin, uusi perään — vanhat selaimet ohittavat tuntemattoman
+- `-webkit-overflow-scrolling: touch` kaikkiin vieritettäviin (modal, scroll-box, log-list, autocomplete)
+- `gap` flexboxissa vaatii iOS 14.5+ — kriittisissä asetteluissa käytä marginia
+
+#### HTML / inputit
+- `font-size: 16px` inputeissa (iOS ei zoomaa)
+- Nimimerkkikentät: `autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"` — puhelin ei saa "korjata" geocaching-nimimerkkiä
+- `enterkeyhint` ohjaa näppäimistön Enter-nappia (next/send)
+- `viewport-fit=cover` lovellisille puhelimille
+- ÄLÄ aseta `maximum-scale` tai `user-scalable=no` (saavutettavuus)
+- Kosketuskohteet väh. ~44px
+
+#### Kalenteri
 - Calendar must work on phones (primary use case)
 - Responsive grid with fixed widths
 - Touch-friendly tooltips and modals
 - Horizontal scrolling for wide calendar
+
+#### Versiot
+- Jokaisen muutoksen yhteydessä päivitä `APP_VERSION` (app.js), `VERSION` (config.js) ja `SW_VERSION` (sw.js) — service worker päivittyy ja muutokset näkyvät mobiilissa nopeammin
 
 ### Data Integrity
 - Always validate calendarData structure before use

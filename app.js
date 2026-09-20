@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.26.3";
+const APP_VERSION = "7.28.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -131,7 +131,7 @@ function downloadTextFile(filename, content) {
 }
 
 function csvEscape(v) {
-    const s = String(v ?? '');
+    const s = String(v != null ? v : '');
     if (/["\n,;]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
     return s;
 }
@@ -330,15 +330,17 @@ window.addEventListener('load', function() {
     }
 });
 
-function isQrExpired(eventDateStr) {
+function isQrExpired(eventDateStr, eventTimeStr) {
     if (!eventDateStr) return false;
     const eventDate = new Date(`${eventDateStr}T00:00:00`);
     if (isNaN(eventDate.getTime())) return false;
     const expiryDate = new Date(eventDate);
     expiryDate.setDate(expiryDate.getDate() + 3);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return today > expiryDate;
+    // Vanheneminen tapahtuman loppuajan mukaan (vastaan "voimassa klo X asti" -ilmoitusta)
+    const endTime = getEventEndTime(eventTimeStr);
+    const parts = endTime.split(':');
+    expiryDate.setHours(parseInt(parts[0], 10) || 23, parseInt(parts[1], 10) || 59, 59, 999);
+    return new Date() > expiryDate;
 }
 
 function extractThemeColorFromDescription(descriptionHtml) {
@@ -439,7 +441,7 @@ async function openVisitorGuestbook(uid, eventId) {
         if(nameEl) nameEl.innerText = evt.name;
         if(infoEl) infoEl.innerText = `${evt.date} klo ${evt.time || '-'}`;
 
-        const expired = isQrExpired(evt.date);
+        const expired = isQrExpired(evt.date, evt.time);
         if (window.setVisitorExpiredState) {
             window.setVisitorExpiredState(expired);
         }
@@ -540,7 +542,7 @@ async function ensureNicknameFirstSeenIndex() {
         // Käydään eventit aikajärjestyksessä (vanhin -> uusin)
         const orderedEvents = Array.isArray(globalEventList) ? globalEventList : [];
         orderedEvents.forEach(evt => {
-            const eventKey = evt?.key;
+            const eventKey = evt && evt.key;
             if (!eventKey) return;
 
             const eventLogsSnap = snap.child(eventKey);
@@ -549,7 +551,7 @@ async function ensureNicknameFirstSeenIndex() {
             const seenInThisEvent = new Set();
 
             eventLogsSnap.forEach(child => {
-                const nickRaw = (child.val()?.nickname || '').trim();
+                const nickRaw = ((child.val() || {}).nickname || '').trim();
                 const norm = normalizeNicknameStats(nickRaw);
                 if (!norm) return;
                 if (!index[norm]) {
@@ -579,10 +581,10 @@ function renderGuestbookSummary(eventKey, logs) {
     const box = document.getElementById('gb-summary');
     if (!box) return;
 
-    const prevMainOpen = !!document.getElementById('gb-summary-details')?.open;
-    const prevFirstOpen = !!document.getElementById('gb-summary-first')?.open;
-    const prevReturningOpen = !!document.getElementById('gb-summary-returning')?.open;
-    const prevLocationsOpen = !!document.getElementById('gb-summary-locations')?.open;
+    const prevMainOpen = !!(document.getElementById('gb-summary-details') || {}).open;
+    const prevFirstOpen = !!(document.getElementById('gb-summary-first') || {}).open;
+    const prevReturningOpen = !!(document.getElementById('gb-summary-returning') || {}).open;
+    const prevLocationsOpen = !!(document.getElementById('gb-summary-locations') || {}).open;
 
     const safeLogs = Array.isArray(logs) ? logs : [];
     if (safeLogs.length === 0) {
@@ -593,11 +595,11 @@ function renderGuestbookSummary(eventKey, logs) {
 
     const uniqueMap = new Map();
     safeLogs.forEach(l => {
-        const nickRaw = (l?.nickname || '').trim();
+        const nickRaw = ((l || {}).nickname || '').trim();
         const key = normalizeNicknameStats(nickRaw);
         if (!key) return;
         if (!uniqueMap.has(key)) {
-            uniqueMap.set(key, { raw: nickRaw, from: (l?.from || '').trim() });
+            uniqueMap.set(key, { raw: nickRaw, from: ((l || {}).from || '').trim() });
         }
     });
     const uniqueCount = uniqueMap.size;
@@ -606,7 +608,7 @@ function renderGuestbookSummary(eventKey, logs) {
     let msgCount = 0;
     let wordSum = 0;
     safeLogs.forEach(l => {
-        const msg = (l?.message || '').trim();
+        const msg = ((l || {}).message || '').trim();
         if (!msg) return;
         const words = msg.split(/\s+/).filter(Boolean).length;
         if (words <= 0) return;
@@ -622,9 +624,9 @@ function renderGuestbookSummary(eventKey, logs) {
     const totals = nicknameTotalVisitCountIndex;
     if (
         !index ||
-        nicknameFirstSeenIndexUid !== currentUser?.uid ||
+        nicknameFirstSeenIndexUid !== (currentUser && currentUser.uid) ||
         !totals ||
-        nicknameTotalVisitIndexUid !== currentUser?.uid
+        nicknameTotalVisitIndexUid !== (currentUser && currentUser.uid)
     ) {
         // Rakennetaan indeksi taustalla ja päivitetään yhteenveto sen jälkeen
         ensureNicknameFirstSeenIndex().then(() => {
@@ -997,7 +999,7 @@ function parseGPX(xmlText) {
     const lon = parseFloat(wpt.getAttribute("lon"));
     
     let timeStr = "";
-    const shortDesc = wpt.getElementsByTagNameNS("*", "short_description")[0]?.textContent || "";
+    const shortDesc = (wpt.getElementsByTagNameNS("*", "short_description")[0] || {}).textContent || "";
     const timeMatch = shortDesc.match(/(\d{1,2}[:\.]\d{2})\s*-\s*(\d{1,2}[:\.]\d{2})/);
     if (timeMatch) timeStr = `${timeMatch[1].replace('.', ':')} - ${timeMatch[2].replace('.', ':')}`;
     
@@ -1008,13 +1010,18 @@ function parseGPX(xmlText) {
         attributes.push({ name: attr.textContent.trim(), inc: attr.getAttribute("inc") === "1" ? 1 : 0 });
     }
     
+    const nameEl = wpt.querySelector("name");
+    const urlnameEl = wpt.querySelector("urlname");
+    const timeEl = wpt.querySelector("time");
+    const gsaNameEls = wpt.getElementsByTagNameNS("*", "name");
+    const longDescEls = wpt.getElementsByTagNameNS("*", "long_description");
     return {
-        gc: wpt.querySelector("name")?.textContent || "",
-        name: wpt.getElementsByTagNameNS("*", "name")[1]?.textContent || wpt.querySelector("urlname")?.textContent || "Nimetön miitti",
-        date: wpt.querySelector("time")?.textContent?.split('T')[0] || "",
+        gc: (nameEl && nameEl.textContent) || "",
+        name: (gsaNameEls[1] && gsaNameEls[1].textContent) || (urlnameEl && urlnameEl.textContent) || "Nimetön miitti",
+        date: (timeEl && timeEl.textContent ? timeEl.textContent.split('T')[0] : "") || "",
         time: timeStr,
         coords: decimalToDMS(lat, lon),
-        descriptionHtml: wpt.getElementsByTagNameNS("*", "long_description")[0]?.textContent || "",
+        descriptionHtml: (longDescEls[0] && longDescEls[0].textContent) || "",
         attributes: attributes
     };
 }

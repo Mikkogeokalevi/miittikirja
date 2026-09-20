@@ -2,7 +2,7 @@
 <html lang="fi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>MK:n Sähköinen Miittikirja</title>
     
     <link rel="manifest" href="manifest.json">
@@ -83,7 +83,7 @@
             <div id="vv-error" style="display:none;"></div>
             
             <div style="position:relative;">
-                <input type="text" id="vv-nickname" placeholder="Nimimerkkisi (kuten Geocaching.com)" style="font-size: 1.2em; border: 2px solid #8B4513;">
+                <input type="text" id="vv-nickname" placeholder="Nimimerkkisi (kuten Geocaching.com)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="next" style="font-size: 1.2em; border: 2px solid #8B4513;">
                 <div id="vv-autocomplete" class="autocomplete-list" style="display:none;"></div>
             </div>
             
@@ -91,8 +91,8 @@
 
             <div id="vv-quick-actions" style="display:none;"></div>
             
-            <input type="text" id="vv-from" placeholder="Mistä tulet? (Paikkakunta)">
-            <input type="text" id="vv-message" placeholder="Terveiset Mikkokaleville">
+            <input type="text" id="vv-from" placeholder="Mistä tulet? (Paikkakunta)" autocomplete="off" enterkeyhint="next">
+            <input type="text" id="vv-message" placeholder="Terveiset Mikkokaleville" autocomplete="off" enterkeyhint="send">
 
             <div id="vv-duplicate-panel" style="display:none;">
                 <div id="vv-duplicate-info"></div>

@@ -15,6 +15,26 @@ window.MK_Messages = {
         return "Mikkokalevi VIP"; // Yli 50
     },
 
+    // Palauttaa seuraavan tittelin kynnyksen edistymispalkkia varten
+    // (rajat synkronoitu getRankTitle:n kanssa)
+    getNextRank: function(count) {
+        const tiers = [
+            { at: 2, title: "Satunnainen seikkailija" },
+            { at: 11, title: "Aktiivikävijä" },
+            { at: 21, title: "Vakiokasvo" },
+            { at: 41, title: "Konkari" },
+            { at: 61, title: "Mikkokalevi VIP" }
+        ];
+        let prevAt = 0;
+        for (let i = 0; i < tiers.length; i++) {
+            if (count < tiers[i].at) {
+                return { at: tiers[i].at, title: tiers[i].title, prevAt: prevAt };
+            }
+            prevAt = tiers[i].at;
+        }
+        return null; // Korkein titteli jo saavutettu
+    },
+
     // 2. Määrittele tervehdyslistat
     getRandomGreeting: function(name, isFirstTime) {
         // Jos eka kerta, arvotaan näistä ensikertalaisviesteistä
