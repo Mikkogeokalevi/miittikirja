@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.29.0";
+const APP_VERSION = "7.29.1";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -794,7 +794,8 @@ function showMainView() {
     
     if(currentEventId) { 
         db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off(); 
-        currentEventId = null; 
+        currentEventId = null;
+        window.currentEventId = null;
     }
 }
 
@@ -1281,6 +1282,7 @@ function loadEvents() {
 window.openGuestbook = function(eventKey) {
     if(currentEventId) db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
     currentEventId = eventKey;
+    window.currentEventId = eventKey;
     
     // NOLLATAAN LIVE-LASKURI
     lastAttendeeCount = null;
