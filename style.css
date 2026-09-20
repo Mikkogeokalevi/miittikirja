@@ -1842,3 +1842,10 @@ body.theme-blue .calendar-cell.intensity-5 {
     margin-top: 8px;
     text-align: center;
 }
+
+/* Ansaintapäivä badge-infossa */
+#user-profile-modal .visitor-badge-earned {
+    font-size: 0.85em;
+    opacity: 0.75;
+    color: var(--vv-modal-text);
+}

@@ -67,6 +67,7 @@ const visitorTranslations = {
         attendeePosition: "Olet {0}. kirjautuja tässä miitissä",
         topBuddyLine: "🤝 Useimmin samoissa: {0} ({1} yhteistä)",
         nextBadge: "🎯 Seuraava saavutus",
+        badgeEarnedOn: "Saavutettu {0}",
         badgeNames: { first: "Ensikertalainen", ten: "10 miittiä", twentyFive: "25 miittiä", fifty: "50 miittiä", hundred: "100 miittiä", rankSeikkailija: "Satunnainen seikkailija", rankAktiivi: "Aktiivikävijä", rankVakio: "Vakiokasvo", rankKonkari: "Konkari", vip: "VIP", rankSuperVip: "Super VIP", rankLegenda: "Legenda", rankElavaLegenda: "Elävä legenda", streak5: "Putki 5+", streak10: "Putki 10+", streak20: "Putki 20+", streak30: "Putki 30+", streak40: "Putki 40+", wordMaster: "Sanamestari", poet: "Runoilija", chatter: "Sanailija", nightOwl: "Yökävijä", earlyBird: "Aamuvirkku", podium: "Kärkikolmikko", topTen: "TOP 10", buddy: "Miittikamu", traveler: "Matkailija", veteran: "Vuosikävijä", morning: "Aamuvieras", lunch: "Lounaskävijä", afternoon: "Iltapäivävieras", evening: "Iltavieras", lateEvening: "Myöhäisillan vieras", midnight: "Keskiyön kävijä", fullClock: "Vuorokauden mestari", seventyFive: "75 miittiä", hundredTwentyFive: "125 miittiä", hundredFifty: "150 miittiä", twoHundred: "200 miittiä", netLogger: "Nettilogaaja", yearRound: "Ympärivuotinen", citoVisitor: "CITO-vieras", cceVisitor: "Juhlavieras", allRounder: "Monipuolinen", firstMessage: "Ensitervehdys", writer: "Kynäilijä", author: "Kirjailija", alwaysMessage: "Aina asialla", regularWriter: "Säännöllinen sanoja", hometown: "Kotipaikkakuntalainen", explorer: "Reissari", globeTrotter: "Maailmankiertäjä", doubleDay: "Tuplakävijä", firstSigner: "Avausvieras", bigMeet: "Massamiittari", fourSeasons: "Neljän vuodenajan vieras" },
         badgeDescs: { first: "Kirjaudu ensimmäiseen miittiin", ten: "Käy 10 miitissä", twentyFive: "Käy 25 miitissä", fifty: "Käy 50 miitissä", seventyFive: "Käy 75 miitissä", hundred: "Käy 100 miitissä", hundredTwentyFive: "Käy 125 miitissä", hundredFifty: "Käy 150 miitissä", twoHundred: "Käy 200 miitissä", rankSeikkailija: "Saavutettu 2 käynnillä", rankAktiivi: "Saavutettu 11 käynnillä", rankVakio: "Saavutettu 21 käynnillä", rankKonkari: "Saavutettu 41 käynnillä", vip: "Saavutettu 61 käynnillä", rankSuperVip: "Saavutettu 80 käynnillä", rankLegenda: "Saavutettu 100 käynnillä", rankElavaLegenda: "Saavutettu 125 käynnillä", streak5: "5 miittiä peräkkäin", streak10: "10 miittiä peräkkäin", streak20: "20 miittiä peräkkäin", streak30: "30 miittiä peräkkäin", streak40: "40 miittiä peräkkäin", wordMaster: "500+ sanaa viesteissä yhteensä", poet: "Yksi viesti vähintään 50 sanaa", chatter: "20+ viestiä kirjoitettu", netLogger: "Viesti myös geocaching.comista", earlyBird: "Miitti klo 05–08", morning: "Miitti klo 08–11", lunch: "Miitti klo 11–14", afternoon: "Miitti klo 14–17", evening: "Miitti klo 17–20", lateEvening: "Miitti klo 20–22", nightOwl: "Miitti klo 22–00", midnight: "Miitti klo 00–05", fullClock: "Miittejä kaikilla 8 aikavyöhykkeellä", podium: "Kävijärankingissa sija 1–3", topTen: "Kävijärankingissa sija 1–10", buddy: "10+ yhteistä miittiä saman kävijän kanssa", traveler: "Kirjauksia 3+ eri paikkakunnalta", veteran: "Käyntejä 3+ eri vuonna", yearRound: "Käynti kaikkina 12 kuukautena", citoVisitor: "Osallistu CITO-tapahtumaan", cceVisitor: "Osallistu yhteisöjuhlaan", allRounder: "Käy kaikissa 3 tapahtumatyypissä", firstMessage: "Kirjoita ensimmäinen viestisi", writer: "50+ viestiä kirjoitettu", author: "1000+ sanaa viesteissä yhteensä", alwaysMessage: "Viesti jokaisella käynnillä (10+ käyntiä)", regularWriter: "Viesti vähintään puolella käynneistä (10+ käyntiä)", hometown: "Kerro mistä tulet", explorer: "Kirjauksia 5+ eri paikkakunnalta", globeTrotter: "Kirjauksia 10+ eri paikkakunnalta", doubleDay: "2+ miittiä samana päivänä", firstSigner: "Ensimmäinen kirjautuja jossain miitissä", bigMeet: "Osallistu 20+ vieraan miittiin", fourSeasons: "Käy miitissä jokaisena vuodenaikana" },
         rememberedPrefillStatus: "Muistetut tiedot (myös viesti) lisätty kenttiin. Tarkista ja paina TALLENNA KÄYNTI."
@@ -134,6 +135,7 @@ const visitorTranslations = {
         attendeePosition: "You are signer #{0} at this event",
         topBuddyLine: "🤝 Most often together: {0} ({1} shared)",
         nextBadge: "🎯 Next achievement",
+        badgeEarnedOn: "Earned {0}",
         badgeNames: { first: "First timer", ten: "10 meets", twentyFive: "25 meets", fifty: "50 meets", hundred: "100 meets", rankSeikkailija: "Occasional adventurer", rankAktiivi: "Active visitor", rankVakio: "Regular", rankKonkari: "Veteran", vip: "VIP", rankSuperVip: "Super VIP", rankLegenda: "Legend", rankElavaLegenda: "Living legend", streak5: "Streak 5+", streak10: "Streak 10+", streak20: "Streak 20+", streak30: "Streak 30+", streak40: "Streak 40+", wordMaster: "Word master", poet: "Poet", chatter: "Chatterbox", nightOwl: "Night owl", earlyBird: "Early bird", podium: "Podium", topTen: "Top 10", buddy: "Meet buddy", traveler: "Traveler", veteran: "Multi-year visitor", morning: "Morning visitor", lunch: "Lunch visitor", afternoon: "Afternoon visitor", evening: "Evening visitor", lateEvening: "Late evening visitor", midnight: "Midnight visitor", fullClock: "Around-the-clock master", seventyFive: "75 meets", hundredTwentyFive: "125 meets", hundredFifty: "150 meets", twoHundred: "200 meets", netLogger: "Online logger", yearRound: "Year-round visitor", citoVisitor: "CITO visitor", cceVisitor: "Celebration guest", allRounder: "All-rounder", firstMessage: "First greeting", writer: "Scribe", author: "Author", alwaysMessage: "Always on topic", regularWriter: "Regular writer", hometown: "Hometown hero", explorer: "Explorer", globeTrotter: "Globe trotter", doubleDay: "Double dipper", firstSigner: "Opening guest", bigMeet: "Mass meeter", fourSeasons: "Four-season visitor" },
         badgeDescs: { first: "Sign your first meet", ten: "Visit 10 meets", twentyFive: "Visit 25 meets", fifty: "Visit 50 meets", seventyFive: "Visit 75 meets", hundred: "Visit 100 meets", hundredTwentyFive: "Visit 125 meets", hundredFifty: "Visit 150 meets", twoHundred: "Visit 200 meets", rankSeikkailija: "Earned at 2 visits", rankAktiivi: "Earned at 11 visits", rankVakio: "Earned at 21 visits", rankKonkari: "Earned at 41 visits", vip: "Earned at 61 visits", rankSuperVip: "Earned at 80 visits", rankLegenda: "Earned at 100 visits", rankElavaLegenda: "Earned at 125 visits", streak5: "5 meets in a row", streak10: "10 meets in a row", streak20: "20 meets in a row", streak30: "30 meets in a row", streak40: "40 meets in a row", wordMaster: "500+ words in messages total", poet: "One message with 50+ words", chatter: "20+ messages written", netLogger: "Message from geocaching.com too", earlyBird: "Meet at 05–08", morning: "Meet at 08–11", lunch: "Meet at 11–14", afternoon: "Meet at 14–17", evening: "Meet at 17–20", lateEvening: "Meet at 20–22", nightOwl: "Meet at 22–00", midnight: "Meet at 00–05", fullClock: "Meets in all 8 time slots", podium: "Visitor rank 1–3", topTen: "Visitor rank 1–10", buddy: "10+ shared meets with the same visitor", traveler: "Logs from 3+ different places", veteran: "Visits in 3+ different years", yearRound: "Visited in all 12 months", citoVisitor: "Attend a CITO event", cceVisitor: "Attend a community celebration", allRounder: "Visit all 3 event types", firstMessage: "Write your first message", writer: "50+ messages written", author: "1000+ words in messages total", alwaysMessage: "Message on every visit (10+ visits)", regularWriter: "Message on at least half of visits (10+ visits)", hometown: "Tell where you're from", explorer: "Logs from 5+ different places", globeTrotter: "Logs from 10+ different places", doubleDay: "2+ meets on the same day", firstSigner: "First to sign a meet", bigMeet: "Attend a meet with 20+ guests", fourSeasons: "Visit a meet in every season" },
         rememberedPrefillStatus: "Remembered profile (including message) loaded into fields. Review and press SIGN LOGBOOK."
@@ -201,6 +203,7 @@ const visitorTranslations = {
         attendeePosition: "Du är signatör nr {0} på detta event",
         topBuddyLine: "🤝 Oftast tillsammans: {0} ({1} gemensamma)",
         nextBadge: "🎯 Nästa utmärkelse",
+        badgeEarnedOn: "Uppnådd {0}",
         badgeNames: { first: "Första gången", ten: "10 möten", twentyFive: "25 möten", fifty: "50 möten", hundred: "100 möten", rankSeikkailija: "Sporadisk äventyrare", rankAktiivi: "Aktiv besökare", rankVakio: "Stamgäst", rankKonkari: "Veteran", vip: "VIP", rankSuperVip: "Super VIP", rankLegenda: "Legend", rankElavaLegenda: "Levande legend", streak5: "Putke 5+", streak10: "Putke 10+", streak20: "Putke 20+", streak30: "Putke 30+", streak40: "Putke 40+", wordMaster: "Ordmästare", poet: "Poet", chatter: "Pratkvarn", nightOwl: "Nattuggla", earlyBird: "Morgonpigg", podium: "Pallplats", topTen: "Topp 10", buddy: "Möteskompis", traveler: "Resande", veteran: "Flerårsbesökare", morning: "Morgonbesökare", lunch: "Lunchbesökare", afternoon: "Eftermiddagsbesökare", evening: "Kvällsbesökare", lateEvening: "Sen kvällsgäst", midnight: "Midnattsbesökare", fullClock: "Dygnets mästare", seventyFive: "75 möten", hundredTwentyFive: "125 möten", hundredFifty: "150 möten", twoHundred: "200 möten", netLogger: "Nättloggare", yearRound: "Året runt-besökare", citoVisitor: "CITO-besökare", cceVisitor: "Festgäst", allRounder: "Allsidig", firstMessage: "Första hälsningen", writer: "Skribent", author: "Författare", alwaysMessage: "Alltid på plats", regularWriter: "Regelbunden skribent", hometown: "Hemortshjälte", explorer: "Utforskare", globeTrotter: "Världsresande", doubleDay: "Dubbeldippare", firstSigner: "Öppningsgäst", bigMeet: "Massmötesgäst", fourSeasons: "Fyra årstiders gäst" },
         badgeDescs: { first: "Skriv in dig i ditt första möte", ten: "Besök 10 möten", twentyFive: "Besök 25 möten", fifty: "Besök 50 möten", seventyFive: "Besök 75 möten", hundred: "Besök 100 möten", hundredTwentyFive: "Besök 125 möten", hundredFifty: "Besök 150 möten", twoHundred: "Besök 200 möten", rankSeikkailija: "Uppnått vid 2 besök", rankAktiivi: "Uppnått vid 11 besök", rankVakio: "Uppnått vid 21 besök", rankKonkari: "Uppnått vid 41 besök", vip: "Uppnått vid 61 besök", rankSuperVip: "Uppnått vid 80 besök", rankLegenda: "Uppnått vid 100 besök", rankElavaLegenda: "Uppnått vid 125 besök", streak5: "5 möten i rad", streak10: "10 möten i rad", streak20: "20 möten i rad", streak30: "30 möten i rad", streak40: "40 möten i rad", wordMaster: "500+ ord i meddelanden totalt", poet: "Ett meddelande med 50+ ord", chatter: "20+ meddelanden skrivna", netLogger: "Meddelande även från geocaching.com", earlyBird: "Möte kl 05–08", morning: "Möte kl 08–11", lunch: "Möte kl 11–14", afternoon: "Möte kl 14–17", evening: "Möte kl 17–20", lateEvening: "Möte kl 20–22", nightOwl: "Möte kl 22–00", midnight: "Möte kl 00–05", fullClock: "Möten i alla 8 tidsluckor", podium: "Besökarrank 1–3", topTen: "Besökarrank 1–10", buddy: "10+ gemensamma möten med samma besökare", traveler: "Loggar från 3+ olika orter", veteran: "Besök under 3+ olika år", yearRound: "Besök under alla 12 månader", citoVisitor: "Delta i ett CITO-evenemang", cceVisitor: "Delta i en gemenskapsfest", allRounder: "Besök alla 3 evenemangstyper", firstMessage: "Skriv ditt första meddelande", writer: "50+ meddelanden skrivna", author: "1000+ ord i meddelanden totalt", alwaysMessage: "Meddelande vid varje besök (10+ besök)", regularWriter: "Meddelande på minst hälften av besöken (10+ besök)", hometown: "Berätta var du kommer ifrån", explorer: "Loggar från 5+ olika orter", globeTrotter: "Loggar från 10+ olika orter", doubleDay: "2+ möten samma dag", firstSigner: "Först att signera ett möte", bigMeet: "Delta i ett möte med 20+ gäster", fourSeasons: "Besök ett möte varje årstid" },
         rememberedPrefillStatus: "Sparad profil (även meddelande) ifylld i fälten. Kontrollera och tryck SIGNERA LOGGBOKEN."
@@ -268,6 +271,7 @@ const visitorTranslations = {
         attendeePosition: "Oled sellel üritusel {0}. kirjautuja",
         topBuddyLine: "🤝 Kõige sagedamini koos: {0} ({1} ühist)",
         nextBadge: "🎯 Järgmine saavutus",
+        badgeEarnedOn: "Saavutatud {0}",
         badgeNames: { first: "Esimest korda", ten: "10 kohtumist", twentyFive: "25 kohtumist", fifty: "50 kohtumist", hundred: "100 kohtumist", rankSeikkailija: "Juhuslik seikleja", rankAktiivi: "Aktiivne külaline", rankVakio: "Püsikülaline", rankKonkari: "Veteran", vip: "VIP", rankSuperVip: "Super VIP", rankLegenda: "Legend", rankElavaLegenda: "Elav legend", streak5: "Seeria 5+", streak10: "Seeria 10+", streak20: "Seeria 20+", streak30: "Seeria 30+", streak40: "Seeria 40+", wordMaster: "Sõnameister", poet: "Luuletaja", chatter: "Jutustaja", nightOwl: "Öökull", earlyBird: "Varajane", podium: "Podium", topTen: "Top 10", buddy: "Kohtumissõber", traveler: "Reisija", veteran: "Pikaajaline külaline", morning: "Hommikune külaline", lunch: "Lõunane külaline", afternoon: "Lõunajärgune külaline", evening: "Õhtune külaline", lateEvening: "Hilisõhtune külaline", midnight: "Kesköö külaline", fullClock: "Ööpäeva meister", seventyFive: "75 kohtumist", hundredTwentyFive: "125 kohtumist", hundredFifty: "150 kohtumist", twoHundred: "200 kohtumist", netLogger: "Võrgulogija", yearRound: "Aastaringselt", citoVisitor: "CITO külaline", cceVisitor: "Pidude külaline", allRounder: "Mitmekülgne", firstMessage: "Esimene tervitus", writer: "Kirjutaja", author: "Kirjanik", alwaysMessage: "Alati kohal", regularWriter: "Regulaarne kirjutaja", hometown: "Kodukoha kangelane", explorer: "Avastaja", globeTrotter: "Maailmarändur", doubleDay: "Topeltkülastaja", firstSigner: "Avakülaline", bigMeet: "Massikohtumise külaline", fourSeasons: "Nelja aastaaja külaline" },
         badgeDescs: { first: "Logi esimene kohtumine", ten: "Külasta 10 kohtumist", twentyFive: "Külasta 25 kohtumist", fifty: "Külasta 50 kohtumist", seventyFive: "Külasta 75 kohtumist", hundred: "Külasta 100 kohtumist", hundredTwentyFive: "Külasta 125 kohtumist", hundredFifty: "Külasta 150 kohtumist", twoHundred: "Külasta 200 kohtumist", rankSeikkailija: "Saavutatud 2 külastusega", rankAktiivi: "Saavutatud 11 külastusega", rankVakio: "Saavutatud 21 külastusega", rankKonkari: "Saavutatud 41 külastusega", vip: "Saavutatud 61 külastusega", rankSuperVip: "Saavutatud 80 külastusega", rankLegenda: "Saavutatud 100 külastusega", rankElavaLegenda: "Saavutatud 125 külastusega", streak5: "5 kohtumist järjest", streak10: "10 kohtumist järjest", streak20: "20 kohtumist järjest", streak30: "30 kohtumist järjest", streak40: "40 kohtumist järjest", wordMaster: "500+ sõna sõnumites kokku", poet: "Üks sõnum vähemalt 50 sõnaga", chatter: "20+ sõnumit kirjutatud", netLogger: "Sõnum ka geocaching.com-ist", earlyBird: "Kohtumine kell 05–08", morning: "Kohtumine kell 08–11", lunch: "Kohtumine kell 11–14", afternoon: "Kohtumine kell 14–17", evening: "Kohtumine kell 17–20", lateEvening: "Kohtumine kell 20–22", nightOwl: "Kohtumine kell 22–00", midnight: "Kohtumine kell 00–05", fullClock: "Kohtumisi kõigil 8 ajalõigul", podium: "Külastaja koht 1–3", topTen: "Külastaja koht 1–10", buddy: "10+ ühist kohtumist sama külalisega", traveler: "Logid 3+ eri kohast", veteran: "Külastusi 3+ eri aastal", yearRound: "Külastatud kõigil 12 kuul", citoVisitor: "Osale CITO üritusel", cceVisitor: "Osale kogukonna peol", allRounder: "Külasta kõiki 3 üritusetüüpi", firstMessage: "Kirjuta oma esimene sõnum", writer: "50+ sõnumit kirjutatud", author: "1000+ sõna sõnumites kokku", alwaysMessage: "Sõnum igal külastusel (10+ külastust)", regularWriter: "Sõnum vähemalt pooltel külastustel (10+ külastust)", hometown: "Räägi kust sa tuled", explorer: "Logid 5+ eri kohast", globeTrotter: "Logid 10+ eri kohast", doubleDay: "2+ kohtumist samal päeval", firstSigner: "Esimene kohtumise logija", bigMeet: "Osale kohtumisel 20+ külalisega", fourSeasons: "Külasta kohtumist igal aastaajal" },
         rememberedPrefillStatus: "Salvestatud profiil (koos sõnumiga) täideti väljadele. Kontrolli ja vajuta SALVESTA KÜLASTUS."
@@ -1053,6 +1057,7 @@ async function computeVisitorStats(targetHost, eventId, nick, virtualLog, preloa
         const fromCounts = {};
         let messageCount = 0;
         const userLogTimeBuckets = new Set();
+        const userLogByKey = {}; // eventKey -> { ts, from, words, hasMsg, hasNet } (ansaintapäiviä varten)
 
         logsSnap.forEach(evtLogs => {
             const eventKey = evtLogs.key;
@@ -1089,18 +1094,23 @@ async function computeVisitorStats(targetHost, eventId, nick, virtualLog, preloa
                             fromCounts[fromVal] = (fromCounts[fromVal] || 0) + 1;
                         }
                         const msg = (val.message || '').trim();
+                        let logWords = 0;
+                        let logNet = false;
                         if (msg) {
                             messageCount++;
                             const split = splitVisitorMessageSources(msg);
                             const localWords = split.local ? split.local.split(/\s+/).filter(Boolean).length : 0;
                             const netWords = split.net ? split.net.split(/\s+/).filter(Boolean).length : 0;
                             const words = localWords + netWords;
+                            logWords = words;
+                            logNet = netWords > 0;
 
                             stats.messageWordLocalTotal += localWords;
                             stats.messageWordNetTotal += netWords;
                             stats.messageWordTotal += words;
                             if (words > stats.messageWordMax) stats.messageWordMax = words;
                         }
+                        userLogByKey[eventKey] = { ts: val.timestamp || 0, from: fromVal, words: logWords, hasMsg: !!msg, hasNet: logNet };
                     }
                 });
 
@@ -1140,17 +1150,22 @@ async function computeVisitorStats(targetHost, eventId, nick, virtualLog, preloa
                         const fromVal = (virtualLog.from || '').trim();
                         if (fromVal) fromCounts[fromVal] = (fromCounts[fromVal] || 0) + 1;
                         const msg = (virtualLog.message || '').trim();
+                        let vWords = 0;
+                        let vNet = false;
                         if (msg) {
                             messageCount++;
                             const split = splitVisitorMessageSources(msg);
                             const localWords = split.local ? split.local.split(/\s+/).filter(Boolean).length : 0;
                             const netWords = split.net ? split.net.split(/\s+/).filter(Boolean).length : 0;
                             const words = localWords + netWords;
+                            vWords = words;
+                            vNet = netWords > 0;
                             stats.messageWordLocalTotal += localWords;
                             stats.messageWordNetTotal += netWords;
                             stats.messageWordTotal += words;
                             if (words > stats.messageWordMax) stats.messageWordMax = words;
                         }
+                        userLogByKey[eventId] = { ts: virtualLog.timestamp || 0, from: fromVal, words: vWords, hasMsg: !!msg, hasNet: vNet };
                     }
                 }
             }
@@ -1355,7 +1370,91 @@ async function computeVisitorStats(targetHost, eventId, nick, virtualLog, preloa
             { icon: '👥', key: 'bigMeet', earned: hasBigMeet },
             { icon: '🍂', key: 'fourSeasons', earned: hasAllSeasons }
         ];
-        stats.badges = badgeCatalog.filter(b => b.earned).map(b => ({ icon: b.icon, key: b.key }));
+        // --- Ansaintapäivät: kronologinen läpikäynti kävijän historiasta ---
+        const earnedDates = {};
+        const markEarned = (key, date) => { if (!earnedDates[key] && date) earnedDates[key] = date; };
+        const visitThresholds = {
+            first: 1, rankSeikkailija: 2, ten: 10, rankAktiivi: 11, rankVakio: 21,
+            twentyFive: 25, rankKonkari: 41, fifty: 50, vip: 61, seventyFive: 75,
+            rankSuperVip: 80, hundred: 100, rankLegenda: 100,
+            hundredTwentyFive: 125, rankElavaLegenda: 125, hundredFifty: 150, twoHundred: 200
+        };
+        let cumWords = 0, cumMsgs = 0;
+        const seenFrom = new Set(), seenYears = new Set(), seenMonths = new Set();
+        const seenSeasons = new Set(), seenTypes = new Set(), seenBuckets = new Set();
+        const dayCountRun = {}, buddyRun = {};
+        userHistory.forEach((e, i) => {
+            const n = i + 1;
+            const d = e.date;
+            const log = userLogByKey[e.key] || null;
+
+            Object.keys(visitThresholds).forEach(k => { if (n >= visitThresholds[k]) markEarned(k, d); });
+
+            if (log) {
+                cumWords += log.words;
+                if (log.hasMsg) { cumMsgs++; markEarned('firstMessage', d); }
+                if (cumMsgs >= 20) markEarned('chatter', d);
+                if (cumMsgs >= 50) markEarned('writer', d);
+                if (cumWords >= 500) markEarned('wordMaster', d);
+                if (cumWords >= 1000) markEarned('author', d);
+                if (log.words >= 50) markEarned('poet', d);
+                if (log.hasNet) markEarned('netLogger', d);
+                if (log.from) {
+                    seenFrom.add(log.from);
+                    markEarned('hometown', d);
+                    if (seenFrom.size >= 3) markEarned('traveler', d);
+                    if (seenFrom.size >= 5) markEarned('explorer', d);
+                    if (seenFrom.size >= 10) markEarned('globeTrotter', d);
+                }
+            }
+
+            const yr = (d || '').slice(0, 4);
+            if (yr) { seenYears.add(yr); if (seenYears.size >= 3) markEarned('veteran', d); }
+            const mo = (d || '').slice(5, 7);
+            if (mo) { seenMonths.add(mo); if (seenMonths.size >= 12) markEarned('yearRound', d); }
+            const mNum = parseInt(mo, 10);
+            if (mNum >= 1 && mNum <= 12) { seenSeasons.add(Math.floor((mNum % 12) / 3)); if (seenSeasons.size >= 4) markEarned('fourSeasons', d); }
+            const ty = e.type || 'miitti';
+            seenTypes.add(ty);
+            if (ty === 'cito') markEarned('citoVisitor', d);
+            if (ty === 'cce') markEarned('cceVisitor', d);
+            if (seenTypes.size >= 3) markEarned('allRounder', d);
+
+            const hr = getEventStartHour(e.time);
+            const bucket = hr !== null ? getLogTimeBucket(hr) : (log && log.ts ? getLogTimeBucket(new Date(log.ts).getHours()) : null);
+            if (bucket) { seenBuckets.add(bucket); markEarned(bucket, d); if (seenBuckets.size >= 8) markEarned('fullClock', d); }
+
+            const day = (d || '').slice(0, 10);
+            if (day) { dayCountRun[day] = (dayCountRun[day] || 0) + 1; if (dayCountRun[day] >= 2) markEarned('doubleDay', d); }
+
+            const fs = eventFirstSigner[e.key];
+            if (fs && fs.nick === nickNorm) markEarned('firstSigner', d);
+            if ((eventAttendees[e.key] || new Set()).size >= 20) markEarned('bigMeet', d);
+            const set = eventAttendees[e.key];
+            if (set) set.forEach(o => {
+                if (!o || o === nickNorm || isOrganizerNickname(o)) return;
+                buddyRun[o] = (buddyRun[o] || 0) + 1;
+                if (buddyRun[o] >= 10) markEarned('buddy', d);
+            });
+
+            if (n >= 10 && cumMsgs >= n) markEarned('alwaysMessage', d);
+            if (n >= 10 && cumMsgs / n >= 0.5) markEarned('regularWriter', d);
+        });
+
+        // Putkibadgejen ansaintapäivät: päivä jolla putki saavutti kynnyksen
+        let streakRun = 0;
+        for (let i = 0; i < attendedIdx.length; i++) {
+            streakRun = (i > 0 && attendedIdx[i] === attendedIdx[i - 1] + 1) ? streakRun + 1 : 1;
+            const d = streakEvents[attendedIdx[i]].date;
+            if (streakRun >= 5) markEarned('streak5', d);
+            if (streakRun >= 10) markEarned('streak10', d);
+            if (streakRun >= 20) markEarned('streak20', d);
+            if (streakRun >= 30) markEarned('streak30', d);
+            if (streakRun >= 40) markEarned('streak40', d);
+        }
+        stats.badgeEarnedDates = earnedDates;
+
+        stats.badges = badgeCatalog.filter(b => b.earned).map(b => ({ icon: b.icon, key: b.key, earnedDate: earnedDates[b.key] || null }));
         stats.missingBadges = badgeCatalog.filter(b => !b.earned).map(b => ({ icon: b.icon, key: b.key }));
         stats.badgeTotal = badgeCatalog.length;
 
@@ -1680,7 +1779,7 @@ function showVisitorModalWithLang(nick, history, stats) {
     const earnedCount = Array.isArray(stats.badges) ? stats.badges.length : 0;
     const badgeTotal = stats.badgeTotal || earnedCount;
     const missingBadges = Array.isArray(stats.missingBadges) ? stats.missingBadges : [];
-    const badgeChip = (b, locked) => `<span class="visitor-badge-chip${locked ? ' locked' : ''}" data-badge-key="${b.key}" title="${badgeDescs[b.key] || ''}" onclick="showBadgeInfo(this)">${b.icon} ${badgeNames[b.key] || b.key}</span>`;
+    const badgeChip = (b, locked) => `<span class="visitor-badge-chip${locked ? ' locked' : ''}" data-badge-key="${b.key}" data-earned="${b.earnedDate || ''}" title="${badgeDescs[b.key] || ''}" onclick="showBadgeInfo(this)">${b.icon} ${badgeNames[b.key] || b.key}</span>`;
     const badgesHtml = (earnedCount > 0 || missingBadges.length > 0)
         ? `<div class="visitor-summary-title" style="margin-top:12px;">${t.badgeCollectionTitle || '🏅 Saavutukset'} ${earnedCount}/${badgeTotal}</div>
            <div class="visitor-badge-collection">${stats.badges.map(b => badgeChip(b, false)).join('')}</div>
