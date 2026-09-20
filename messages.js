@@ -12,7 +12,10 @@ window.MK_Messages = {
         if (count <= 20) return "Aktiivikävijä";
         if (count <= 40) return "Vakiokasvo";
         if (count <= 60) return "Konkari";
-        return "Mikkokalevi VIP"; // Yli 50
+        if (count <= 79) return "Mikkokalevi VIP";
+        if (count <= 99) return "Super VIP";
+        if (count <= 124) return "Legenda";
+        return "Elävä legenda"; // 125+
     },
 
     // Palauttaa seuraavan tittelin kynnyksen edistymispalkkia varten
@@ -23,7 +26,10 @@ window.MK_Messages = {
             { at: 11, title: "Aktiivikävijä" },
             { at: 21, title: "Vakiokasvo" },
             { at: 41, title: "Konkari" },
-            { at: 61, title: "Mikkokalevi VIP" }
+            { at: 61, title: "Mikkokalevi VIP" },
+            { at: 80, title: "Super VIP" },
+            { at: 100, title: "Legenda" },
+            { at: 125, title: "Elävä legenda" }
         ];
         let prevAt = 0;
         for (let i = 0; i < tiers.length; i++) {
