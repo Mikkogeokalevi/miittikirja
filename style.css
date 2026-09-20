@@ -544,6 +544,17 @@ body.theme-light .card.archived {
     color: var(--text-color);
     white-space: nowrap;
 }
+.visitor-badge-chip.locked {
+    opacity: 0.45;
+    filter: grayscale(70%);
+    border-style: dashed;
+}
+.visitor-badge-missing-title {
+    font-size: 0.78em;
+    color: #888;
+    margin-top: 8px;
+    text-align: center;
+}
 
 .visitor-summary-metric-value {
     display: block;
