@@ -1614,12 +1614,6 @@ window.openUserProfile = function(nickname) {
     
     document.getElementById('up-nickname').innerHTML = `${nickname}<br><small style="font-size:0.6em; color:#666; font-weight:normal;">${title}</small>`;
     
-    document.getElementById('up-total').innerText = userEvents.length;
-    const first = userEvents[0];
-    const last = userEvents[userEvents.length - 1];
-    document.getElementById('up-first').innerHTML = `${first.date}<br><span style="font-size:0.8em; font-weight:normal;">${first.name}</span>`;
-    document.getElementById('up-last').innerHTML = `${last.date}<br><span style="font-size:0.8em; font-weight:normal;">${last.name}</span>`;
-
     const listEl = document.getElementById('up-history-list');
     listEl.innerHTML = "";
     

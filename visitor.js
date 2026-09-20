@@ -1699,6 +1699,7 @@ function showVisitorModalWithLang(nick, history, stats) {
     } else if (stats.isFirstTime) {
         listEl.innerHTML = `<div style="text-align:center; padding:20px;"><div style="font-size:3em;">🎉</div><p><strong>${t.welcomeTitle}</strong></p></div>`;
     } else {
+        const last = history[history.length - 1];
 
         if (stats.streakText) {
             const infoBox = document.createElement('div');
