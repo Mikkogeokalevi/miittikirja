@@ -1849,3 +1849,119 @@ body.theme-blue .calendar-cell.intensity-5 {
     opacity: 0.75;
     color: var(--vv-modal-text);
 }
+
+/* --- GUESTBOOK VIEW (admin): sama pehmeä korttiteema kuin vierasnäkymä --- */
+#guestbook-view {
+    background: linear-gradient(180deg, var(--vv-bg-start) 0%, var(--vv-bg-end) 100%);
+    border: 3px solid var(--vv-border);
+    box-shadow: 0 10px 28px var(--vv-shadow);
+    color: var(--vv-text-color);
+}
+
+#guestbook-view h2,
+#guestbook-view h3 {
+    text-shadow: none;
+    color: var(--vv-heading-color);
+}
+
+#guestbook-view #gb-event-name {
+    color: var(--vv-event-name-color) !important;
+    text-shadow: none;
+}
+
+#guestbook-view .nav-arrow,
+#guestbook-view .back-btn {
+    color: var(--vv-heading-color);
+}
+
+/* Miitin infokortti */
+#guestbook-view .event-meta {
+    background: var(--vv-card-bg);
+    border: 1px solid var(--vv-card-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 14px var(--vv-card-shadow);
+    color: var(--vv-text-color);
+}
+
+#guestbook-view .event-meta span {
+    border-bottom-color: var(--vv-card-border);
+}
+
+#guestbook-view #gb-time,
+#guestbook-view #gb-gc {
+    border-right-color: var(--vv-card-border);
+}
+
+/* Yleiset kortit ja details-boksit */
+#guestbook-view .card,
+#guestbook-view .details-box {
+    background: var(--vv-card-bg);
+    border: 1px solid var(--vv-card-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 14px var(--vv-card-shadow);
+    color: var(--vv-text-color);
+}
+
+#guestbook-view .details-header {
+    background: var(--vv-theme-btn-bg);
+    color: var(--vv-theme-btn-text);
+}
+
+/* QR-alue */
+#guestbook-view #qr-display-area {
+    background: var(--vv-card-bg);
+    border: 1px solid var(--vv-card-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 14px var(--vv-card-shadow);
+}
+
+#guestbook-view .qr-instructions {
+    background: var(--vv-pre-bg-start);
+    border: 2px dashed var(--vv-pre-border);
+    color: var(--vv-pre-text);
+}
+
+#guestbook-view #qr-link-text {
+    color: var(--vv-muted-color);
+}
+
+#guestbook-view input {
+    background: var(--vv-input-bg);
+    border-color: var(--vv-input-border);
+    color: var(--vv-input-text);
+}
+
+/* Napit: pehmeä vv-ilme, päätoiminto korostettuna */
+#guestbook-view .btn {
+    border-radius: 10px;
+    box-shadow: none;
+    border: 1px solid transparent;
+}
+
+#guestbook-view .btn-blue {
+    background: var(--vv-theme-btn-active-bg);
+    color: var(--vv-theme-btn-active-text);
+}
+
+#guestbook-view .btn-gray {
+    background: var(--vv-theme-btn-bg);
+    border-color: var(--vv-theme-btn-border);
+    color: var(--vv-theme-btn-text);
+}
+
+#guestbook-view .qr-lang-toggle .btn {
+    border-radius: 999px;
+    border: 1px solid var(--vv-theme-btn-border);
+    background: var(--vv-theme-btn-bg);
+    color: var(--vv-theme-btn-text);
+}
+
+#guestbook-view .qr-lang-toggle .btn.active {
+    background: var(--vv-theme-btn-active-bg);
+    border-color: var(--vv-theme-btn-active-bg);
+    color: var(--vv-theme-btn-active-text);
+}
+
+#guestbook-view #archived-notice {
+    border-radius: 10px;
+}

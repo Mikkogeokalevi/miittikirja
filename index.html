@@ -430,10 +430,10 @@
             <button id="btn-toggle-qr" class="btn btn-small btn-blue" style="width:100%;">📱 NÄYTÄ QR-KOODI VIERAILLE</button>
             <div id="qr-display-area">
                 <div id="qr-lang-toggle" class="qr-lang-toggle">
-                    <button class="btn btn-small btn-gray" onclick="setQrLanguage('fi')">🇫🇮</button>
-                    <button class="btn btn-small btn-gray" onclick="setQrLanguage('en')">🇬🇧</button>
-                    <button class="btn btn-small btn-gray" onclick="setQrLanguage('sv')">🇸🇪</button>
-                    <button class="btn btn-small btn-gray" onclick="setQrLanguage('et')">🇪🇪</button>
+                    <button class="btn btn-small btn-gray" data-lang="fi" onclick="setQrLanguage('fi')">🇫🇮</button>
+                    <button class="btn btn-small btn-gray" data-lang="en" onclick="setQrLanguage('en')">🇬🇧</button>
+                    <button class="btn btn-small btn-gray" data-lang="sv" onclick="setQrLanguage('sv')">🇸🇪</button>
+                    <button class="btn btn-small btn-gray" data-lang="et" onclick="setQrLanguage('et')">🇪🇪</button>
                 </div>
                 <div id="qr-instructions" class="qr-instructions"></div>
                 <div id="qrcode-container"></div>

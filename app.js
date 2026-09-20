@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.37.2";
+const APP_VERSION = "7.37.3";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -828,6 +828,9 @@ window.setQrLanguage = function(lang) {
     currentQrLang = lang;
     const instructionEl = document.getElementById('qr-instructions');
     if (instructionEl) instructionEl.innerText = qrTranslations[lang].instruction;
+    document.querySelectorAll('#qr-lang-toggle .btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-lang') === lang);
+    });
 };
 
 const btnToggleQr = document.getElementById('btn-toggle-qr');
