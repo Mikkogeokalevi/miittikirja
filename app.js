@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.28.0";
+const APP_VERSION = "7.29.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -2063,7 +2063,7 @@ if (btnStatsNetImportModal) btnStatsNetImportModal.onclick = () => {
 };
 
 window.closeModal = () => { 
-    ['edit-modal','mass-modal','log-edit-modal','confirm-modal','net-import-status-modal'].forEach(id => {
+    ['edit-modal','mass-modal','log-edit-modal','confirm-modal','net-import-status-modal','visitor-test-modal'].forEach(id => {
         const el = document.getElementById(id); if(el) el.style.display = "none";
     });
 };

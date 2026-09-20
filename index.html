@@ -452,6 +452,7 @@
                 <button id="btn-sync-gpx-trigger" class="btn btn-small btn-green" style="flex:1;">🔄 GPX Sync</button>
                 <button onclick="openMassImport()" class="btn btn-small btn-gray" style="flex:1;">📥 Massa</button>
             </div>
+            <button onclick="openVisitorTest()" class="btn btn-small btn-purple" style="margin-bottom:10px; width:100%;">🧪 Testaa vieraskirjausta (ei tallenna)</button>
             <input type="file" id="import-gpx-sync" accept=".gpx" style="display:none;">
         </div>
 
@@ -548,6 +549,18 @@
             <label>Kotoisin</label><input type="text" id="log-edit-from">
             <label>Viesti</label><textarea id="log-edit-msg" rows="3"></textarea>
             <div style="display:flex; gap:10px; margin-top:20px;"><button id="btn-save-log-edit" class="btn btn-green">Tallenna</button><button onclick="closeModal()" class="btn btn-red">Peruuta</button></div>
+        </div>
+    </div>
+
+    <div id="visitor-test-modal" class="modal">
+        <div class="modal-content">
+            <h3>🧪 Testaa vieraskirjausta</h3>
+            <p style="font-size:0.85em; color:#888; margin-top:0;">Simuloi kirjaus tähän miittiin — ei tallenna mitään. Näet saman tilastomodaalin kuin kävijä.</p>
+            <input type="text" id="vt-nickname" placeholder="Nimimerkki" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <input type="text" id="vt-from" placeholder="Mistä tulet? (Paikkakunta)" autocomplete="off">
+            <input type="text" id="vt-message" placeholder="Terveiset" autocomplete="off">
+            <button onclick="runVisitorTest()" class="btn btn-green">▶️ SIMULOI KIRJAUS</button>
+            <button onclick="closeModal()" class="btn btn-red" style="margin-top:10px;">Peruuta</button>
         </div>
     </div>
 

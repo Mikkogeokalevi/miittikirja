@@ -880,6 +880,18 @@ window.handleVisitorSign = async function() {
     }
 
     // --- TILASTOJEN LASKENTA ---
+    const result = await computeVisitorStats(targetHost, eventId, nick);
+    const userHistory = result.userHistory;
+    const stats = result.stats;
+
+    setLoading(false);
+    setError('');
+    setStatus(t.savedMsg || 'Tallennettu');
+    showVisitorModalWithLang(nick, userHistory, stats);
+};
+
+// Tilastojen laskenta eristettynä — virtualLog mahdollistaa testikirjauksen ilman tallennusta
+async function computeVisitorStats(targetHost, eventId, nick, virtualLog) {
     let userHistory = null;
     const preloadedSpecialMessage = (typeof window.currentVisitorSpecialMessage === 'string')
         ? window.currentVisitorSpecialMessage.trim()
@@ -1006,6 +1018,36 @@ window.handleVisitorSign = async function() {
                 if (attended) userHistory.push(evtData);
             }
         });
+
+        // Testitila: simuloidaan juuri tallennettu logi ilman Firebase-kirjoitusta
+        if (virtualLog && !userHistory.some(h => h.key === eventId)) {
+            const evtData = eventsMap[eventId];
+            if (evtData) {
+                const ln = normalizeNickname(virtualLog.nickname);
+                if (ln) {
+                    if (!eventAttendees[eventId]) eventAttendees[eventId] = new Set();
+                    eventAttendees[eventId].add(ln);
+                    visitCountByNick[ln] = (visitCountByNick[ln] || 0) + 1;
+                    if (ln === nickNorm) {
+                        userHistory.push(evtData);
+                        const fromVal = (virtualLog.from || '').trim();
+                        if (fromVal) fromCounts[fromVal] = (fromCounts[fromVal] || 0) + 1;
+                        const msg = (virtualLog.message || '').trim();
+                        if (msg) {
+                            messageCount++;
+                            const split = splitVisitorMessageSources(msg);
+                            const localWords = split.local ? split.local.split(/\s+/).filter(Boolean).length : 0;
+                            const netWords = split.net ? split.net.split(/\s+/).filter(Boolean).length : 0;
+                            const words = localWords + netWords;
+                            stats.messageWordLocalTotal += localWords;
+                            stats.messageWordNetTotal += netWords;
+                            stats.messageWordTotal += words;
+                            if (words > stats.messageWordMax) stats.messageWordMax = words;
+                        }
+                    }
+                }
+            }
+        }
 
         if (isOrganizerNickname(nickNorm)) {
             const currentEvent = eventsMap[eventId];
@@ -1198,10 +1240,56 @@ window.handleVisitorSign = async function() {
         userHistory = null;
     }
 
-    setLoading(false);
-    setError('');
-    setStatus(t.savedMsg || 'Tallennettu');
-    showVisitorModalWithLang(nick, userHistory, stats);
+    return { userHistory, stats };
+}
+
+// --- ADMIN: Testaa vieraskirjausta (ei tallenna Firebaseen) ---
+window.openVisitorTest = function() {
+    const modal = document.getElementById('visitor-test-modal');
+    if (!modal) return;
+    const nickEl = document.getElementById('vt-nickname');
+    if (nickEl && !nickEl.value) {
+        const profile = readJsonFromStorage(VISITOR_PROFILE_KEY, null);
+        if (profile && profile.nickname) nickEl.value = profile.nickname;
+    }
+    modal.style.display = 'block';
+};
+
+window.runVisitorTest = async function() {
+    const nickEl = document.getElementById('vt-nickname');
+    const fromEl = document.getElementById('vt-from');
+    const msgEl = document.getElementById('vt-message');
+    const nick = nickEl ? nickEl.value.trim() : '';
+    if (!nick) {
+        if (nickEl) { nickEl.classList.add('input-error'); nickEl.focus(); }
+        return;
+    }
+    if (nickEl) nickEl.classList.remove('input-error');
+
+    const targetHost = (typeof currentUser !== 'undefined' && currentUser && currentUser.uid)
+        || window.currentVisitorTargetUid
+        || (typeof MK_Config !== 'undefined' && MK_Config.HOST_UID);
+    const eventId = window.currentEventId;
+    if (!eventId) { alert('Avaa ensin miitti (vieraskirja-näkymä).'); return; }
+
+    const loadOverlay = document.getElementById('loading-overlay');
+    if (loadOverlay) loadOverlay.style.display = 'flex';
+
+    const virtualLog = {
+        nickname: nick,
+        from: fromEl ? fromEl.value.trim() : '',
+        message: msgEl ? msgEl.value.trim() : '',
+        timestamp: Date.now()
+    };
+
+    const result = await computeVisitorStats(targetHost, eventId, nick, virtualLog);
+
+    if (loadOverlay) loadOverlay.style.display = 'none';
+    const testModal = document.getElementById('visitor-test-modal');
+    if (testModal) testModal.style.display = 'none';
+
+    window.visitorTestMode = true;
+    showVisitorModalWithLang(nick, result.userHistory, result.stats);
 };
 
 window.updateDuplicateLogMessage = async function() {
@@ -1543,8 +1631,16 @@ function showVisitorModalWithLang(nick, history, stats) {
     btnNew.innerText = t.logAnotherBtn;
     btnNew.onclick = function() { closeAndResetVisitorModal(false); };
 
-    footer.appendChild(btnGeo);
-    footer.appendChild(btnNew);
+    if (window.visitorTestMode) {
+        const btnCloseTest = document.createElement('button');
+        btnCloseTest.className = "btn btn-red";
+        btnCloseTest.innerText = "Sulje testi";
+        btnCloseTest.onclick = function() { closeAndResetVisitorModal(false); };
+        footer.appendChild(btnCloseTest);
+    } else {
+        footer.appendChild(btnGeo);
+        footer.appendChild(btnNew);
+    }
 
     // 6. LISÄTÄÄN FOOTER MODAALIIN (Aina viimeiseksi)
     modalContent.appendChild(footer);
@@ -1611,6 +1707,7 @@ window.addEventListener('online', () => {
 function closeAndResetVisitorModal(goToGeo) {
     const modal = document.getElementById('user-profile-modal');
     if(!modal) return;
+    window.visitorTestMode = false;
 
     // 1. Piilotetaan modaali
     modal.style.display = 'none';
