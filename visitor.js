@@ -1540,7 +1540,6 @@ function showVisitorModalWithLang(nick, history, stats) {
     // 3. PÄIVITETÄÄN PERUSTIEDOT (Otsikot jne)
     document.getElementById('up-nickname').innerHTML = `<div style="font-size:0.8em; color:#888; margin-bottom:5px;">${stats.title || ""}</div>${stats.greeting}`;
     document.getElementById('up-nickname').style.color = stats.isFirstTime ? "#d32f2f" : "var(--header-color)";
-    document.getElementById('up-total').innerText = stats.totalVisits;
 
     let badgeEl = document.getElementById('up-badge');
     if (!badgeEl) {
@@ -1614,6 +1613,11 @@ function showVisitorModalWithLang(nick, history, stats) {
            <div id="visitor-badge-info" class="visitor-badge-info" style="display:none;"></div>`
         : '';
 
+    // Ensimmäinen käynti: historiasta, tai tänään jos ensikertalainen / ei historiaa
+    const firstVisitDate = (history && history.length > 0)
+        ? history[0].date
+        : new Date().toISOString().slice(0, 10);
+
     const miniDashboard = document.createElement('div');
     miniDashboard.id = 'up-visitor-mini-dashboard';
     miniDashboard.className = 'visitor-mini-dashboard';
@@ -1625,6 +1629,10 @@ function showVisitorModalWithLang(nick, history, stats) {
                 <div class="visitor-summary-metric">
                     <span class="visitor-summary-metric-label">Miittejä yhteensä</span>
                     <span class="visitor-summary-metric-value">${stats.totalVisits || 0}</span>
+                </div>
+                <div class="visitor-summary-metric">
+                    <span class="visitor-summary-metric-label">Ensimmäinen miitti</span>
+                    <span class="visitor-summary-metric-value" style="font-size:0.95em;">${firstVisitDate}</span>
                 </div>
             </div>
 
@@ -1660,25 +1668,13 @@ function showVisitorModalWithLang(nick, history, stats) {
     const oldSocialCard = document.getElementById('up-visitor-social-card');
     if (oldSocialCard) oldSocialCard.remove();
     const hasRank = (stats.rankTotal || 0) > 0 && (stats.rankPosition || 0) > 0;
-    const hasBuddies = Array.isArray(stats.topBuddies) && stats.topBuddies.length > 0;
-    if (hasRank || hasBuddies) {
+    if (hasRank) {
         const social = document.createElement('div');
         social.id = 'up-visitor-social-card';
         social.className = 'visitor-special-message';
-        const rankLine = hasRank
-            ? `<div style="margin-top:6px;">🏅 Kävijärank: <strong>${stats.rankPosition}</strong> / ${stats.rankTotal} (top ${stats.rankPercentile}%)</div>`
-            : '';
-        const buddyHtml = hasBuddies
-            ? `<div style="margin-top:10px;">
-                    <div style="font-weight:bold; margin-bottom:6px;">🤝 Useimmin samoissa miiteissä</div>
-                    <div style="font-size:0.85em; color:#888; margin-bottom:6px;">Yhteisiä miittejä sinun kanssa</div>
-                    ${stats.topBuddies.map(b => `<div class="stats-row"><span>${b.name}</span><strong>${b.count} / ${b.total}</strong></div>`).join('')}
-               </div>`
-            : '';
         social.innerHTML = `
             <div class="visitor-special-message-title">📊 Sinun yhteisötilastot (Mikkokalevin miitit)</div>
-            ${rankLine}
-            ${buddyHtml}
+            <div style="margin-top:6px;">🏅 Kävijärank: <strong>${stats.rankPosition}</strong> / ${stats.rankTotal} (top ${stats.rankPercentile}%)</div>
         `;
         badgeEl.insertAdjacentElement('afterend', social);
     }
@@ -1701,14 +1697,8 @@ function showVisitorModalWithLang(nick, history, stats) {
     if (history === null) {
         listEl.innerHTML = `<div style="text-align:center; padding:20px;">${t.savedMsg}</div>`;
     } else if (stats.isFirstTime) {
-        document.getElementById('up-first').innerHTML = "Today!";
-        document.getElementById('up-last').innerHTML = "Today!";
         listEl.innerHTML = `<div style="text-align:center; padding:20px;"><div style="font-size:3em;">🎉</div><p><strong>${t.welcomeTitle}</strong></p></div>`;
     } else {
-        const first = history[0];
-        const last = history[history.length - 1]; 
-        document.getElementById('up-first').innerHTML = `${first.date}<br><span style="font-size:0.8em; font-weight:normal;">${first.name}</span>`;
-        document.getElementById('up-last').innerHTML = `${last.date}<br><span style="font-size:0.8em; font-weight:normal;">${last.name}</span>`;
 
         if (stats.streakText) {
             const infoBox = document.createElement('div');
