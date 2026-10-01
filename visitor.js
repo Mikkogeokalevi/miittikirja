@@ -85,6 +85,7 @@ const visitorTranslations = {
         saveCardBtn: "📷 Tallenna muistokortti kuvana",
         saveCardDone: "✅ Kuva tallennettu!",
         saveCardFail: "Tallennus epäonnistui",
+        saveCardHint: "Pidä painallus kuvan päällä ja valitse Tallenna kuva",
         logTextTemplate: "Attended \"{0}\" ({1}). Kiitos miitistä! Kirjauduttu myös sähköiseen vieraskirjaan miittipaikalla."
     },
     en: {
@@ -168,6 +169,7 @@ const visitorTranslations = {
         saveCardBtn: "📷 Save souvenir card as image",
         saveCardDone: "✅ Image saved!",
         saveCardFail: "Save failed",
+        saveCardHint: "Long-press the image to save it",
         logTextTemplate: "Attended \"{0}\" ({1}). Thanks for the event! Also signed the digital guestbook on-site."
     },
     sv: {
@@ -251,6 +253,7 @@ const visitorTranslations = {
         saveCardBtn: "📷 Spara minneskortet som bild",
         saveCardDone: "✅ Bilden sparad!",
         saveCardFail: "Sparandet misslyckades",
+        saveCardHint: "Håll kvar på bilden och välj Spara bild",
         logTextTemplate: "Attended \"{0}\" ({1}). Tack för eventet! Loggade även i den digitala gästboken på plats."
     },
     et: {
@@ -334,6 +337,7 @@ const visitorTranslations = {
         saveCardBtn: "📷 Salvesta mälestuskaart pildina",
         saveCardDone: "✅ Pilt salvestatud!",
         saveCardFail: "Salvestus ebaõnnestus",
+        saveCardHint: "Hoia pilti pikalt all ja vali Salvesta pilt",
         logTextTemplate: "Attended \"{0}\" ({1}). Aitäh ürituse eest! Kirjutasin ka kohapeal digitaalsesse külalisteraamatut."
     }
 };
@@ -954,7 +958,60 @@ window.saveVisitorSouvenir = function(btn) {
             .replace(/-{2,}/g, '-')
             .toLowerCase();
 
-        const saveUrl = (url, revoke) => {
+        const restoreBtn = () => {
+            if (btn && btn.dataset.origText !== undefined) btn.innerText = btn.dataset.origText;
+        };
+
+        // Viimeinen varakeino: kuva ruudulle -> pitkä painallus tallentaa (toimii myös webviewissä)
+        const showImagePreview = (url) => {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.78); z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;';
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = t.souvenirTitle || 'Muistokortti';
+            img.style.cssText = 'max-width:100%; max-height:70vh; border-radius:12px; box-shadow:0 6px 24px rgba(0,0,0,0.45);';
+            const hint = document.createElement('div');
+            hint.innerText = t.saveCardHint || 'Pidä painallus kuvan päällä ja valitse Tallenna kuva';
+            hint.style.cssText = 'color:#ffffff; margin-top:14px; font-size:0.95em; text-align:center;';
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'btn btn-gray btn-small';
+            closeBtn.innerText = t.closeBtn || 'Sulje';
+            closeBtn.style.marginTop = '14px';
+            const closeOverlay = () => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); };
+            closeBtn.onclick = closeOverlay;
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeOverlay(); });
+            overlay.appendChild(img);
+            overlay.appendChild(hint);
+            overlay.appendChild(closeBtn);
+            document.body.appendChild(overlay);
+            restoreBtn();
+        };
+
+        const handleBlob = (blob) => {
+            if (!blob) { setFeedback(false); return; }
+            const url = URL.createObjectURL(blob);
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+                || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            let file = null;
+            try {
+                if (typeof File === 'function') file = new File([blob], fileName, { type: 'image/png' });
+            } catch (e) { file = null; }
+            // iOS: jakolevystä löytyy suoraan "Tallenna kuva" -> kuvakirjasto
+            if (isIOS && file && navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({ files: [file], title: fileName })
+                    .then(() => {
+                        setFeedback(true);
+                        setTimeout(() => URL.revokeObjectURL(url), 15000);
+                    })
+                    .catch((err) => {
+                        if (err && err.name === 'AbortError') {
+                            restoreBtn(); // käyttäjä perui — ei virhettä
+                        } else {
+                            showImagePreview(url);
+                        }
+                    });
+                return;
+            }
             const a = document.createElement('a');
             a.href = url;
             if ('download' in a) {
@@ -962,37 +1019,17 @@ window.saveVisitorSouvenir = function(btn) {
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
-                if (revoke) setTimeout(() => URL.revokeObjectURL(url), 15000);
+                setTimeout(() => URL.revokeObjectURL(url), 15000);
                 setFeedback(true);
             } else {
-                // Vanhat iOS-selaimet: avataan kuva, josta voi tallentaa pitkällä painalluksella
-                window.open(url, '_blank');
-                setFeedback(true);
-            }
-        };
-
-        const handleBlob = (blob) => {
-            if (!blob) { setFeedback(false); return; }
-            const isTouch = ('ontouchstart' in window)
-                || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-            let file = null;
-            try {
-                if (typeof File === 'function') file = new File([blob], fileName, { type: 'image/png' });
-            } catch (e) { file = null; }
-            // Mobiilissa jakolevy tarjoaa "Tallenna kuva" -vaihtoehdon suoraan
-            if (isTouch && file && navigator.canShare && navigator.canShare({ files: [file] })) {
-                navigator.share({ files: [file], title: t.souvenirTitle || 'Muistokortti' })
-                    .then(() => setFeedback(true))
-                    .catch(() => setFeedback(false));
-            } else {
-                saveUrl(URL.createObjectURL(blob), true);
+                showImagePreview(url);
             }
         };
 
         if (canvas.toBlob) {
             canvas.toBlob(handleBlob, 'image/png');
         } else {
-            saveUrl(canvas.toDataURL('image/png'), false);
+            showImagePreview(canvas.toDataURL('image/png'));
         }
     } catch (e) {
         console.warn('Souvenir save failed:', e);
