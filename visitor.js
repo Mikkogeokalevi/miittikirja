@@ -82,6 +82,9 @@ const visitorTranslations = {
         copyLogBtn: "📋 Kopioi lokiteksti Geocaching.comiin",
         copyLogDone: "✅ Lokiteksti kopioitu!",
         copyLogFail: "Kopiointi epäonnistui",
+        saveCardBtn: "📷 Tallenna muistokortti kuvana",
+        saveCardDone: "✅ Kuva tallennettu!",
+        saveCardFail: "Tallennus epäonnistui",
         logTextTemplate: "Attended \"{0}\" ({1}). Kiitos miitistä! Kirjauduttu myös sähköiseen vieraskirjaan miittipaikalla."
     },
     en: {
@@ -162,6 +165,9 @@ const visitorTranslations = {
         copyLogBtn: "📋 Copy log text for Geocaching.com",
         copyLogDone: "✅ Log text copied!",
         copyLogFail: "Copy failed",
+        saveCardBtn: "📷 Save souvenir card as image",
+        saveCardDone: "✅ Image saved!",
+        saveCardFail: "Save failed",
         logTextTemplate: "Attended \"{0}\" ({1}). Thanks for the event! Also signed the digital guestbook on-site."
     },
     sv: {
@@ -242,6 +248,9 @@ const visitorTranslations = {
         copyLogBtn: "📋 Kopiera loggtext för Geocaching.com",
         copyLogDone: "✅ Loggtext kopierad!",
         copyLogFail: "Kopiering misslyckades",
+        saveCardBtn: "📷 Spara minneskortet som bild",
+        saveCardDone: "✅ Bilden sparad!",
+        saveCardFail: "Sparandet misslyckades",
         logTextTemplate: "Attended \"{0}\" ({1}). Tack för eventet! Loggade även i den digitala gästboken på plats."
     },
     et: {
@@ -322,6 +331,9 @@ const visitorTranslations = {
         copyLogBtn: "📋 Kopeeri logitekst Geocaching.com-i jaoks",
         copyLogDone: "✅ Logitekst kopeeritud!",
         copyLogFail: "Kopeerimine ebaõnnestus",
+        saveCardBtn: "📷 Salvesta mälestuskaart pildina",
+        saveCardDone: "✅ Pilt salvestatud!",
+        saveCardFail: "Salvestus ebaõnnestus",
         logTextTemplate: "Attended \"{0}\" ({1}). Aitäh ürituse eest! Kirjutasin ka kohapeal digitaalsesse külalisteraamatut."
     }
 };
@@ -822,6 +834,169 @@ window.copyVisitorLogText = function(btn) {
         navigator.clipboard.writeText(text).then(() => setFeedback(true), () => fallbackCopy());
     } else {
         fallbackCopy();
+    }
+};
+
+// Piirtää muistokortin <canvas>:iin ja tallentaa sen PNG-kuvana
+window.saveVisitorSouvenir = function(btn) {
+    const t = visitorTranslations[currentLang] || visitorTranslations.fi;
+    const s = window.currentSouvenirData;
+    if (!s) return;
+
+    const setFeedback = (ok) => {
+        if (!btn) return;
+        if (btn.dataset.origText === undefined) btn.dataset.origText = btn.innerText;
+        btn.innerText = ok ? (t.saveCardDone || 'Tallennettu!') : (t.saveCardFail || 'Tallennus epäonnistui');
+        setTimeout(() => { btn.innerText = btn.dataset.origText; }, 2500);
+    };
+
+    try {
+        const bodyCS = getComputedStyle(document.body);
+        const cv = (name, fb) => {
+            const v = (bodyCS.getPropertyValue(name) || '').trim();
+            return v || fb;
+        };
+        const C = {
+            bgStart: cv('--vv-card-bg', '#ffffff'),
+            bgEnd: cv('--vv-post-bg-start', '#eef6ff'),
+            accent: cv('--vv-theme-btn-active-bg', '#2e64aa'),
+            accent2: cv('--vv-post-border', '#76a7e8'),
+            event: cv('--vv-event-name-color', '#16365e'),
+            heading: cv('--vv-heading-color', '#1f3d66'),
+            text: cv('--vv-text-color', '#22344d'),
+            muted: cv('--vv-muted-color', '#64789a'),
+            rule: cv('--vv-card-border', '#d7e3f2')
+        };
+
+        const SANS = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+        const EMOJI = '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+        const W = 640;
+
+        const measure = document.createElement('canvas').getContext('2d');
+        const wrapLines = (text, font, maxWidth) => {
+            measure.font = font;
+            const words = String(text || '').split(/\s+/).filter(Boolean);
+            const lines = [];
+            let line = '';
+            words.forEach(w => {
+                const test = line ? line + ' ' + w : w;
+                if (line && measure.measureText(test).width > maxWidth) {
+                    lines.push(line);
+                    line = w;
+                } else {
+                    line = test;
+                }
+            });
+            if (line) lines.push(line);
+            return lines;
+        };
+
+        const nameFont = '700 34px ' + SANS;
+        const nameLines = wrapLines(s.eventName, nameFont, W - 90);
+
+        const rows = [];
+        rows.push({ text: (t.souvenirTitle || 'Digitaalinen muistokortti').toUpperCase(), font: '600 16px ' + SANS, color: C.muted, gap: 52 });
+        nameLines.forEach(l => rows.push({ text: l, font: nameFont, color: C.event, gap: 44 }));
+        if (s.meta) rows.push({ text: s.meta, font: '400 20px ' + SANS, color: C.muted, gap: 30 });
+        rows.push({ divider: true, gap: 40 });
+        rows.push({ text: s.nick, font: '800 42px ' + SANS, color: C.heading, gap: 58 });
+        if (s.line) rows.push({ text: s.line, font: '400 22px ' + SANS, color: C.text, gap: 34 });
+        if (s.badges) rows.push({ text: s.badges, font: '42px ' + EMOJI, color: C.text, gap: 58 });
+        if (s.sub) rows.push({ text: s.sub, font: '400 19px ' + SANS, color: C.muted, gap: 32 });
+        rows.push({ text: (t.souvenirBrand || 'Mikkokalevin Miittikirja').toUpperCase(), font: '600 15px ' + SANS, color: C.muted, gap: 70 });
+
+        const H = rows.reduce((sum, r) => sum + r.gap, 0) + 20;
+        const scale = 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = W * scale;
+        canvas.height = H * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(scale, scale);
+        ctx.textAlign = 'center';
+
+        const bg = ctx.createLinearGradient(0, 0, 0, H);
+        bg.addColorStop(0, C.bgStart);
+        bg.addColorStop(1, C.bgEnd);
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, W, H);
+
+        const band = ctx.createLinearGradient(0, 0, W, 0);
+        band.addColorStop(0, C.accent);
+        band.addColorStop(1, C.accent2);
+        ctx.fillStyle = band;
+        ctx.fillRect(0, 0, W, 8);
+
+        let y = 0;
+        rows.forEach(r => {
+            y += r.gap;
+            if (r.divider) {
+                ctx.strokeStyle = C.rule;
+                ctx.lineWidth = 2;
+                ctx.setLineDash([10, 8]);
+                ctx.beginPath();
+                ctx.moveTo(70, y - 14);
+                ctx.lineTo(W - 70, y - 14);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                return;
+            }
+            ctx.font = r.font;
+            ctx.fillStyle = r.color;
+            ctx.fillText(r.text, W / 2, y);
+        });
+
+        ctx.strokeStyle = C.rule;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(0.75, 0.75, W - 1.5, H - 1.5);
+
+        const fileName = ('miittikirja-' + (s.eventName || 'muistokortti') + '-' + (s.nick || '') + '.png')
+            .replace(/[^a-zA-Z0-9äöåÄÖÅ_-]+/g, '-')
+            .replace(/-{2,}/g, '-')
+            .toLowerCase();
+
+        const saveUrl = (url, revoke) => {
+            const a = document.createElement('a');
+            a.href = url;
+            if ('download' in a) {
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                if (revoke) setTimeout(() => URL.revokeObjectURL(url), 15000);
+                setFeedback(true);
+            } else {
+                // Vanhat iOS-selaimet: avataan kuva, josta voi tallentaa pitkällä painalluksella
+                window.open(url, '_blank');
+                setFeedback(true);
+            }
+        };
+
+        const handleBlob = (blob) => {
+            if (!blob) { setFeedback(false); return; }
+            const isTouch = ('ontouchstart' in window)
+                || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            let file = null;
+            try {
+                if (typeof File === 'function') file = new File([blob], fileName, { type: 'image/png' });
+            } catch (e) { file = null; }
+            // Mobiilissa jakolevy tarjoaa "Tallenna kuva" -vaihtoehdon suoraan
+            if (isTouch && file && navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({ files: [file], title: t.souvenirTitle || 'Muistokortti' })
+                    .then(() => setFeedback(true))
+                    .catch(() => setFeedback(false));
+            } else {
+                saveUrl(URL.createObjectURL(blob), true);
+            }
+        };
+
+        if (canvas.toBlob) {
+            canvas.toBlob(handleBlob, 'image/png');
+        } else {
+            saveUrl(canvas.toDataURL('image/png'), false);
+        }
+    } catch (e) {
+        console.warn('Souvenir save failed:', e);
+        setFeedback(false);
     }
 };
 
@@ -2118,9 +2293,12 @@ function showVisitorModalWithLang(nick, history, stats) {
     const souvenirBits = [evtDateText, stats.eventTime || '', stats.eventGc || ''].filter(Boolean).join(' · ');
     const souvenirBadgeSet = (stats.newBadges && stats.newBadges.length) ? stats.newBadges : (stats.badges || []).slice(-6);
     const souvenirIcons = souvenirBadgeSet.slice(0, 10).map(b => b.icon).join(' ');
-    const souvenirSub = (!stats.isFirstTime && stats.totalVisits > 1 && firstVisitDate)
-        ? `<div class="visitor-souvenir-sub">${(t.firstVisitText || 'Ensimmäinen miittisi {0}').replace('{0}', firstVisitDateText)}</div>`
+    const souvenirSubText = (!stats.isFirstTime && stats.totalVisits > 1 && firstVisitDate)
+        ? (t.firstVisitText || 'Ensimmäinen miittisi {0}').replace('{0}', firstVisitDateText)
         : '';
+    const souvenirSub = souvenirSubText ? `<div class="visitor-souvenir-sub">${souvenirSubText}</div>` : '';
+    const souvenirLine = (t.nthVisitText || 'Tämä oli {0}. miittisi').replace('{0}', stats.totalVisits || 1)
+        + (attendeeCount > 0 ? ' · ' + (t.attendeePosition || 'Olet {0}. kirjautuja tässä miitissä').replace('{0}', attendeeCount) : '');
     const souvenirCard = document.createElement('div');
     souvenirCard.id = 'up-souvenir-card';
     souvenirCard.className = 'visitor-souvenir-card';
@@ -2130,7 +2308,7 @@ function showVisitorModalWithLang(nick, history, stats) {
         ${souvenirBits ? `<div class="visitor-souvenir-meta">${visitorEscapeHtml(souvenirBits)}</div>` : ''}
         <div class="visitor-souvenir-rule"></div>
         <div class="visitor-souvenir-nick">${visitorEscapeHtml(nick)}</div>
-        <div class="visitor-souvenir-lines">${(t.nthVisitText || 'Tämä oli {0}. miittisi').replace('{0}', stats.totalVisits || 1)}${attendeeCount > 0 ? ' · ' + (t.attendeePosition || 'Olet {0}. kirjautuja tässä miitissä').replace('{0}', attendeeCount) : ''}</div>
+        <div class="visitor-souvenir-lines">${visitorEscapeHtml(souvenirLine)}</div>
         <div id="vv-live-count" class="visitor-live-count"${attendeeCount === 0 ? ' style="display:none;"' : ''}>${(t.liveAttendees || 'Miitissä nyt {0} kävijää').replace('{0}', attendeeCount)}</div>
         ${souvenirIcons ? `<div class="visitor-souvenir-badges">${souvenirIcons}</div>` : ''}
         ${souvenirSub}
@@ -2138,8 +2316,16 @@ function showVisitorModalWithLang(nick, history, stats) {
     `;
     badgeEl.insertAdjacentElement('afterend', souvenirCard);
 
-    // Kopioitavan lokitekstin konteksti (käytetään copyVisitorLogText:ssä)
+    // Muistokortin ja lokitekstin kopiointi-/tallennuskonteksti
     window.currentVisitorStatsCopy = { eventName: evtName, eventDate: evtDateText };
+    window.currentSouvenirData = {
+        eventName: evtName,
+        meta: souvenirBits,
+        nick: nick,
+        line: souvenirLine,
+        badges: souvenirIcons,
+        sub: souvenirSubText
+    };
 
     // 4. HISTORIALISTAN PÄIVITYS
     const listEl = document.getElementById('up-history-list');
@@ -2214,6 +2400,13 @@ function showVisitorModalWithLang(nick, history, stats) {
     btnCopy.innerText = t.copyLogBtn || '📋 Kopioi lokiteksti Geocaching.comiin';
     btnCopy.onclick = function() { window.copyVisitorLogText(btnCopy); };
     footer.appendChild(btnCopy);
+
+    const btnSaveCard = document.createElement('button');
+    btnSaveCard.className = "btn btn-blue";
+    btnSaveCard.style.marginBottom = "10px";
+    btnSaveCard.innerText = t.saveCardBtn || '📷 Tallenna muistokortti kuvana';
+    btnSaveCard.onclick = function() { window.saveVisitorSouvenir(btnSaveCard); };
+    footer.appendChild(btnSaveCard);
 
     const btnGeo = document.createElement('button');
     btnGeo.className = "btn btn-green";
