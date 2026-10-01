@@ -26,7 +26,7 @@ function initMyEventsExportBindings() {
 function exportMyMiittiEventsCsv() {
     const events = Array.isArray(allStatsData.events) ? allStatsData.events : [];
     if (!events.length) {
-        alert('Ei ladattavia miittejä. Avaa tilastot ensin.');
+        showToast('Ei ladattavia miittejä. Avaa tilastot ensin.', 'error');
         return;
     }
 
@@ -36,7 +36,7 @@ function exportMyMiittiEventsCsv() {
         .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
 
     if (!miittiEvents.length) {
-        alert('Ei ladattavia miittejä (tyyppi=miitti).');
+        showToast('Ei ladattavia miittejä (tyyppi=miitti).', 'error');
         return;
     }
 
@@ -106,7 +106,7 @@ function exportMyMiittiEventsCsv() {
 function exportMyMiittiEventNamesTxt() {
     const events = Array.isArray(allStatsData.events) ? allStatsData.events : [];
     if (!events.length) {
-        alert('Ei ladattavia miittejä. Avaa tilastot ensin.');
+        showToast('Ei ladattavia miittejä. Avaa tilastot ensin.', 'error');
         return;
     }
 
@@ -120,7 +120,7 @@ function exportMyMiittiEventNamesTxt() {
         .filter(Boolean);
 
     if (!names.length) {
-        alert('Ei ladattavia nimiä.');
+        showToast('Ei ladattavia nimiä.', 'error');
         return;
     }
 
@@ -306,9 +306,9 @@ function updateStatsView(data) {
             <div style="display:grid; grid-template-columns: 1fr auto; gap:5px; text-align:left; font-size:0.95em;">
                 <div>Tapahtumia yhteensä:</div><div style="text-align:right;"><strong>${totalEvents}</strong> kpl</div>
                 
-                <div style="color:#aaa; padding-left:15px; font-size:0.9em;">• Miitit</div><div style="text-align:right; color:#aaa; font-size:0.9em;">${typeCounts.miitti}</div>
-                <div style="color:#aaa; padding-left:15px; font-size:0.9em;">• CITO-tapahtumat</div><div style="text-align:right; color:#aaa; font-size:0.9em;">${typeCounts.cito}</div>
-                <div style="color:#aaa; padding-left:15px; font-size:0.9em;">• Juhlat (CCE)</div><div style="text-align:right; color:#aaa; font-size:0.9em;">${typeCounts.cce}</div>
+                <div style="color:var(--text-muted); padding-left:15px; font-size:0.9em;">• Miitit</div><div style="text-align:right; color:var(--text-muted); font-size:0.9em;">${typeCounts.miitti}</div>
+                <div style="color:var(--text-muted); padding-left:15px; font-size:0.9em;">• CITO-tapahtumat</div><div style="text-align:right; color:var(--text-muted); font-size:0.9em;">${typeCounts.cito}</div>
+                <div style="color:var(--text-muted); padding-left:15px; font-size:0.9em;">• Juhlat (CCE)</div><div style="text-align:right; color:var(--text-muted); font-size:0.9em;">${typeCounts.cce}</div>
                 ${countCancelled > 0 ? `<div style="color:#e57373; padding-left:15px; font-size:0.9em;">• Perutut</div><div style="text-align:right; color:#e57373; font-size:0.9em;">${countCancelled}</div>` : ''}
 
                 <div style="margin-top:8px;">Vieraskirjauksia:</div><div style="text-align:right; margin-top:8px;"><strong>${totalGuestVisits}</strong> kpl</div>
@@ -316,7 +316,7 @@ function updateStatsView(data) {
                 
                 <div style="border-top:1px solid #555; padding-top:8px; margin-top:8px;">Omat osallistumiset:</div>
                 <div style="border-top:1px solid #555; padding-top:8px; margin-top:8px; text-align:right; color:var(--header-color);">
-                    <strong>${organizerAttended}</strong> / ${realizedEvents.length} kpl <span style="font-size:0.7em; color:#888; font-weight:normal;">(Toteutuneet)</span>
+                    <strong>${organizerAttended}</strong> / ${realizedEvents.length} kpl <span style="font-size:0.7em; color:var(--text-muted); font-weight:normal;">(Toteutuneet)</span>
                     <div style="font-size:0.8em; color:${organizerMissing > 0 ? '#ffcc80' : '#8bc34a'}; margin-top:2px; cursor:${organizerMissing > 0 ? 'pointer' : 'default'};" onclick="${organizerMissing > 0 ? 'showMissingEvents()' : ''}">
                         Puuttuu: ${organizerMissing} ${organizerMissing > 0 ? '👆' : ''}
                     </div>
@@ -417,7 +417,7 @@ function renderUserRegistry(data) {
         }
         return `<div class="stats-row">
             <span>${i+1}. <span class="clickable-name" onclick="openUserProfile('${name}')">${name}</span> 
-            <span style="font-size:0.8em; color:#888; font-style:italic;">(${title})</span></span> 
+            <span style="font-size:0.8em; color:var(--text-muted); font-style:italic;">(${title})</span></span> 
             <strong>${count}</strong>
         </div>`;
     }).join('');
@@ -638,7 +638,7 @@ function exportCurrentUserLogSearch() {
     const sourceMode = currentStatsLogSearchSnapshot.sourceMode || 'both';
 
     if (rows.length === 0) {
-        alert('Ei ladattavia logeja. Tee ensin haku.');
+        showToast('Ei ladattavia logeja. Tee ensin haku.', 'error');
         return;
     }
 
@@ -688,7 +688,7 @@ function exportCurrentUserLogSearchTxt() {
     const sourceMode = currentStatsLogSearchSnapshot.sourceMode || 'both';
 
     if (rows.length === 0) {
-        alert('Ei ladattavia logeja. Tee ensin haku.');
+        showToast('Ei ladattavia logeja. Tee ensin haku.', 'error');
         return;
     }
 
@@ -937,17 +937,17 @@ function runUserLogSearch(data) {
     wordStatsEl.innerHTML = `
         <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
             <span><strong>Sanoja näytetyissä:</strong> ${totalShownWords}</span>
-            <span style="color:#888;">(Miitti: ${totalLocalWords}, .com: ${totalNetWords}, Paikkakunta: ${totalFromWords})</span>
+            <span style="color:var(--text-muted);">(Miitti: ${totalLocalWords}, .com: ${totalNetWords}, Paikkakunta: ${totalFromWords})</span>
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:4px;">
             <span><strong>Merkkejä näytetyissä:</strong> ${totalShownChars}</span>
-            <span style="color:#888;">(ilman välejä: ${totalShownCharsNoSpace})</span>
+            <span style="color:var(--text-muted);">(ilman välejä: ${totalShownCharsNoSpace})</span>
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:4px;">
             <span><strong>Mediaani / viesti:</strong> ${medianShownWords} sanaa</span>
-            <span style="color:#888;">(${medianShownChars} merkkiä)</span>
+            <span style="color:var(--text-muted);">(${medianShownChars} merkkiä)</span>
         </div>
-        <div style="margin-top:4px; color:#888;">
+        <div style="margin-top:4px; color:var(--text-muted);">
             <strong>Pituusjakauma (merkkiä / viesti):</strong> ${charLengthSummary}
         </div>
     `;
@@ -956,7 +956,7 @@ function runUserLogSearch(data) {
         topListsEl.innerHTML = `
             <div class="card" style="margin:0; padding:10px; border-style:dashed;">
                 <h4 style="margin:0 0 8px 0;">🏆 Top-listat</h4>
-                <div style="font-size:0.86em; color:#aaa; margin-bottom:8px;">Lähde: ${topScope === 'all' ? 'Kaikki data' : 'Nykyinen suodatus'}</div>
+                <div style="font-size:0.86em; color:var(--text-muted); margin-bottom:8px;">Lähde: ${topScope === 'all' ? 'Kaikki data' : 'Nykyinen suodatus'}</div>
                 <div style="display:grid; gap:8px; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));">
                     <div>
                         <div style="font-weight:600; margin-bottom:4px;">Eniten sanoja</div>
@@ -998,20 +998,20 @@ function runUserLogSearch(data) {
         const fromText = r.from ? `<div style="margin-top:4px;"><span style="color:#ffcc80;">📍 Paikkakunta:</span> ${escapeHtml(r.from)}</div>` : '';
 
         const selectedContent = sourceMode === 'local'
-            ? (localText || `<div style="color:#777; margin-top:4px;">(Ei miittiviestiä)</div>`)
+            ? (localText || `<div style="color:var(--text-muted); margin-top:4px;">(Ei miittiviestiä)</div>`)
             : sourceMode === 'net'
-                ? (netText || `<div style="color:#777; margin-top:4px;">(Ei .com-viestiä)</div>`)
+                ? (netText || `<div style="color:var(--text-muted); margin-top:4px;">(Ei .com-viestiä)</div>`)
                 : sourceMode === 'from'
-                    ? (fromText || `<div style="color:#777; margin-top:4px;">(Ei paikkakuntaa)</div>`)
-                : `${localText}${netText}` || `<div style="color:#777; margin-top:4px;">(Ei viestiä)</div>`;
+                    ? (fromText || `<div style="color:var(--text-muted); margin-top:4px;">(Ei paikkakuntaa)</div>`)
+                : `${localText}${netText}` || `<div style="color:var(--text-muted); margin-top:4px;">(Ei viestiä)</div>`;
 
         return `
             <div class="result-item" style="cursor:default;">
                 <div style="display:flex; justify-content:space-between; gap:8px;">
                     <strong>${escapeHtml(r.nickname)}</strong>
-                    <small style="color:#aaa;">${escapeHtml(r.eventDate)}</small>
+                    <small style="color:var(--text-muted);">${escapeHtml(r.eventDate)}</small>
                 </div>
-                <div style="font-size:0.85em; color:#999; margin-top:2px;">${escapeHtml(r.eventName)}</div>
+                <div style="font-size:0.85em; color:var(--text-muted); margin-top:2px;">${escapeHtml(r.eventName)}</div>
                 ${fromText}
                 ${selectedContent}
             </div>
@@ -1176,7 +1176,7 @@ function renderLongestStreaks(data) {
 
     const top = streaks.sort((a, b) => b.max - a.max).slice(0, 10);
     el.innerHTML = top.map((item, i) => {
-        return `<div class="stats-row"><span>${i+1}. ${item.name} <span style="font-size:0.8em; color:#888;">(${item.range})</span></span> <strong>${item.max}</strong></div>`;
+        return `<div class="stats-row"><span>${i+1}. ${item.name} <span style="font-size:0.8em; color:var(--text-muted);">(${item.range})</span></span> <strong>${item.max}</strong></div>`;
     }).join('');
 }
 
@@ -1353,7 +1353,7 @@ function renderYearHeatmap(data) {
     let html = `<table style="width:100%; border-collapse:separate; border-spacing:2px; font-size:0.9em;">`;
     
     const months = ["T", "H", "M", "H", "T", "K", "H", "E", "S", "L", "M", "J"];
-    html += `<tr><th style="text-align:left;">Vuosi</th>${months.map(m => `<th style="width:7%; text-align:center; color:#888;">${m}</th>`).join('')}<th style="width:10%;">Yht</th></tr>`;
+    html += `<tr><th style="text-align:left;">Vuosi</th>${months.map(m => `<th style="width:7%; text-align:center; color:var(--text-muted);">${m}</th>`).join('')}<th style="width:10%;">Yht</th></tr>`;
 
     sortedYears.forEach(year => {
         const rowData = matrix[year];
@@ -1382,7 +1382,7 @@ function renderYearHeatmap(data) {
     });
 
     html += `</table>`;
-    html += `<div style="text-align:right; font-size:0.8em; color:#666; margin-top:5px;">Värit: 🟩=1 🟨=2-3 🟧=4+</div>`;
+    html += `<div style="text-align:right; font-size:0.8em; color:var(--text-muted); margin-top:5px;">Värit: 🟩=1 🟨=2-3 🟧=4+</div>`;
     
     el.innerHTML = html;
 }
@@ -1490,7 +1490,7 @@ window.renderMap = function(data) {
             popupHtml = `
                 <div style="text-align:center; min-width:150px;">
                     <b style="font-size:1.1em;">${evt.name}</b><br>
-                    <span style="color:#666;">${evt.date}</span><br>
+                    <span style="color:var(--text-muted);">${evt.date}</span><br>
                     <span style="font-weight:bold;">👤 ${evt.attendeeCount}</span><br>
                     <button class="btn btn-small btn-green" style="margin-top:10px; width:100%;" onclick="goToEventFromMap('${evt.key}')">📖 Avaa miittikirja</button>
                 </div>
@@ -1604,7 +1604,7 @@ window.openUserProfile = function(nickname) {
         evt.attendeeNames && evt.attendeeNames.some(n => n.toLowerCase() === nickname.toLowerCase())
     );
     userEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
-    if (userEvents.length === 0) return alert("Ei tietoja tälle käyttäjälle.");
+    if (userEvents.length === 0) return showToast("Ei tietoja tälle käyttäjälle.", 'error');
 
     // --- PÄIVITETTY OTSAKKEEN TITTELI ---
     let title = "";
@@ -1612,7 +1612,7 @@ window.openUserProfile = function(nickname) {
         title = window.MK_Messages.getRankTitle(userEvents.length);
     }
     
-    document.getElementById('up-nickname').innerHTML = `${nickname}<br><small style="font-size:0.6em; color:#666; font-weight:normal;">${title}</small>`;
+    document.getElementById('up-nickname').innerHTML = `${nickname}<br><small style="font-size:0.6em; color:var(--text-muted); font-weight:normal;">${title}</small>`;
     
     const listEl = document.getElementById('up-history-list');
     listEl.innerHTML = "";
@@ -1654,7 +1654,7 @@ window.goToEventFromMap = function(key) {
         document.getElementById('stats-view').style.display = 'none';
         window.openGuestbook(key);
     } else {
-        alert("Virhe: Miittikirjaa ei voitu avata.");
+        showToast("Virhe: Miittikirjaa ei voitu avata.", 'error');
     }
 };
 
@@ -2061,7 +2061,7 @@ function renderCharts(data) {
 function showMissingEvents() {
     const stats = window.currentOrganizerStats;
     if (!stats || !stats.missingEvents || stats.missingEvents.length === 0) {
-        alert('Ei puuttuvia osallistumisia.');
+        showToast('Ei puuttuvia osallistumisia.', 'error');
         return;
     }
 
@@ -2083,7 +2083,7 @@ function showMissingEvents() {
 
     content.innerHTML = `
         <h2 style="margin-top: 0;">Puuttuvat osallistumiset (${stats.missingEvents.length})</h2>
-        <p style="color: #888; font-size: 0.9em;">Miitit joissa järjestäjä ei ole kirjautunut:</p>
+        <p style="color:var(--text-muted); font-size: 0.9em;">Miitit joissa järjestäjä ei ole kirjautunut:</p>
         <div id="missing-events-list"></div>
         <button id="close-missing-modal" style="margin-top: 15px; padding: 10px 20px; cursor: pointer;">Sulje</button>
     `;
@@ -2092,7 +2092,7 @@ function showMissingEvents() {
     sortedMissing.forEach(evt => {
         const item = document.createElement('div');
         item.style.cssText = 'padding: 10px; border-bottom: 1px solid #444; cursor: pointer;';
-        item.innerHTML = `<strong>${evt.name}</strong><br><small style="color: #888;">📅 ${evt.date} • 👤 ${evt.attendeeCount || 0} osallistujaa</small>`;
+        item.innerHTML = `<strong>${evt.name}</strong><br><small style="color:var(--text-muted);">📅 ${evt.date} • 👤 ${evt.attendeeCount || 0} osallistujaa</small>`;
         item.addEventListener('click', (e) => {
             e.stopPropagation();
             if (window.openGuestbook) window.openGuestbook(evt.key);

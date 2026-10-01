@@ -466,6 +466,8 @@ window.setVisitorColorTheme = function(theme) {
     const forestBtn = document.getElementById('btn-vtheme-forest');
     if (oceanBtn) oceanBtn.classList.toggle('active', theme === 'ocean');
     if (forestBtn) forestBtn.classList.toggle('active', theme === 'forest');
+    if (oceanBtn) oceanBtn.setAttribute('aria-pressed', theme === 'ocean' ? 'true' : 'false');
+    if (forestBtn) forestBtn.setAttribute('aria-pressed', theme === 'forest' ? 'true' : 'false');
 
     try {
         localStorage.setItem('mk_visitor_color_theme', theme);
@@ -754,6 +756,7 @@ window.setVisitorLanguage = function(lang) {
             const isActive = (id === `btn-lang-${lang}`);
             el.style.opacity = isActive ? "1" : "0.5";
             el.classList.toggle('active', isActive);
+            el.setAttribute('aria-pressed', isActive ? 'true' : 'false');
         }
     });
 
@@ -777,9 +780,6 @@ window.setVisitorLanguage = function(lang) {
 // Pääfunktio: Kirjauksen käsittely
 window.handleVisitorSign = async function() {
     const t = visitorTranslations[currentLang];
-    if (window.isVisitorExpired) {
-        return alert(t.expiredAlert);
-    }
     const errorEl = document.getElementById('vv-error');
     const statusEl = document.getElementById('vv-status');
     const signBtn = document.getElementById('btn-visitor-sign');
@@ -795,6 +795,10 @@ window.handleVisitorSign = async function() {
             statusEl.style.display = msg ? 'block' : 'none';
         }
     };
+    if (window.isVisitorExpired) {
+        setError(t.expiredAlert);
+        return;
+    }
     const setLoading = (isLoading) => {
         if (signBtn) {
             signBtn.disabled = isLoading;
@@ -851,7 +855,7 @@ window.handleVisitorSign = async function() {
         || "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
     const eventId = window.currentEventId;
 
-    if (!eventId) return alert("Virhe: Tapahtuman tunnistetta ei löytynyt.");
+    if (!eventId) { setError("Virhe: Tapahtuman tunnistetta ei löytynyt."); return; }
 
     // Estä tuplapainallukset
     if (signBtn && signBtn.disabled) return;
@@ -1580,7 +1584,7 @@ window.runVisitorTest = async function() {
         || window.currentVisitorTargetUid
         || (typeof MK_Config !== 'undefined' && MK_Config.HOST_UID);
     const eventId = window.currentEventId;
-    if (!eventId) { alert('Avaa ensin miitti (vieraskirja-näkymä).'); return; }
+    if (!eventId) { if (window.showToast) showToast('Avaa ensin miitti (vieraskirja-näkymä).', 'error'); return; }
 
     const loadOverlay = document.getElementById('loading-overlay');
     if (loadOverlay) loadOverlay.style.display = 'flex';
@@ -1712,7 +1716,7 @@ function showVisitorModalWithLang(nick, history, stats) {
     if (defaultClose) defaultClose.style.display = 'none';
 
     // 3. PÄIVITETÄÄN PERUSTIEDOT (Otsikot jne)
-    document.getElementById('up-nickname').innerHTML = `<div style="font-size:0.8em; color:#888; margin-bottom:5px;">${stats.title || ""}</div>${stats.greeting}`;
+    document.getElementById('up-nickname').innerHTML = `<div style="font-size:0.8em; color:var(--vv-muted-color); margin-bottom:5px;">${stats.title || ""}</div>${stats.greeting}`;
     document.getElementById('up-nickname').style.color = stats.isFirstTime ? "#d32f2f" : "var(--header-color)";
 
     let badgeEl = document.getElementById('up-badge');
@@ -1930,7 +1934,7 @@ function showVisitorModalWithLang(nick, history, stats) {
             infoBox.style.textAlign = "center";
             infoBox.style.border = "1px dashed var(--secondary-color)";
             const streakInfo = (stats.streakCount > 1 && stats.streakStartLabel)
-                ? `<div style="margin-top:6px; font-size:0.9em; color:#888;">${t.streakInfo.replace('{0}', stats.streakCount).replace('{1}', stats.streakStartLabel)}</div>`
+                ? `<div style="margin-top:6px; font-size:0.9em; color:var(--vv-muted-color);">${t.streakInfo.replace('{0}', stats.streakCount).replace('{1}', stats.streakStartLabel)}</div>`
                 : "";
             infoBox.innerHTML = stats.streakText + streakInfo;
             listEl.appendChild(infoBox);
@@ -1972,7 +1976,7 @@ function showVisitorModalWithLang(nick, history, stats) {
     if (stats.nextEvent) {
          nextBox.innerHTML = `<strong style="color:var(--secondary-color);">${t.nextEventTitle}</strong><br><span style="font-size:1.1em; font-weight:bold;">${stats.nextEvent.date}</span><br>${stats.nextEvent.name}`;
     } else {
-         nextBox.innerHTML = `<span style="color:#888; font-style:italic;">${t.noNextEvent}</span>`;
+         nextBox.innerHTML = `<span style="color:var(--vv-muted-color); font-style:italic;">${t.noNextEvent}</span>`;
     }
     footer.appendChild(nextBox);
 

@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.37.3";
+const APP_VERSION = "7.38.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -220,7 +220,7 @@ window.openNetImportStatusOverviewModal = async function() {
     try {
         const past = await getPastEventsForImportStatus();
         if (!Array.isArray(past) || past.length === 0) {
-            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Ei menneitä miittejä.</div>';
+            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Ei menneitä miittejä.</div>';
             return;
         }
 
@@ -422,7 +422,7 @@ async function openVisitorGuestbook(uid, eventId) {
         const evt = snap.val();
 
         if(!evt) {
-            alert(`Miittiä ei löytynyt!\n\nEtsintätiedot:\nEventID: ${eventId}\nOmistaja-UID: ${uid}\n\nTarkista onko miitti poistettu tai onko QR-koodi vanhentunut.`);
+            showToast(`Miittiä ei löytynyt!\n\nEtsintätiedot:\nEventID: ${eventId}\nOmistaja-UID: ${uid}\n\nTarkista onko miitti poistettu tai onko QR-koodi vanhentunut.`, 'error');
             return;
         }
 
@@ -466,9 +466,9 @@ async function openVisitorGuestbook(uid, eventId) {
     } catch (error) {
         console.error("Virhe haettaessa miittiä:", error);
         if (error && error.message === 'EVENT_FETCH_TIMEOUT') {
-            alert("Yhteys on hidas tai katkolla. Päivitä sivu ja yritä uudelleen.");
+            showToast("Yhteys on hidas tai katkolla. Päivitä sivu ja yritä uudelleen.", 'error');
         } else {
-            alert("Virhe tietokantayhteydessä:\n" + error.message);
+            showToast("Virhe tietokantayhteydessä:\n" + error.message, 'error');
         }
         showVisitorViewOnly();
     } finally {
@@ -498,6 +498,9 @@ function customConfirm(title, message) {
         const yesBtn = document.getElementById('btn-confirm-yes');
         const noBtn = document.getElementById('btn-confirm-no');
 
+        // Normalisoi aina — showInfo jättää napin tekstin/tilan muuttuneeksi
+        if(yesBtn) yesBtn.innerText = 'Kyllä';
+        if(noBtn) noBtn.style.display = '';
         if(titleEl) titleEl.innerText = title;
         if(msgEl) msgEl.innerText = message;
         if(confirmModal) confirmModal.style.display = 'block';
@@ -513,6 +516,44 @@ function customConfirm(title, message) {
         if(noBtn) noBtn.onclick = function() { handleResponse(false); };
     });
 }
+
+// Pelkkä OK-nappi: sopii pitkille raportteihin (esim. GPX-synkin yhteenveto)
+function showInfo(title, message) {
+    return new Promise((resolve) => {
+        const titleEl = document.getElementById('confirm-title');
+        const msgEl = document.getElementById('confirm-message');
+        const yesBtn = document.getElementById('btn-confirm-yes');
+        const noBtn = document.getElementById('btn-confirm-no');
+
+        if(titleEl) titleEl.innerText = title;
+        if(msgEl) msgEl.innerText = message;
+        if(yesBtn) yesBtn.innerText = 'OK';
+        if(noBtn) noBtn.style.display = 'none';
+        if(confirmModal) confirmModal.style.display = 'block';
+
+        if(yesBtn) yesBtn.onclick = function() {
+            if(confirmModal) confirmModal.style.display = 'none';
+            yesBtn.onclick = null;
+            resolve(true);
+        };
+    });
+}
+
+// Toast-ilmoitukset: kevyt korvike alert()-kutsuille (ES2019-yhteensopiva)
+window.showToast = function(message, type) {
+    const container = document.getElementById('toast-container');
+    if (!container) { try { alert(message); } catch (e) {} return; }
+    const el = document.createElement('div');
+    el.className = 'toast' + (type === 'error' ? ' toast-error' : type === 'success' ? ' toast-success' : '');
+    el.innerText = message;
+    container.appendChild(el);
+    requestAnimationFrame(function() { el.classList.add('toast-show'); });
+    const duration = Math.min(4000 + String(message).length * 50, 12000);
+    setTimeout(function() {
+        el.classList.remove('toast-show');
+        setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 350);
+    }, duration);
+};
 
 function normalizeNicknameStats(name) {
     return (name || '').replace(/[\s\u00A0]+/g, ' ').trim().toLowerCase();
@@ -829,7 +870,9 @@ window.setQrLanguage = function(lang) {
     const instructionEl = document.getElementById('qr-instructions');
     if (instructionEl) instructionEl.innerText = qrTranslations[lang].instruction;
     document.querySelectorAll('#qr-lang-toggle .btn').forEach(b => {
-        b.classList.toggle('active', b.getAttribute('data-lang') === lang);
+        const active = b.getAttribute('data-lang') === lang;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
 };
 
@@ -892,7 +935,7 @@ if(btnToggleQr) {
                         copyBtn.innerText = '📋 Kopioi linkki';
                     }, 2000);
                 } catch (e) {
-                    alert('Kopiointi epäonnistui. Voit valita linkin kentästä ja kopioida käsin.');
+                    showToast('Kopiointi epäonnistui. Voit valita linkin kentästä ja kopioida käsin.', 'error');
                 }
             };
         }
@@ -1068,11 +1111,11 @@ if (fileInputNew) {
                 if(data.coords) fetchCityFromCoords(data.coords, 'new-loc');
                 
             } else {
-                alert("GPX-tiedoston luku epäonnistui.");
+                showToast("GPX-tiedoston luku epäonnistui.", 'error');
             }
         } catch (err) {
             console.error(err);
-            alert("Virhe tiedoston käsittelyssä.");
+            showToast("Virhe tiedoston käsittelyssä.", 'error');
         } finally {
             if(loadingOverlay) loadingOverlay.style.display = 'none';
             fileInputNew.value = ""; 
@@ -1095,7 +1138,7 @@ if (btnAddEvent) {
         const desc = document.getElementById('new-desc').value.trim();
 
         if (!name || !date) {
-            alert("Nimi ja päivämäärä ovat pakollisia!");
+            showToast("Nimi ja päivämäärä ovat pakollisia!", 'error');
             return;
         }
 
@@ -1112,7 +1155,7 @@ if (btnAddEvent) {
             descriptionHtml: desc,
             createdAt: firebase.database.ServerValue.TIMESTAMP
         }).then(() => {
-            alert("Tapahtuma lisätty!");
+            showToast("Tapahtuma lisätty!", 'success');
             document.getElementById('new-event-form').style.display = 'none';
             ['new-gc', 'new-name', 'new-date', 'new-time', 'new-coords', 'new-loc', 'new-presign-message', 'new-special-message', 'new-desc'].forEach(id => {
                 const el = document.getElementById(id);
@@ -1208,7 +1251,7 @@ function loadEvents() {
 
                 div.innerHTML = `
                     <div style="display:flex; justify-content:space-between;"><strong>${displayName}</strong><span>${evt.date}</span></div>
-                    <div style="font-size:0.8em; color:#666; margin-bottom:5px;">🕓 ${evt.time || '-'}</div>
+                    <div style="font-size:0.8em; color:var(--text-muted); margin-bottom:5px;">🕓 ${evt.time || '-'}</div>
                     ${(hasPreSignMessage || hasSpecialMessage)
                         ? `<div style="margin:2px 0 6px 0; display:flex; gap:6px; flex-wrap:wrap;">
                             ${hasPreSignMessage ? '<span style="font-size:0.75em; color:#8B4513; font-weight:bold; background:#fff7e6; border:1px solid #d8b48a; border-radius:999px; padding:2px 8px;">📝 Viesti ennen kirjausta</span>' : ''}
@@ -1254,7 +1297,7 @@ function loadEvents() {
                 // USER MODE (Katselija)
                 div.innerHTML = `
                     <div style="display:flex; justify-content:space-between;"><strong>${displayName}</strong><span>${evt.date}</span></div>
-                    <div style="font-size:0.8em; color:#666; margin-bottom:5px;">🕓 ${evt.time || '-'} • ${evt.location || ''}</div>
+                    <div style="font-size:0.8em; color:var(--text-muted); margin-bottom:5px;">🕓 ${evt.time || '-'} • ${evt.location || ''}</div>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                          <span id="${countId}" style="font-weight:bold; font-size:0.9em;">👤 0 osallistujaa</span>
                          <button class="btn btn-green btn-small" style="width:auto;" onclick="openGuestbook('${evt.key}')">📖 Avaa miittikirja</button>
@@ -1412,7 +1455,7 @@ window.openNetImportStatusModal = async function() {
             .filter(e => !(e.name || '').includes('/ PERUTTU /'));
 
         if (past.length === 0) {
-            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Ei menneitä miittejä.</div>';
+            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Ei menneitä miittejä.</div>';
             return;
         }
 
@@ -1454,7 +1497,7 @@ window.checkNetLog = function() {
     if (currentEventGcCode && currentEventGcCode.startsWith('GC')) {
         window.open("https://coord.info/" + currentEventGcCode, "_blank");
     } else {
-        alert("Ei validia GC-koodia.");
+        showToast("Ei validia GC-koodia.", 'error');
     }
 };
 
@@ -1463,7 +1506,7 @@ const btnSignLog = document.getElementById('btn-sign-log');
 if (btnSignLog) {
     btnSignLog.onclick = function() {
         const nick = document.getElementById('log-nickname').value.trim();
-        if(!nick) return alert("Nimi vaaditaan!");
+        if(!nick) { showToast("Nimi vaaditaan!", 'error'); return; }
         
         db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).push({
             nickname: nick, 
@@ -1500,7 +1543,7 @@ function loadAttendees(eventKey) {
             <div>
                 <strong style="color:var(--primary-color);">Mikkokalevi</strong> 
                 <span style="font-size:0.8em; background:var(--primary-color); color:#fff; border-radius:4px; padding:2px 6px; margin-left:5px; vertical-align:middle;">Järjestäjä</span>
-                <div style="font-style:italic; color:#888; font-size:0.9em;">(Paikalla aina)</div>
+                <div style="font-style:italic; color:var(--text-muted); font-size:0.9em;">(Paikalla aina)</div>
             </div>
         `;
         listEl.appendChild(hostRow);
@@ -1510,10 +1553,10 @@ function loadAttendees(eventKey) {
             const row = document.createElement('div'); row.className = "log-item";
             let btns = (isAdminMode && !currentEventArchived && currentUser) ? `
                 <div class="log-actions">
-                    <button class="btn-blue btn-small" onclick="openLogEditModal('${log.key}')">✏️</button>
-                    <button class="btn-red btn-small" onclick="deleteLog('${log.key}')">🗑</button>
+                    <button class="btn-blue btn-small" onclick="openLogEditModal('${log.key}')" aria-label="Muokkaa kävijää">✏️</button>
+                    <button class="btn-red btn-small" onclick="deleteLog('${log.key}')" aria-label="Poista kävijä">🗑</button>
                 </div>` : "";
-            row.innerHTML = `<div><strong style="color:#4caf50;">${log.nickname}</strong><span>${log.from ? ' / ' + log.from : ''}</span><div style="font-style:italic; color:#888; font-size:0.9em;">${log.message || ''}</div></div>${btns}`;
+            row.innerHTML = `<div><strong style="color:#4caf50;">${log.nickname}</strong><span>${log.from ? ' / ' + log.from : ''}</span><div style="font-style:italic; color:var(--text-muted); font-size:0.9em;">${log.message || ''}</div></div>${btns}`;
             listEl.appendChild(row);
         });
         
@@ -1654,20 +1697,21 @@ if (fileInputSync) {
         // Jos miitillä on GC-koodi (yli 2 merkkiä), vaaditaan täsmäys
         if (eventGC.length > 2) {
             if (!fileGC) {
-                alert("⛔ VIRHE: GPX-tiedostosta ei löytynyt GC-koodia.");
+                showToast("⛔ VIRHE: GPX-tiedostosta ei löytynyt GC-koodia.", 'error');
                 if(loadingOverlay) loadingOverlay.style.display = 'none';
                 fileInputSync.value = "";
                 return;
             }
             if (fileGC !== eventGC) {
-                alert(`⛔ VIRHE: GPX-tiedoston koodi (${fileGC}) ei vastaa tätä miittiä (${eventGC})!\n\nTuonti keskeytetty tietojen suojaamiseksi.`);
+                showToast(`⛔ VIRHE: GPX-tiedoston koodi (${fileGC}) ei vastaa tätä miittiä (${eventGC})!\n\nTuonti keskeytetty tietojen suojaamiseksi.`, 'error');
                 if(loadingOverlay) loadingOverlay.style.display = 'none';
                 fileInputSync.value = "";
                 return;
             }
         } else {
             // Jos miitillä EI ole vielä koodia, kysytään lupa
-            if (!confirm(`Tällä miitillä ei ole vielä GC-koodia.\nGPX-tiedoston koodi on: ${fileGC}\n\nHaluatko varmasti tuoda tiedot tähän?`)) {
+            const okToImport = await customConfirm("GC-koodi puuttuu", `Tällä miitillä ei ole vielä GC-koodia.\nGPX-tiedoston koodi on: ${fileGC}\n\nHaluatko varmasti tuoda tiedot tähän?`);
+            if (!okToImport) {
                 if(loadingOverlay) loadingOverlay.style.display = 'none';
                 fileInputSync.value = "";
                 return;
@@ -1778,9 +1822,9 @@ if (fileInputSync) {
                 netLogsImportedChanged: changed
             });
 
-            alert(`GPX-synkronointi valmis!\n\n- Kätkön tiedot päivitetty.\n- Tiedoston lokit yhteensä: ${totalLogsInFile}\n- Attended/Webcam-lokit tiedostossa: ${attendedLikeCount}\n- Ohitettu (ei Attended/Webcam): ${skippedNonAttendedCount}\n- Ohitettu (tyhjä nimimerkki): ${skippedEmptyFinderCount}\n- Ohitettu (järjestäjä): ${skippedOwnerCount}\n- Lisätty ${addedCount} uutta kävijää.\n- Päivitetty viesti ${updatedCount} olemassa olevalle kävijälle.${lowLogWarning}`);
+            await showInfo("GPX-synkronointi valmis", `- Kätkön tiedot päivitetty.\n- Tiedoston lokit yhteensä: ${totalLogsInFile}\n- Attended/Webcam-lokit tiedostossa: ${attendedLikeCount}\n- Ohitettu (ei Attended/Webcam): ${skippedNonAttendedCount}\n- Ohitettu (tyhjä nimimerkki): ${skippedEmptyFinderCount}\n- Ohitettu (järjestäjä): ${skippedOwnerCount}\n- Lisätty ${addedCount} uutta kävijää.\n- Päivitetty viesti ${updatedCount} olemassa olevalle kävijälle.${lowLogWarning}`);
         } else {
-            alert("Kätkön tiedot päivitetty GPX-tiedostosta!\n\n- Tiedoston lokit yhteensä: 0\n(Tiedostossa ei ollut lokimerkintöjä tai lukeminen epäonnistui).");
+            await showInfo("GPX-synkronointi valmis", "Kätkön tiedot päivitetty GPX-tiedostosta!\n\n- Tiedoston lokit yhteensä: 0\n(Tiedostossa ei ollut lokimerkintöjä tai lukeminen epäonnistui).");
         }
 
         if(loadingOverlay) loadingOverlay.style.display = 'none';
@@ -1934,7 +1978,7 @@ if (btnParseMass) {
     btnParseMass.onclick = function() {
         const text = document.getElementById('mass-input').value; if(!text) return;
         parsedMassEntries = parseMassEntriesFromClipboard(text);
-        if (parsedMassEntries.length === 0) return alert("Nimiä/lokeja ei löytynyt!\nVarmista että liitit lokilistaa geocaching.com-sivulta.");
+        if (parsedMassEntries.length === 0) { showToast("Nimiä/lokeja ei löytynyt!\nVarmista että liitit lokilistaa geocaching.com-sivulta.", 'error'); return; }
 
         const outputRows = parsedMassEntries.map(entry => {
             // Muoto: nimimerkki<TAB>viesti (viesti voi olla tyhjä)
@@ -1957,7 +2001,7 @@ if(btnSaveMass) {
         if (entries.length === 0 && parsedMassEntries.length > 0) {
             entries = parsedMassEntries;
         }
-        if (entries.length === 0) return alert("Ei tallennettavaa dataa.");
+        if (entries.length === 0) { showToast("Ei tallennettavaa dataa.", 'error'); return; }
 
         setMassDebugText(buildMassDebugSummary(entries, "Tallennettava data"));
 
@@ -2012,7 +2056,7 @@ if(btnSaveMass) {
             }
         }
 
-        alert(`Massatuonti valmis!\n\n- Lisätty uusia: ${addedCount}\n- Päivitetty olemassa olevia: ${updatedCount}\n- Ei muutosta: ${unchangedCount}`);
+        await showInfo("Massatuonti valmis", `- Lisätty uusia: ${addedCount}\n- Päivitetty olemassa olevia: ${updatedCount}\n- Ei muutosta: ${unchangedCount}`);
 
         const total = addedCount + updatedCount + unchangedCount;
         const changed = addedCount + updatedCount;
@@ -2043,14 +2087,47 @@ if(btnLogout) {
     };
 }
 
+function showLoginError(message) {
+    const el = document.getElementById('login-error');
+    if (!el) { if (window.showToast) showToast(message, 'error'); return; }
+    el.innerText = message || '';
+    el.style.display = message ? 'block' : 'none';
+}
+
+function authErrorMessage(error) {
+    const code = (error && error.code) ? String(error.code) : '';
+    if (code.indexOf('wrong-password') !== -1 || code.indexOf('invalid-credential') !== -1 || code.indexOf('user-not-found') !== -1) {
+        return 'Virheellinen sähköposti tai salasana.';
+    }
+    if (code.indexOf('invalid-email') !== -1) return 'Tarkista sähköpostiosoitteen muoto.';
+    if (code.indexOf('too-many-requests') !== -1) return 'Liian monta yritystä — odota hetki ja yritä uudelleen.';
+    if (code.indexOf('network') !== -1 || !navigator.onLine) return 'Verkkovirhe — tarkista yhteys ja yritä uudelleen.';
+    if (code.indexOf('popup-closed') !== -1 || code.indexOf('cancelled') !== -1) return '';
+    return 'Kirjautuminen epäonnistui: ' + ((error && error.message) || 'tuntematon virhe');
+}
+
+function runAuthAction(btn, action) {
+    if (!btn) return;
+    showLoginError('');
+    const original = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = '⏳ Kirjaudutaan...';
+    action()
+        .catch(function(error) { showLoginError(authErrorMessage(error)); })
+        .then(function() {
+            btn.disabled = false;
+            btn.innerText = original;
+        });
+}
+
 const btnGoogle = document.getElementById('btn-login-google');
-if(btnGoogle) btnGoogle.onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+if(btnGoogle) btnGoogle.onclick = () => runAuthAction(btnGoogle, function() { return auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); });
 
 const btnEmailLogin = document.getElementById('btn-email-login');
-if(btnEmailLogin) btnEmailLogin.onclick = () => auth.signInWithEmailAndPassword(document.getElementById('email-input').value, document.getElementById('password-input').value);
+if(btnEmailLogin) btnEmailLogin.onclick = () => runAuthAction(btnEmailLogin, function() { return auth.signInWithEmailAndPassword(document.getElementById('email-input').value.trim(), document.getElementById('password-input').value); });
 
 const btnEmailReg = document.getElementById('btn-email-register');
-if(btnEmailReg) btnEmailReg.onclick = () => auth.createUserWithEmailAndPassword(document.getElementById('email-input').value, document.getElementById('password-input').value);
+if(btnEmailReg) btnEmailReg.onclick = () => runAuthAction(btnEmailReg, function() { return auth.createUserWithEmailAndPassword(document.getElementById('email-input').value.trim(), document.getElementById('password-input').value); });
 
 const btnStatsNetImportCSV = document.getElementById('btn-stats-net-import-csv');
 if (btnStatsNetImportCSV) btnStatsNetImportCSV.onclick = () => {
@@ -2067,11 +2144,48 @@ if (btnStatsNetImportModal) btnStatsNetImportModal.onclick = () => {
     if (typeof openNetImportStatusOverviewModal === 'function') openNetImportStatusOverviewModal();
 };
 
-window.closeModal = () => { 
+window.closeModal = () => {
     ['edit-modal','mass-modal','log-edit-modal','confirm-modal','net-import-status-modal','visitor-test-modal'].forEach(id => {
         const el = document.getElementById(id); if(el) el.style.display = "none";
     });
 };
+
+// Modaalien sulkeminen ESC-näppäimellä ja taustaa (backdrop) napauttamalla
+var MK_CLOSABLE_MODALS = ['edit-modal','mass-modal','log-edit-modal','net-import-status-modal','visitor-test-modal','user-profile-modal'];
+
+function closeModalById(id) {
+    if (id === 'confirm-modal') {
+        // Turvallinen oletus: confirm = "Ei", showInfo = "OK"
+        const noBtn = document.getElementById('btn-confirm-no');
+        const yesBtn = document.getElementById('btn-confirm-yes');
+        if (noBtn && noBtn.style.display !== 'none' && typeof noBtn.onclick === 'function') { noBtn.click(); return; }
+        if (yesBtn && typeof yesBtn.onclick === 'function') { yesBtn.click(); return; }
+    }
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape' && e.key !== 'Esc' && e.keyCode !== 27) return;
+    var ids = MK_CLOSABLE_MODALS.concat(['confirm-modal']);
+    for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById(ids[i]);
+        if (el && el.style.display === 'block') { closeModalById(ids[i]); break; }
+    }
+    var calModal = document.querySelector('.calendar-details-modal');
+    if (calModal && calModal.parentNode) calModal.parentNode.removeChild(calModal);
+});
+
+document.addEventListener('click', function(e) {
+    var t = e.target;
+    if (!t || !t.classList) return;
+    if (t.classList.contains('modal')) {
+        var id = t.id;
+        if (id === 'confirm-modal' || MK_CLOSABLE_MODALS.indexOf(id) !== -1) closeModalById(id);
+    } else if (t.classList.contains('calendar-details-modal')) {
+        t.parentNode.removeChild(t);
+    }
+});
 
 const openStats = () => {
     if(adminView) adminView.style.display = 'none'; 
@@ -2097,7 +2211,7 @@ if(btnFindToday) {
     btnFindToday.onclick = () => {
         const today = new Date().toISOString().split('T')[0];
         const todayEvent = globalEventList.find(e => e.date === today);
-        if (todayEvent) openGuestbook(todayEvent.key); else alert("Tälle päivälle ei ole miittiä.");
+        if (todayEvent) openGuestbook(todayEvent.key); else showToast("Tälle päivälle ei ole miittiä.", 'error');
     };
 }
 

@@ -121,14 +121,14 @@ async function saveCalendarData() {
         calendarDebug("Kalenteridata tallennettu Firebaseen");
     } catch (e) {
         console.error("Kalenteridan tallennus epäonnistui:", e);
-        alert("Tallennus epäonnistui: " + e.message);
+        if (window.showToast) showToast("Tallennus epäonnistui: " + e.message, 'error');
     }
 }
 
 function importSrvFile() {
     const fileInput = document.getElementById('srv-file-input');
     if (!fileInput || !fileInput.files.length) {
-        alert('Valitse CSV-tiedosto ensin!');
+        if (window.showToast) showToast('Valitse CSV-tiedosto ensin!', 'error');
         return;
     }
     
@@ -142,15 +142,15 @@ function importSrvFile() {
             saveCalendarData();
             renderCalendar();
             updateCalendarLegend();
-            alert('CSV-tiedosto tuotu onnistuneesti! Miittejä: ' + Object.keys(calendarData.events).reduce((sum, key) => sum + calendarData.events[key].length, 0));
+            if (window.showToast) showToast('CSV-tiedosto tuotu onnistuneesti! Miittejä: ' + Object.keys(calendarData.events).reduce((sum, key) => sum + calendarData.events[key].length, 0), 'success');
         } catch (error) {
             console.error('CSV-tiedoston käsittelyvirhe:', error);
-            alert('CSV-tiedoston käsittely epäonnistui: ' + error.message);
+            if (window.showToast) showToast('CSV-tiedoston käsittely epäonnistui: ' + error.message, 'error');
         }
     };
-    
+
     reader.onerror = function() {
-        alert('Tiedoston lukeminen epäonnistui!');
+        if (window.showToast) showToast('Tiedoston lukeminen epäonnistui!', 'error');
     };
     
     reader.readAsText(file);
@@ -309,7 +309,10 @@ function parseSrvContent(content) {
 }
 
 async function clearCalendarData() {
-    if (confirm('Haluatko varmasti tyhjentää kalenterin? Tämä poistaa kaikki tuodut tiedot.')) {
+    const okClear = (typeof customConfirm === 'function')
+        ? await customConfirm('Tyhjennä kalenteri', 'Haluatko varmasti tyhjentää kalenterin? Tämä poistaa kaikki tuodut tiedot.')
+        : confirm('Haluatko varmasti tyhjentää kalenterin? Tämä poistaa kaikki tuodut tiedot.');
+    if (okClear) {
         calendarData = { finds: {}, totalFinds: 0, years: [], events: {}, lastImportDate: null };
         await saveCalendarData();
         renderCalendar();
