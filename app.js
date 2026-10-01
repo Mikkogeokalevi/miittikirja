@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.38.0";
+const APP_VERSION = "7.39.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -444,6 +444,11 @@ async function openVisitorGuestbook(uid, eventId) {
         const expired = isQrExpired(evt.date, evt.time);
         if (window.setVisitorExpiredState) {
             window.setVisitorExpiredState(expired);
+        }
+
+        // Palaavan kävijän esitäyttö (1-tap-kirjaus) — ei vanhentuneelle miitille
+        if (!expired && typeof window.autoFillVisitorProfile === 'function') {
+            window.autoFillVisitorProfile();
         }
 
         if (evt.date) {
@@ -2160,6 +2165,12 @@ function closeModalById(id) {
         const yesBtn = document.getElementById('btn-confirm-yes');
         if (noBtn && noBtn.style.display !== 'none' && typeof noBtn.onclick === 'function') { noBtn.click(); return; }
         if (yesBtn && typeof yesBtn.onclick === 'function') { yesBtn.click(); return; }
+    }
+    // Vierasmoodin profiilimodaali tarvitsee oman siivousputkensa (kentät, footer, live-laskuri)
+    if (id === 'user-profile-modal' && document.getElementById('visitor-custom-footer')
+        && typeof window.closeAndResetVisitorModal === 'function') {
+        window.closeAndResetVisitorModal(false);
+        return;
     }
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
