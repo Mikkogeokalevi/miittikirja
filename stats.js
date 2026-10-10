@@ -2186,6 +2186,15 @@ window.runMiittiReport = function() {
     const typeVal = (document.getElementById('report-type') || {}).value || '';
     const inclCancelled = !!(document.getElementById('report-include-cancelled') || {}).checked;
 
+    // Sanapohjainen haku: sanajärjestys vapaa, >=4-kirjaimisille hyväksytään 4-merkin vartalo (nastolan -> nastola)
+    const queryWords = place ? place.split(/\s+/).filter(Boolean) : [];
+    const placeMatches = (haystack) => {
+        if (!queryWords.length) return true;
+        return queryWords.every(q =>
+            haystack.indexOf(q) !== -1 || (q.length >= 4 && haystack.indexOf(q.slice(0, 4)) !== -1)
+        );
+    };
+
     const rows = events.filter(evt => {
         const name = (evt.name || '').toLowerCase();
         const loc = ((evt.location || evt.loc || '') + '').toLowerCase();
@@ -2193,7 +2202,7 @@ window.runMiittiReport = function() {
         const type = (evt.type || 'miitti').toLowerCase();
         const cancelled = name.indexOf('/ peruttu /') !== -1;
         if (!inclCancelled && cancelled) return false;
-        if (place && name.indexOf(place) === -1 && loc.indexOf(place) === -1) return false;
+        if (!placeMatches(name + ' ' + loc)) return false;
         if (locVal && ((evt.location || evt.loc || '') + '').trim() !== locVal) return false;
         if (yearVal && date.slice(0, 4) !== yearVal) return false;
         if (fromVal && date < fromVal) return false;
@@ -2222,9 +2231,18 @@ window.runMiittiReport = function() {
     if (!inclCancelled) filterBits.push('Perutut ohitettu');
 
     if (totalEvents === 0) {
+        const locCounts = {};
+        events.forEach(e => {
+            const l = ((e.location || e.loc || '') + '').trim();
+            if (l) locCounts[l] = (locCounts[l] || 0) + 1;
+        });
+        const topLocs = Object.entries(locCounts).sort((a, b) => b[1] - a[1]).slice(0, 6)
+            .map(x => escapeHtml(x[0]) + ' (' + x[1] + ')').join(', ');
         out.innerHTML = '<div class="rpt-doc"><div class="rpt-title">Miittiraportti</div>' +
             '<div class="rpt-meta">' + escapeHtml(filterBits.join(' · ')) + '</div>' +
-            '<div style="margin-top:16px;">Ei miittejä valituilla ehdoilla.</div></div>';
+            '<div style="margin-top:16px;">Ei miittejä valituilla ehdoilla.</div>' +
+            (topLocs ? '<div style="margin-top:10px; font-size:0.9em; color:#666;">Yleisimmät paikkakunnat: ' + topLocs + '</div>' : '') +
+            '</div>';
         return;
     }
 
