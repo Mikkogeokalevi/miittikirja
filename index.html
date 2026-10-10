@@ -421,6 +421,24 @@
                             <option value="cce">Juhlat / CCE</option>
                         </select>
                     </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <div style="flex:2; min-width:200px;">
+                            <small style="color:var(--text-muted); display:block; margin-bottom:2px;">Paikan koordinaatit (vaihtoehto nimelle)</small>
+                            <input type="text" id="report-coords" placeholder="N 61° 03.123 E 025° 58.456" style="width:100%;">
+                        </div>
+                        <div style="flex:1; min-width:100px;">
+                            <small style="color:var(--text-muted); display:block; margin-bottom:2px;">Säde</small>
+                            <select id="report-radius" style="width:100%;">
+                                <option value="50">± 50 m</option>
+                                <option value="100">± 100 m</option>
+                                <option value="200" selected>± 200 m</option>
+                                <option value="500">± 500 m</option>
+                                <option value="1000">± 1 km</option>
+                                <option value="5000">± 5 km</option>
+                            </select>
+                        </div>
+                    </div>
+                    <select id="report-coords-from-event"><option value="">📍 Poimi koordinaatit miitistä…</option></select>
                     <label style="display:flex; align-items:center; font-size:0.9em; color:var(--text-color);">
                         <input type="checkbox" id="report-include-cancelled" style="width:auto; min-height:auto; margin:0 8px 0 0;"> Näytä myös perutut miitit
                     </label>

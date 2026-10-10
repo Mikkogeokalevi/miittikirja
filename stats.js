@@ -2152,6 +2152,43 @@ function populateReportFilters(events) {
             yearSel.appendChild(opt);
         });
     }
+    const coordSel = document.getElementById('report-coords-from-event');
+    if (coordSel) {
+        const withCoords = (events || []).filter(e => e.coords).slice()
+            .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        coordSel.innerHTML = '<option value="">📍 Poimi koordinaatit miitistä…</option>';
+        withCoords.forEach(e => {
+            const opt = document.createElement('option');
+            opt.value = e.coords;
+            opt.innerText = rptDateFi(e.date) + ' · ' + (e.name || 'Miitti');
+            coordSel.appendChild(opt);
+        });
+    }
+}
+
+// Koordinaattien jäsennys: "N 61° 03.456 E 025° 58.789" tai desimaali "61.0576, 25.9798"
+function parseReportCoords(str) {
+    if (!str) return null;
+    const s = String(str).trim();
+    let m = s.match(/([NSns])\s*(\d+)\s*°?\s*([\d\.,]+)\s*([EWew])\s*(\d+)\s*°?\s*([\d\.,]+)/);
+    if (m) {
+        let lat = parseInt(m[2], 10) + parseFloat(m[3].replace(',', '.')) / 60;
+        if (m[1].toUpperCase() === 'S') lat = -lat;
+        let lon = parseInt(m[5], 10) + parseFloat(m[6].replace(',', '.')) / 60;
+        if (m[4].toUpperCase() === 'W') lon = -lon;
+        return [lat, lon];
+    }
+    m = s.match(/(-?\d+[\.,]\d+)\s*[,;\s]\s*(-?\d+[\.,]\d+)/);
+    if (m) return [parseFloat(m[1].replace(',', '.')), parseFloat(m[2].replace(',', '.'))];
+    return null;
+}
+
+function rptDistMeters(a, b) {
+    const R = 6371000, rad = Math.PI / 180;
+    const dLat = (b[0] - a[0]) * rad, dLon = (b[1] - a[1]) * rad;
+    const h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * R * Math.asin(Math.sqrt(h));
 }
 
 function initReportBindings() {
@@ -2164,6 +2201,14 @@ function initReportBindings() {
     if (printBtn && !printBtn.dataset.bound) {
         printBtn.onclick = () => printMiittiReport();
         printBtn.dataset.bound = '1';
+    }
+    const coordSel = document.getElementById('report-coords-from-event');
+    if (coordSel && !coordSel.dataset.bound) {
+        coordSel.onchange = () => {
+            const inp = document.getElementById('report-coords');
+            if (inp && coordSel.value) inp.value = coordSel.value;
+        };
+        coordSel.dataset.bound = '1';
     }
 }
 
@@ -2185,6 +2230,10 @@ window.runMiittiReport = function() {
     const toVal = (document.getElementById('report-date-to') || {}).value || '';
     const typeVal = (document.getElementById('report-type') || {}).value || '';
     const inclCancelled = !!(document.getElementById('report-include-cancelled') || {}).checked;
+    const coordsRaw = ((document.getElementById('report-coords') || {}).value || '').trim();
+    const radiusM = parseInt(((document.getElementById('report-radius') || {}).value || '200'), 10) || 200;
+    const center = coordsRaw ? parseReportCoords(coordsRaw) : null;
+    const coordsFailed = !!(coordsRaw && !center);
 
     // Sanapohjainen haku: sanajärjestys vapaa, >=4-kirjaimisille hyväksytään 4-merkin vartalo (nastolan -> nastola)
     const queryWords = place ? place.split(/\s+/).filter(Boolean) : [];
@@ -2208,6 +2257,10 @@ window.runMiittiReport = function() {
         if (fromVal && date < fromVal) return false;
         if (toVal && date > toVal) return false;
         if (typeVal && type !== typeVal) return false;
+        if (center) {
+            const pt = parseReportCoords(evt.coords);
+            if (!pt || rptDistMeters(center, pt) > radiusM) return false;
+        }
         return true;
     }).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
@@ -2228,6 +2281,8 @@ window.runMiittiReport = function() {
     if (yearVal) filterBits.push('Vuosi: ' + yearVal);
     if (fromVal || toVal) filterBits.push('Aikaväli: ' + (fromVal ? rptDateFi(fromVal) : 'alku') + ' - ' + (toVal ? rptDateFi(toVal) : 'loppu'));
     if (typeVal) filterBits.push('Tyyppi: ' + typeVal);
+    if (center) filterBits.push('≤ ' + (radiusM >= 1000 ? (radiusM / 1000) + ' km' : radiusM + ' m') + ' koordinaateista ' + coordsRaw);
+    if (coordsFailed) filterBits.push('⚠ Koordinaatteja ei tunnistettu — säderajausta ei käytetty');
     if (!inclCancelled) filterBits.push('Perutut ohitettu');
 
     if (totalEvents === 0) {
