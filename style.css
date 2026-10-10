@@ -2302,3 +2302,123 @@ body.theme-light .form-error { color: #B22222; }
     .card.today-highlight { animation: none; }
     .confetti-particle { display: none; }
 }
+
+/* ==========================================
+   MIITTIRAPORTTI (esikatselu + tulostus)
+   ========================================== */
+#print-report { display: none; }
+
+.rpt-doc {
+    background: #ffffff;
+    color: #1a1a1a;
+    border: 1px solid #d5d5d5;
+    border-radius: 10px;
+    padding: 22px 18px;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.rpt-brand {
+    font-size: 0.72em;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: #777;
+    text-align: center;
+}
+.rpt-title {
+    font-size: 1.6em;
+    font-weight: 800;
+    color: #1a1a1a;
+    text-align: center;
+    margin-top: 4px;
+}
+.rpt-meta {
+    font-size: 0.85em;
+    color: #555;
+    text-align: center;
+    margin-top: 6px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #333;
+}
+.rpt-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 8px;
+    margin: 14px 0 18px;
+}
+.rpt-sum-item {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px 6px;
+    text-align: center;
+    background: #fafafa;
+}
+.rpt-sum-label {
+    font-size: 0.68em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #666;
+}
+.rpt-sum-value {
+    font-size: 1.45em;
+    font-weight: 800;
+    color: #16365e;
+    margin-top: 2px;
+}
+.rpt-sum-sub {
+    font-size: 0.75em;
+    color: #555;
+    margin-top: 3px;
+    overflow-wrap: anywhere;
+}
+.rpt-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.86em;
+}
+.rpt-table th {
+    background: #efefef;
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 2px solid #333;
+}
+.rpt-table td {
+    padding: 5px 8px;
+    border-bottom: 1px solid #e4e4e4;
+    vertical-align: top;
+}
+.rpt-table .rpt-num { text-align: right; }
+.rpt-year-row td {
+    background: #e9eef7;
+    font-weight: 700;
+    color: #16365e;
+    border-bottom: 1px solid #ccd6e8;
+}
+.rpt-cancelled td {
+    color: #999;
+    text-decoration: line-through;
+}
+.rpt-total td {
+    background: #f6f6f6;
+    font-weight: 700;
+    border-top: 2px solid #333;
+    border-bottom: none;
+}
+.rpt-foot {
+    margin-top: 16px;
+    font-size: 0.75em;
+    color: #888;
+    text-align: center;
+}
+
+/* Tulostus: naytetaan vain raporttialue */
+@media print {
+    body.rpt-printing > *:not(#print-report) { display: none !important; }
+    body.rpt-printing > #print-report { display: block !important; }
+    #print-report .rpt-doc { border: none; border-radius: 0; padding: 0; }
+    #print-report .rpt-table th,
+    #print-report .rpt-year-row td,
+    #print-report .rpt-total td,
+    #print-report .rpt-sum-item {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}

@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.39.0";
+const APP_VERSION = "7.40.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -2210,9 +2210,6 @@ const openStats = () => {
 
 const btnStats = document.getElementById('btn-show-stats');
 if(btnStats) btnStats.onclick = openStats;
-
-const btnCalendar = document.getElementById('btn-show-calendar');
-if(btnCalendar) btnCalendar.onclick = openStats; // Avaa tilastot, jossa on kalenteri-tab
 
 const btnStatsUser = document.getElementById('btn-show-stats-user');
 if(btnStatsUser) btnStatsUser.onclick = openStats;

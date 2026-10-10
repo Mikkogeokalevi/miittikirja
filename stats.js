@@ -202,9 +202,11 @@ async function initStats() {
 
         allStatsData.events = events;
         populateYearFilter(events);
+        populateReportFilters(events);
         updateStatsView(events);
         initUserLogSearchBindings();
         initMyEventsExportBindings();
+        initReportBindings();
         runUserLogSearch(window.currentFilteredData || events);
 
     } catch (e) {
@@ -2113,3 +2115,184 @@ function showMissingEvents() {
         if (e.target === modal) document.body.removeChild(modal);
     });
 }
+
+// ==========================================
+// MIITTIRAPORTTI (tulostettava / PDF)
+// ==========================================
+function populateReportFilters(events) {
+    const locSel = document.getElementById('report-location');
+    if (locSel) {
+        const locs = [];
+        (events || []).forEach(e => {
+            const l = ((e.location || e.loc || '') + '').trim();
+            if (l && locs.indexOf(l) === -1) locs.push(l);
+        });
+        locs.sort((a, b) => a.localeCompare(b, 'fi'));
+        locSel.innerHTML = '<option value="">Kaikki paikkakunnat</option>';
+        locs.forEach(l => {
+            const opt = document.createElement('option');
+            opt.value = l;
+            opt.innerText = l;
+            locSel.appendChild(opt);
+        });
+    }
+    const yearSel = document.getElementById('report-year');
+    if (yearSel) {
+        const years = [];
+        (events || []).forEach(e => {
+            const y = (e.date || '').slice(0, 4);
+            if (y && years.indexOf(y) === -1) years.push(y);
+        });
+        years.sort().reverse();
+        yearSel.innerHTML = '<option value="">Kaikki vuodet</option>';
+        years.forEach(y => {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.innerText = y;
+            yearSel.appendChild(opt);
+        });
+    }
+}
+
+function initReportBindings() {
+    const runBtn = document.getElementById('btn-run-report');
+    if (runBtn && !runBtn.dataset.bound) {
+        runBtn.onclick = () => runMiittiReport();
+        runBtn.dataset.bound = '1';
+    }
+    const printBtn = document.getElementById('btn-print-report');
+    if (printBtn && !printBtn.dataset.bound) {
+        printBtn.onclick = () => printMiittiReport();
+        printBtn.dataset.bound = '1';
+    }
+}
+
+function rptDateFi(iso) {
+    if (!iso) return '-';
+    const p = String(iso).split('-');
+    return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : iso;
+}
+
+window.runMiittiReport = function() {
+    const out = document.getElementById('report-output');
+    if (!out) return;
+    const events = Array.isArray(allStatsData.events) ? allStatsData.events : [];
+
+    const place = ((document.getElementById('report-place') || {}).value || '').trim().toLowerCase();
+    const locVal = ((document.getElementById('report-location') || {}).value || '').trim();
+    const yearVal = (document.getElementById('report-year') || {}).value || '';
+    const fromVal = (document.getElementById('report-date-from') || {}).value || '';
+    const toVal = (document.getElementById('report-date-to') || {}).value || '';
+    const typeVal = (document.getElementById('report-type') || {}).value || '';
+    const inclCancelled = !!(document.getElementById('report-include-cancelled') || {}).checked;
+
+    const rows = events.filter(evt => {
+        const name = (evt.name || '').toLowerCase();
+        const loc = ((evt.location || evt.loc || '') + '').toLowerCase();
+        const date = evt.date || '';
+        const type = (evt.type || 'miitti').toLowerCase();
+        const cancelled = name.indexOf('/ peruttu /') !== -1;
+        if (!inclCancelled && cancelled) return false;
+        if (place && name.indexOf(place) === -1 && loc.indexOf(place) === -1) return false;
+        if (locVal && ((evt.location || evt.loc || '') + '').trim() !== locVal) return false;
+        if (yearVal && date.slice(0, 4) !== yearVal) return false;
+        if (fromVal && date < fromVal) return false;
+        if (toVal && date > toVal) return false;
+        if (typeVal && type !== typeVal) return false;
+        return true;
+    }).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    const totalEvents = rows.length;
+    const totalVisitors = rows.reduce((sum, e) => sum + (e.attendeeCount || 0), 0);
+    const avg = totalEvents > 0 ? (totalVisitors / totalEvents) : 0;
+    const uniqNicks = new Set();
+    rows.forEach(e => (e.attendeeNames || []).forEach(n => {
+        const k = normalizeNickname(n);
+        if (k) uniqNicks.add(k);
+    }));
+    let bestEvt = null;
+    rows.forEach(e => { if (!bestEvt || (e.attendeeCount || 0) > (bestEvt.attendeeCount || 0)) bestEvt = e; });
+
+    const filterBits = [];
+    if (place) filterBits.push('Paikka/nimi: "' + place + '"');
+    if (locVal) filterBits.push('Paikkakunta: ' + locVal);
+    if (yearVal) filterBits.push('Vuosi: ' + yearVal);
+    if (fromVal || toVal) filterBits.push('Aikaväli: ' + (fromVal ? rptDateFi(fromVal) : 'alku') + ' - ' + (toVal ? rptDateFi(toVal) : 'loppu'));
+    if (typeVal) filterBits.push('Tyyppi: ' + typeVal);
+    if (!inclCancelled) filterBits.push('Perutut ohitettu');
+
+    if (totalEvents === 0) {
+        out.innerHTML = '<div class="rpt-doc"><div class="rpt-title">Miittiraportti</div>' +
+            '<div class="rpt-meta">' + escapeHtml(filterBits.join(' · ')) + '</div>' +
+            '<div style="margin-top:16px;">Ei miittejä valituilla ehdoilla.</div></div>';
+        return;
+    }
+
+    // Taulukko, vuosiväliotsikot jos useampi vuosi
+    const multiYear = (new Set(rows.map(e => (e.date || '').slice(0, 4)))).size > 1;
+    let bodyHtml = '';
+    let lastYear = '';
+    rows.forEach((evt, i) => {
+        const yr = (evt.date || '').slice(0, 4);
+        if (multiYear && yr !== lastYear) {
+            lastYear = yr;
+            bodyHtml += '<tr class="rpt-year-row"><td colspan="7">' + escapeHtml(yr) + '</td></tr>';
+        }
+        const cancelled = (evt.name || '').indexOf('/ PERUTTU /') !== -1;
+        bodyHtml += '<tr' + (cancelled ? ' class="rpt-cancelled"' : '') + '>' +
+            '<td class="rpt-num">' + (i + 1) + '</td>' +
+            '<td>' + escapeHtml(rptDateFi(evt.date)) + '</td>' +
+            '<td>' + escapeHtml(evt.time || '-') + '</td>' +
+            '<td>' + escapeHtml(evt.name || '-') + '</td>' +
+            '<td>' + escapeHtml(evt.gc || evt.gcCode || '') + '</td>' +
+            '<td>' + escapeHtml((evt.location || evt.loc || '') + '') + '</td>' +
+            '<td class="rpt-num">' + (evt.attendeeCount || 0) + '</td></tr>';
+    });
+
+    const firstDate = rows[0].date || '';
+    const lastDate = rows[rows.length - 1].date || '';
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const genStamp = pad(now.getDate()) + '.' + pad(now.getMonth() + 1) + '.' + now.getFullYear() + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+
+    out.innerHTML =
+        '<div class="rpt-doc">' +
+            '<div class="rpt-brand">MK MIITTIKIRJA</div>' +
+            '<div class="rpt-title">Miittiraportti</div>' +
+            '<div class="rpt-meta">' + escapeHtml(filterBits.join(' · ') || 'Ei suodattimia') + '</div>' +
+            '<div class="rpt-summary">' +
+                '<div class="rpt-sum-item"><div class="rpt-sum-label">Miittejä</div><div class="rpt-sum-value">' + totalEvents + '</div></div>' +
+                '<div class="rpt-sum-item"><div class="rpt-sum-label">Kävijöitä yht.</div><div class="rpt-sum-value">' + totalVisitors + '</div></div>' +
+                '<div class="rpt-sum-item"><div class="rpt-sum-label">Keskiarvo / miitti</div><div class="rpt-sum-value">' + avg.toFixed(1).replace('.', ',') + '</div></div>' +
+                '<div class="rpt-sum-item"><div class="rpt-sum-label">Uniikkeja kävijöitä</div><div class="rpt-sum-value">' + uniqNicks.size + '</div></div>' +
+                '<div class="rpt-sum-item"><div class="rpt-sum-label">Aikaväli</div><div class="rpt-sum-value" style="font-size:0.95em;">' + escapeHtml(rptDateFi(firstDate)) + '<br>– ' + escapeHtml(rptDateFi(lastDate)) + '</div></div>' +
+                (bestEvt ? '<div class="rpt-sum-item"><div class="rpt-sum-label">Eniten kävijöitä</div><div class="rpt-sum-value">' + (bestEvt.attendeeCount || 0) + '</div><div class="rpt-sum-sub">' + escapeHtml(bestEvt.name || '') + '</div></div>' : '') +
+            '</div>' +
+            '<table class="rpt-table"><thead><tr>' +
+                '<th class="rpt-num">#</th><th>Päivämäärä</th><th>Klo</th><th>Miitti</th><th>GC</th><th>Paikka</th><th class="rpt-num">Kävijät</th>' +
+            '</tr></thead><tbody>' + bodyHtml + '</tbody>' +
+            '<tfoot>' +
+                '<tr class="rpt-total"><td colspan="6">YHTEENSÄ</td><td class="rpt-num">' + totalVisitors + '</td></tr>' +
+                '<tr class="rpt-total"><td colspan="6">Keskiarvo / miitti</td><td class="rpt-num">' + avg.toFixed(1).replace('.', ',') + '</td></tr>' +
+            '</tfoot></table>' +
+            '<div class="rpt-foot">Luotu MK Miittikirjalla · ' + escapeHtml(genStamp) + '</div>' +
+        '</div>';
+};
+
+window.printMiittiReport = function() {
+    const out = document.getElementById('report-output');
+    const pr = document.getElementById('print-report');
+    if (!pr || !out || !out.innerHTML.trim()) {
+        if (typeof showToast === 'function') showToast('Muodosta raportti ensin.', 'error');
+        return;
+    }
+    pr.innerHTML = out.innerHTML;
+    document.body.classList.add('rpt-printing');
+    const cleanup = () => {
+        document.body.classList.remove('rpt-printing');
+        pr.innerHTML = '';
+    };
+    window.addEventListener('afterprint', cleanup, { once: true });
+    window.print();
+    setTimeout(cleanup, 60000);
+};
