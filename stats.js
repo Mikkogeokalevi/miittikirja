@@ -2354,18 +2354,52 @@ window.runMiittiReport = function() {
 
 window.printMiittiReport = function() {
     const out = document.getElementById('report-output');
-    const pr = document.getElementById('print-report');
-    if (!pr || !out || !out.innerHTML.trim()) {
+    if (!out || !out.innerHTML.trim()) {
         if (typeof showToast === 'function') showToast('Muodosta raportti ensin.', 'error');
         return;
     }
-    pr.innerHTML = out.innerHTML;
-    document.body.classList.add('rpt-printing');
-    const cleanup = () => {
-        document.body.classList.remove('rpt-printing');
-        pr.innerHTML = '';
+    // Tulostetaan piilotetun iframen kautta: Android-selaimissa window.print()
+    // ei blokkaa, joten body-luokkatyyli ehtisi poistua ennen renderöintiä.
+    const old = document.getElementById('rpt-print-frame');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    const frame = document.createElement('iframe');
+    frame.id = 'rpt-print-frame';
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+    frame.onload = function() {
+        setTimeout(() => {
+            try {
+                frame.contentWindow.focus();
+                frame.contentWindow.print();
+            } catch (e) {
+                // Fallback: vanha tapa koko sivun print-tilalla
+                const pr = document.getElementById('print-report');
+                if (pr) {
+                    pr.innerHTML = out.innerHTML;
+                    document.body.classList.add('rpt-printing');
+                    const cleanup = () => {
+                        document.body.classList.remove('rpt-printing');
+                        pr.innerHTML = '';
+                    };
+                    window.addEventListener('afterprint', cleanup, { once: true });
+                    window.print();
+                    setTimeout(cleanup, 60000);
+                }
+            }
+        }, 50);
     };
-    window.addEventListener('afterprint', cleanup, { once: true });
-    window.print();
-    setTimeout(cleanup, 60000);
+    document.body.appendChild(frame);
+    const doc = frame.contentWindow.document;
+    doc.open();
+    doc.write('<!DOCTYPE html><html lang="fi"><head><meta charset="utf-8">' +
+        '<base href="' + document.baseURI + '">' +
+        '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+        '<title>Miittiraportti</title>' +
+        '<link rel="stylesheet" href="style.css">' +
+        '<style>@page{margin:12mm}html,body{background:#fff;margin:0;padding:0}' +
+        '.rpt-doc{border:none;border-radius:0;padding:8mm 4mm}' +
+        '.rpt-table-wrap{overflow:visible}.rpt-table{min-width:0}' +
+        '.rpt-table th,.rpt-year-row td,.rpt-total td,.rpt-sum-item{' +
+        '-webkit-print-color-adjust:exact;print-color-adjust:exact}</style>' +
+        '</head><body>' + out.innerHTML + '</body></html>');
+    doc.close();
 };
