@@ -2341,13 +2341,13 @@ window.runMiittiReport = function() {
                 '<div class="rpt-sum-item"><div class="rpt-sum-label">Aikaväli</div><div class="rpt-sum-value" style="font-size:0.95em;">' + escapeHtml(rptDateFi(firstDate)) + '<br>– ' + escapeHtml(rptDateFi(lastDate)) + '</div></div>' +
                 (bestEvt ? '<div class="rpt-sum-item"><div class="rpt-sum-label">Eniten kävijöitä</div><div class="rpt-sum-value">' + (bestEvt.attendeeCount || 0) + '</div><div class="rpt-sum-sub">' + escapeHtml(bestEvt.name || '') + '</div></div>' : '') +
             '</div>' +
-            '<table class="rpt-table"><thead><tr>' +
+            '<div class="rpt-table-wrap"><table class="rpt-table"><thead><tr>' +
                 '<th class="rpt-num">#</th><th>Päivämäärä</th><th>Klo</th><th>Miitti</th><th>GC</th><th>Paikka</th><th class="rpt-num">Kävijät</th>' +
             '</tr></thead><tbody>' + bodyHtml + '</tbody>' +
             '<tfoot>' +
                 '<tr class="rpt-total"><td colspan="6">YHTEENSÄ</td><td class="rpt-num">' + totalVisitors + '</td></tr>' +
                 '<tr class="rpt-total"><td colspan="6">Keskiarvo / miitti</td><td class="rpt-num">' + avg.toFixed(1).replace('.', ',') + '</td></tr>' +
-            '</tfoot></table>' +
+            '</tfoot></table></div>' +
             '<div class="rpt-foot">Luotu MK Miittikirjalla · ' + escapeHtml(genStamp) + '</div>' +
         '</div>';
 };

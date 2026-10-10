@@ -2369,8 +2369,13 @@ body.theme-light .form-error { color: #B22222; }
     margin-top: 3px;
     overflow-wrap: anywhere;
 }
+.rpt-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
 .rpt-table {
     width: 100%;
+    min-width: 560px;
     border-collapse: collapse;
     font-size: 0.86em;
 }
@@ -2407,6 +2412,18 @@ body.theme-light .form-error { color: #B22222; }
     font-size: 0.75em;
     color: #888;
     text-align: center;
+}
+
+/* Mobiiliesikatselu */
+@media (max-width: 480px) {
+    .rpt-doc { padding: 14px 10px; border-radius: 8px; }
+    .rpt-title { font-size: 1.3em; }
+    .rpt-meta { font-size: 0.78em; }
+    .rpt-summary { grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; }
+    .rpt-sum-value { font-size: 1.2em; }
+    .rpt-sum-item { padding: 8px 4px; }
+    .rpt-table { font-size: 0.78em; min-width: 480px; }
+    .rpt-table th, .rpt-table td { padding: 4px 5px; overflow-wrap: break-word; }
 }
 
 /* Tulostus: naytetaan vain raporttialue */
