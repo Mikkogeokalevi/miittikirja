@@ -2434,9 +2434,12 @@ function renderExternalList() {
             const gcLink = e.gc
                 ? ' <a href="https://www.geocaching.com/geocache/' + encodeURIComponent(e.gc) + '" target="_blank" rel="noopener" class="ext-gc" data-key="' + e.key + '" style="color:var(--primary-color); font-size:0.8em; text-decoration:none;" title="Avaa geocaching.com + muokkaus"> ' + escapeHtml(e.gc) + '</a>'
                 : '';
+            const cntHtml = (e.attendeeCountOverride != null)
+                ? ' <span title="Käsin korjattu kävijämäärä" style="color:#4caf50; font-weight:700;">👤' + e.attendeeCount + ' ✍</span>'
+                : ' 👤' + (e.attendeeCount || 0);
             return '<div style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:3px 0; font-size:0.85em;">' +
             '<span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-color);">' +
-            escapeHtml(rptDateFi(e.date)) + ' · ' + escapeHtml(e.name || 'Miitti') + gcLink + ' · 👤' + (e.attendeeCount || 0) + '</span>' +
+            escapeHtml(rptDateFi(e.date)) + ' · ' + escapeHtml(e.name || 'Miitti') + gcLink + cntHtml + '</span>' +
             '<button class="btn btn-small ext-edit" data-key="' + e.key + '" style="width:auto; min-width:auto; min-height:36px; margin:0; padding:4px 10px;" title="Muokkaa">✏️</button>' +
             '<button class="btn btn-small ext-del" data-key="' + e.key + '" style="width:auto; min-width:auto; min-height:36px; margin:0; padding:4px 10px; background:#b3402a; color:#fff;" title="Poista">🗑</button>' +
             '</div>';
