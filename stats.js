@@ -2385,7 +2385,10 @@ async function importExternalGPX() {
             '\n\nValitse raporttiin järjestäjä-suodattimesta "' + Object.keys(orgs)[0] + '" tai "Kaikki järjestäjät".');
     } catch (e) {
         console.error('GPX-tuonti epäonnistui:', e);
-        if (statusEl) statusEl.innerText = 'Tuonti epäonnistui: ' + e.message;
+        const denied = e && (e.code === 'PERMISSION_DENIED' || /permission.denied/i.test(e.message || ''));
+        if (statusEl) statusEl.innerText = denied
+            ? 'Tietokanta esti tallennuksen — päivitä Firebase-sääntöihin externalEvents-solmu ja yritä uudelleen.'
+            : 'Tuonti epäonnistui: ' + e.message;
     }
 }
 
