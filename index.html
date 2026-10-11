@@ -420,10 +420,10 @@
                             <option value="cito">CITO</option>
                             <option value="cce">Juhlat / CCE</option>
                         </select>
-                        <select id="report-organizer" style="flex:1; min-width:120px; display:none;">
-                            <option value="">Kaikki järjestäjät</option>
-                            <option value="__own__">Vain omat</option>
-                        </select>
+                    </div>
+                    <div id="report-organizer-box" style="display:none;">
+                        <small style="color:var(--text-muted); display:block; margin-bottom:2px;">Järjestäjät mukaan raporttiin</small>
+                        <div id="report-organizer-list" style="display:flex; gap:12px; flex-wrap:wrap;"></div>
                     </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
                         <div style="flex:2; min-width:200px;">
@@ -594,6 +594,20 @@
             <h3>📋 Import status</h3>
             <div id="net-import-status-list" class="scroll-box" style="max-height: 65vh;"></div>
             <button onclick="closeModal()" class="btn btn-red" style="margin-top:20px; width:100%;">Sulje</button>
+        </div>
+    </div>
+
+    <div id="ext-edit-modal" class="modal">
+        <div class="modal-content">
+            <h3>✏️ Muokkaa tuotua miittiä</h3>
+            <input type="hidden" id="ext-edit-key">
+            <label>Nimi</label><input type="text" id="ext-edit-name">
+            <label>Järjestäjä</label><input type="text" id="ext-edit-org">
+            <label>Pvm</label><input type="date" id="ext-edit-date">
+            <label>GC</label><input type="text" id="ext-edit-gc">
+            <label>Kävijämäärä (pakotettu, tyhjä = lasketaan nimistä)</label><input type="number" id="ext-edit-count" min="0">
+            <label>Kävijät (nimet pilkulla erotettuna)</label><textarea id="ext-edit-names" rows="4"></textarea>
+            <div style="display:flex; gap:10px;"><button id="btn-save-ext-edit" class="btn btn-green">Tallenna</button><button onclick="closeModal()" class="btn btn-red">Peruuta</button></div>
         </div>
     </div>
 

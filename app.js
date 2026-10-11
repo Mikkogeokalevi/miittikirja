@@ -2150,13 +2150,13 @@ if (btnStatsNetImportModal) btnStatsNetImportModal.onclick = () => {
 };
 
 window.closeModal = () => {
-    ['edit-modal','mass-modal','log-edit-modal','confirm-modal','net-import-status-modal','visitor-test-modal'].forEach(id => {
+    ['edit-modal','mass-modal','log-edit-modal','confirm-modal','net-import-status-modal','visitor-test-modal','ext-edit-modal'].forEach(id => {
         const el = document.getElementById(id); if(el) el.style.display = "none";
     });
 };
 
 // Modaalien sulkeminen ESC-näppäimellä ja taustaa (backdrop) napauttamalla
-var MK_CLOSABLE_MODALS = ['edit-modal','mass-modal','log-edit-modal','net-import-status-modal','visitor-test-modal','user-profile-modal'];
+var MK_CLOSABLE_MODALS = ['edit-modal','mass-modal','log-edit-modal','net-import-status-modal','visitor-test-modal','user-profile-modal','ext-edit-modal'];
 
 function closeModalById(id) {
     if (id === 'confirm-modal') {

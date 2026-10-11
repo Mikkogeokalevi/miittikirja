@@ -209,7 +209,7 @@ async function initStats() {
                 const e = c.val() || {};
                 e.key = c.key;
                 if (!Array.isArray(e.attendeeNames)) e.attendeeNames = [];
-                e.attendeeCount = e.attendeeNames.length;
+                e.attendeeCount = (e.attendeeCountOverride != null) ? e.attendeeCountOverride : e.attendeeNames.length;
                 extEvents.push(e);
             });
             allStatsData.externalEvents = extEvents;
@@ -2183,18 +2183,31 @@ function populateReportFilters(events) {
             coordSel.appendChild(opt);
         });
     }
-    const orgSel = document.getElementById('report-organizer');
-    if (orgSel) {
+    const orgBox = document.getElementById('report-organizer-box');
+    const orgList = document.getElementById('report-organizer-list');
+    if (orgBox && orgList) {
         const orgs = [];
         (allStatsData.externalEvents || []).forEach(e => {
             const o = (e.organizer || '').trim();
             if (o && orgs.indexOf(o) === -1) orgs.push(o);
         });
         orgs.sort((a, b) => a.localeCompare(b, 'fi'));
-        orgSel.innerHTML = '<option value="">Kaikki järjestäjät</option>' +
-            '<option value="__own__">Vain omat</option>' +
-            orgs.map(o => '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>').join('');
-        orgSel.style.display = orgs.length ? '' : 'none';
+        if (orgs.length) {
+            // Säilytä aiemmat valinnat mahdollisuuksien mukaan
+            const prev = {};
+            let hadPrev = false;
+            orgList.querySelectorAll('.org-chk').forEach(c => { prev[c.value] = c.checked; hadPrev = true; });
+            const isChecked = (v) => hadPrev ? prev[v] !== false : true;
+            const mkChk = (v, label) =>
+                '<label style="display:flex; align-items:center; gap:6px; font-size:0.95em; color:var(--text-color);">' +
+                '<input type="checkbox" class="org-chk" value="' + escapeHtml(v) + '"' + (isChecked(v) ? ' checked' : '') +
+                ' style="width:auto; min-height:auto; margin:0;">' + escapeHtml(label) + '</label>';
+            orgList.innerHTML = mkChk('__own__', 'Omat miitit') + orgs.map(o => mkChk(o, o)).join('');
+            orgBox.style.display = '';
+        } else {
+            orgBox.style.display = 'none';
+            orgList.innerHTML = '';
+        }
     }
 }
 
@@ -2358,7 +2371,7 @@ async function importExternalGPX() {
         // Päivitä muistissa oleva lista
         const snap = await ref.once('value');
         const fresh = [];
-        snap.forEach(c => { const e = c.val() || {}; e.key = c.key; if (!Array.isArray(e.attendeeNames)) e.attendeeNames = []; e.attendeeCount = e.attendeeNames.length; fresh.push(e); });
+        snap.forEach(c => { const e = c.val() || {}; e.key = c.key; if (!Array.isArray(e.attendeeNames)) e.attendeeNames = []; e.attendeeCount = (e.attendeeCountOverride != null) ? e.attendeeCountOverride : e.attendeeNames.length; fresh.push(e); });
         allStatsData.externalEvents = fresh;
         populateReportFilters(allStatsData.events);
         renderExternalList();
@@ -2382,15 +2395,85 @@ function renderExternalList() {
     const evts = allStatsData.externalEvents || [];
     if (!evts.length) { el.innerHTML = ''; return; }
     const byOrg = {};
-    evts.forEach(e => { const k = e.organizer || 'vieras'; byOrg[k] = (byOrg[k] || 0) + 1; });
-    el.innerHTML = Object.keys(byOrg).sort().map(o =>
-        '<div style="display:flex; align-items:center; justify-content:space-between; padding:4px 0; font-size:0.9em;">' +
-        '<span>👤 ' + escapeHtml(o) + ' — ' + byOrg[o] + ' miittiä</span>' +
-        '<button class="btn btn-small ext-del" data-org="' + escapeHtml(o) + '" style="width:auto; min-width:auto; margin:0; padding:6px 12px; background:#b3402a; color:#fff;">Poista</button></div>'
-    ).join('');
-    el.querySelectorAll('.ext-del').forEach(b => {
-        b.onclick = () => removeExternalOrganizer(b.getAttribute('data-org'));
-    });
+    evts.forEach(e => { const k = e.organizer || 'vieras'; (byOrg[k] = byOrg[k] || []).push(e); });
+    el.innerHTML = Object.keys(byOrg).sort().map(o => {
+        const list = byOrg[o].slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        const rows = list.map(e =>
+            '<div style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:3px 0; font-size:0.85em;">' +
+            '<span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-color);">' +
+            escapeHtml(rptDateFi(e.date)) + ' · ' + escapeHtml(e.name || 'Miitti') + ' · 👤' + (e.attendeeCount || 0) + '</span>' +
+            '<button class="btn btn-small ext-edit" data-key="' + e.key + '" style="width:auto; min-width:auto; min-height:36px; margin:0; padding:4px 10px;" title="Muokkaa">✏️</button>' +
+            '<button class="btn btn-small ext-del" data-key="' + e.key + '" style="width:auto; min-width:auto; min-height:36px; margin:0; padding:4px 10px; background:#b3402a; color:#fff;" title="Poista">🗑</button>' +
+            '</div>').join('');
+        return '<details style="margin:6px 0;"><summary style="cursor:pointer; font-size:0.9em; color:var(--text-color); padding:4px 0;">👤 ' +
+            escapeHtml(o) + ' — ' + list.length + ' miittiä</summary>' +
+            '<div style="margin:4px 0 8px 12px;">' + rows +
+            '<button class="btn btn-small ext-del-org" data-org="' + escapeHtml(o) + '" style="width:auto; min-width:auto; margin-top:6px; padding:6px 12px; background:#b3402a; color:#fff;">Poista kaikki (' + escapeHtml(o) + ')</button>' +
+            '</div></details>';
+    }).join('');
+    el.querySelectorAll('.ext-edit').forEach(b => b.onclick = () => openExtEdit(b.getAttribute('data-key')));
+    el.querySelectorAll('.ext-del').forEach(b => b.onclick = () => removeExternalEvent(b.getAttribute('data-key')));
+    el.querySelectorAll('.ext-del-org').forEach(b => b.onclick = () => removeExternalOrganizer(b.getAttribute('data-org')));
+}
+
+function openExtEdit(key) {
+    const e = (allStatsData.externalEvents || []).find(x => x.key === key);
+    if (!e) return;
+    document.getElementById('ext-edit-key').value = key;
+    document.getElementById('ext-edit-name').value = e.name || '';
+    document.getElementById('ext-edit-org').value = e.organizer || '';
+    document.getElementById('ext-edit-date').value = e.date || '';
+    document.getElementById('ext-edit-gc').value = e.gc || '';
+    document.getElementById('ext-edit-count').value = (e.attendeeCountOverride != null) ? e.attendeeCountOverride : '';
+    document.getElementById('ext-edit-names').value = (e.attendeeNames || []).join(', ');
+    const m = document.getElementById('ext-edit-modal');
+    if (m) m.style.display = 'block';
+    const saveBtn = document.getElementById('btn-save-ext-edit');
+    if (saveBtn) saveBtn.onclick = () => saveExtEdit();
+}
+
+async function saveExtEdit() {
+    const key = document.getElementById('ext-edit-key').value;
+    if (!key || !currentUser) return;
+    const names = document.getElementById('ext-edit-names').value.split(',')
+        .map(s => s.trim()).filter(Boolean);
+    const unique = [], seen = new Set();
+    names.forEach(n => { const k = normalizeNickname(n); if (k && !seen.has(k)) { seen.add(k); unique.push(n); } });
+    const countRaw = document.getElementById('ext-edit-count').value.trim();
+    const override = countRaw === '' ? null : (parseInt(countRaw, 10) || 0);
+    const updates = {
+        name: document.getElementById('ext-edit-name').value.trim(),
+        organizer: document.getElementById('ext-edit-org').value.trim() || 'vieras',
+        date: document.getElementById('ext-edit-date').value,
+        gc: document.getElementById('ext-edit-gc').value.trim(),
+        attendeeNames: unique,
+        attendeeCount: override !== null ? override : unique.length
+    };
+    const ref = db.ref('miitit/' + currentUser.uid + '/externalEvents/' + key);
+    await ref.update(updates);
+    if (override === null) await ref.child('attendeeCountOverride').remove();
+    else await ref.child('attendeeCountOverride').set(override);
+    const e = (allStatsData.externalEvents || []).find(x => x.key === key);
+    if (e) {
+        Object.assign(e, updates);
+        if (override === null) delete e.attendeeCountOverride; else e.attendeeCountOverride = override;
+    }
+    if (typeof closeModal === 'function') closeModal();
+    populateReportFilters(allStatsData.events);
+    renderExternalList();
+    showToast('Miitti päivitetty.', 'success');
+}
+
+async function removeExternalEvent(key) {
+    const e = (allStatsData.externalEvents || []).find(x => x.key === key);
+    if (!e || !currentUser) return;
+    const ok = await customConfirm('Poista miitti', 'Poistetaanko "' + (e.name || 'miitti') + '" raporttidatasta pysyvästi?');
+    if (!ok) return;
+    await db.ref('miitit/' + currentUser.uid + '/externalEvents/' + key).remove();
+    allStatsData.externalEvents = (allStatsData.externalEvents || []).filter(x => x.key !== key);
+    populateReportFilters(allStatsData.events);
+    renderExternalList();
+    showToast('Miitti poistettu.', 'success');
 }
 
 async function removeExternalOrganizer(org) {
@@ -2426,18 +2509,29 @@ window.runMiittiReport = function() {
     const fromVal = (document.getElementById('report-date-from') || {}).value || '';
     const toVal = (document.getElementById('report-date-to') || {}).value || '';
     const typeVal = (document.getElementById('report-type') || {}).value || '';
-    const orgVal = (document.getElementById('report-organizer') || {}).value || '';
     const inclCancelled = !!(document.getElementById('report-include-cancelled') || {}).checked;
     const coordsRaw = ((document.getElementById('report-coords') || {}).value || '').trim();
     const radiusM = parseInt(((document.getElementById('report-radius') || {}).value || '200'), 10) || 200;
     const center = coordsRaw ? parseReportCoords(coordsRaw) : null;
     const coordsFailed = !!(coordsRaw && !center);
 
+    // Järjestäjä-monivalinta: mitkä lähteet otetaan mukaan
+    const orgChks = Array.from(document.querySelectorAll('#report-organizer-list .org-chk'));
+    let allowedOrgs = null; // null = laatikkoa ei näy => kaikki
+    if (orgChks.length) {
+        allowedOrgs = new Set(orgChks.filter(c => c.checked).map(c => c.value));
+        if (!allowedOrgs.size) {
+            if (typeof showToast === 'function') showToast('Valitse vähintään yksi järjestäjä raporttiin.', 'error');
+            return;
+        }
+    }
+
     // Omat + ulkoiset miitit samaan listaan (_org erottaa järjestäjän)
     let reportEvents = ownEvents.map(e => Object.assign({}, e, { _org: '' }))
         .concat(extEvents.map(e => Object.assign({}, e, { _org: e.organizer || 'vieras' })));
-    if (orgVal === '__own__') reportEvents = reportEvents.filter(e => !e._org);
-    else if (orgVal) reportEvents = reportEvents.filter(e => e._org === orgVal);
+    if (allowedOrgs) {
+        reportEvents = reportEvents.filter(e => allowedOrgs.has(e._org ? e._org : '__own__'));
+    }
     const events = reportEvents;
 
     // Sanapohjainen haku: sanajärjestys vapaa, >=4-kirjaimisille hyväksytään 4-merkin vartalo (nastolan -> nastola)
@@ -2486,8 +2580,10 @@ window.runMiittiReport = function() {
     if (yearVal) filterBits.push('Vuosi: ' + yearVal);
     if (fromVal || toVal) filterBits.push('Aikaväli: ' + (fromVal ? rptDateFi(fromVal) : 'alku') + ' - ' + (toVal ? rptDateFi(toVal) : 'loppu'));
     if (typeVal) filterBits.push('Tyyppi: ' + typeVal);
-    if (orgVal === '__own__') filterBits.push('Järjestäjä: vain omat');
-    else if (orgVal) filterBits.push('Järjestäjä: ' + orgVal);
+    if (allowedOrgs) {
+        const labels = Array.from(allowedOrgs).map(v => v === '__own__' ? 'Omat' : v);
+        filterBits.push('Järjestäjät: ' + labels.join(', '));
+    }
     if (center) filterBits.push('≤ ' + (radiusM >= 1000 ? (radiusM / 1000) + ' km' : radiusM + ' m') + ' koordinaateista ' + coordsRaw);
     if (coordsFailed) filterBits.push('⚠ Koordinaatteja ei tunnistettu — säderajausta ei käytetty');
     if (!inclCancelled) filterBits.push('Perutut ohitettu');
