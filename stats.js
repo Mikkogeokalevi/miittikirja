@@ -2623,8 +2623,9 @@ window.runMiittiReport = function() {
     if (yearVal) filterBits.push('Vuosi: ' + yearVal);
     if (fromVal || toVal) filterBits.push('Aikaväli: ' + (fromVal ? rptDateFi(fromVal) : 'alku') + ' - ' + (toVal ? rptDateFi(toVal) : 'loppu'));
     if (typeVal) filterBits.push('Tyyppi: ' + typeVal);
+    const ownLabel = (typeof MK_Config !== 'undefined' && MK_Config.OWNER_NICK) ? MK_Config.OWNER_NICK : 'Omat';
     if (allowedOrgs) {
-        const labels = Array.from(allowedOrgs).map(v => v === '__own__' ? 'Omat' : v);
+        const labels = Array.from(allowedOrgs).map(v => v === '__own__' ? ownLabel : v);
         filterBits.push('Järjestäjät: ' + labels.join(', '));
     }
     if (center) filterBits.push('≤ ' + (radiusM >= 1000 ? (radiusM / 1000) + ' km' : radiusM + ' m') + ' koordinaateista ' + coordsRaw);
@@ -2671,12 +2672,16 @@ window.runMiittiReport = function() {
             '<td class="rpt-num">' + (evt.attendeeCount || 0) + '</td></tr>';
     });
 
-    // Järjestäjäerittely meta-riville kun mukana useampi lähde
-    if (showOrgCol) {
-        const byOrg = {};
-        rows.forEach(e => { const k = e._org || 'Omat'; byOrg[k] = (byOrg[k] || 0) + 1; });
-        filterBits.push('Erittely: ' + Object.entries(byOrg).map(([k, v]) => k + ' ' + v).join(' · '));
-    }
+    // Järjestäjäkohtainen erittely yhteenvetolaatikoihin (oma nimimerkki ensin)
+    const orgAgg = {};
+    rows.forEach(e => {
+        const k = e._org || ownLabel;
+        if (!orgAgg[k]) orgAgg[k] = { n: 0, v: 0 };
+        orgAgg[k].n++;
+        orgAgg[k].v += (e.attendeeCount || 0);
+    });
+    const orgKeys = Object.keys(orgAgg).sort((a, b) => a === ownLabel ? -1 : b === ownLabel ? 1 : a.localeCompare(b, 'fi'));
+    const orgBreak = (fn) => orgKeys.map(k => escapeHtml(k) + ' ' + fn(orgAgg[k])).join(' · ');
 
     const firstDate = rows[0].date || '';
     const lastDate = rows[rows.length - 1].date || '';
@@ -2690,10 +2695,14 @@ window.runMiittiReport = function() {
             '<div class="rpt-title">Miittiraportti</div>' +
             '<div class="rpt-meta">' + escapeHtml(filterBits.join(' · ') || 'Ei suodattimia') + '</div>' +
             '<div class="rpt-summary">' +
-                '<div class="rpt-sum-item"><div class="rpt-sum-label">Miittejä</div><div class="rpt-sum-value">' + totalEvents + '</div></div>' +
-                '<div class="rpt-sum-item"><div class="rpt-sum-label">Kävijöitä yht.</div><div class="rpt-sum-value">' + totalVisitors + '</div></div>' +
-                '<div class="rpt-sum-item"><div class="rpt-sum-label">Keskiarvo / miitti</div><div class="rpt-sum-value">' + avg.toFixed(1).replace('.', ',') + '</div></div>' +
-                '<div class="rpt-sum-item"><div class="rpt-sum-label">Uniikkeja kävijöitä</div><div class="rpt-sum-value">' + uniqNicks.size + '</div></div>' +
+                '<div class="rpt-sum-item"><div class="rpt-sum-label">Miittejä</div><div class="rpt-sum-value">' + totalEvents + '</div>' +
+                    (showOrgCol ? '<div class="rpt-sum-sub">' + orgBreak(o => o.n) + '</div>' : '') + '</div>' +
+                '<div class="rpt-sum-item"><div class="rpt-sum-label">Kävijöitä yht.</div><div class="rpt-sum-value">' + totalVisitors + '</div>' +
+                    (showOrgCol ? '<div class="rpt-sum-sub">' + orgBreak(o => o.v) + '</div>' : '') + '</div>' +
+                '<div class="rpt-sum-item"><div class="rpt-sum-label">Keskiarvo / miitti</div><div class="rpt-sum-value">' + avg.toFixed(1).replace('.', ',') + '</div>' +
+                    (showOrgCol ? '<div class="rpt-sum-sub">' + orgBreak(o => (o.v / o.n).toFixed(1).replace('.', ',')) + '</div>' : '') + '</div>' +
+                // Uniikit näytetään vain kun kaikki rivit ovat omia — ulkoisista tiedossa vain ~5 nimeä/määrä
+                (showOrgCol ? '' : '<div class="rpt-sum-item"><div class="rpt-sum-label">Uniikkeja kävijöitä</div><div class="rpt-sum-value">' + uniqNicks.size + '</div></div>') +
                 '<div class="rpt-sum-item"><div class="rpt-sum-label">Aikaväli</div><div class="rpt-sum-value" style="font-size:0.95em;">' + escapeHtml(rptDateFi(firstDate)) + '<br>– ' + escapeHtml(rptDateFi(lastDate)) + '</div></div>' +
                 (bestEvt ? '<div class="rpt-sum-item"><div class="rpt-sum-label">Eniten kävijöitä</div><div class="rpt-sum-value">' + (bestEvt.attendeeCount || 0) + '</div><div class="rpt-sum-sub">' + escapeHtml(bestEvt.name || '') + '</div></div>' : '') +
             '</div>' +

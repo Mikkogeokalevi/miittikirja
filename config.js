@@ -9,6 +9,9 @@ const MK_Config = {
     // Jos vaihdat tiliä, päivitä vain tämä rivi!
     HOST_UID: "T8wI16Gf67W4G4yX3Cq7U0U1H6I2",
 
+    // Oma geocaching-nimimerkki (raporttien järjestäjäerittelyissä)
+    OWNER_NICK: "mikkokalevi",
+
     // Sovelluksen versio (näytetään kirjautumissivulla)
     VERSION: "7.41.0"
 };
