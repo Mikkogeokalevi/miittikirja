@@ -2199,9 +2199,9 @@ function populateReportFilters(events) {
             orgList.querySelectorAll('.org-chk').forEach(c => { prev[c.value] = c.checked; hadPrev = true; });
             const isChecked = (v) => hadPrev ? prev[v] !== false : true;
             const mkChk = (v, label) =>
-                '<label style="display:flex; align-items:center; gap:6px; font-size:0.95em; color:var(--text-color);">' +
+                '<label style="display:flex; align-items:center; gap:8px; font-size:0.95em; color:var(--text-color); padding:8px 10px 8px 0; min-height:44px; box-sizing:border-box;">' +
                 '<input type="checkbox" class="org-chk" value="' + escapeHtml(v) + '"' + (isChecked(v) ? ' checked' : '') +
-                ' style="width:auto; min-height:auto; margin:0;">' + escapeHtml(label) + '</label>';
+                ' style="width:22px; height:22px; min-height:auto; margin:0; flex-shrink:0;">' + escapeHtml(label) + '</label>';
             orgList.innerHTML = mkChk('__own__', 'Omat miitit') + orgs.map(o => mkChk(o, o)).join('');
             orgBox.style.display = '';
         } else {
@@ -2437,22 +2437,22 @@ function renderExternalList() {
         const list = byOrg[o].slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
         const rows = list.map(e => {
             const gcLink = e.gc
-                ? ' <a href="https://www.geocaching.com/geocache/' + encodeURIComponent(e.gc) + '" target="_blank" rel="noopener" class="ext-gc" data-key="' + e.key + '" style="color:var(--primary-color); font-size:0.8em; text-decoration:none;" title="Avaa geocaching.com + muokkaus"> ' + escapeHtml(e.gc) + '</a>'
+                ? ' <a href="https://www.geocaching.com/geocache/' + encodeURIComponent(e.gc) + '" target="_blank" rel="noopener" class="ext-gc" data-key="' + e.key + '" style="color:var(--primary-color); font-size:0.85em; text-decoration:underline; padding:8px 4px;" title="Avaa geocaching.com + muokkaus">' + escapeHtml(e.gc) + '</a>'
                 : '';
             const cntHtml = (e.attendeeCountOverride != null)
                 ? ' <span title="Käsin korjattu kävijämäärä" style="color:#4caf50; font-weight:700;">👤' + e.attendeeCount + ' ✍</span>'
                 : ' 👤' + (e.attendeeCount || 0);
-            return '<div style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:3px 0; font-size:0.85em;">' +
+            return '<div style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:4px 0; font-size:0.85em; min-height:44px;">' +
             '<span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-color);">' +
             escapeHtml(rptDateFi(e.date)) + ' · ' + escapeHtml(e.name || 'Miitti') + gcLink + cntHtml + '</span>' +
-            '<button class="btn btn-small ext-edit" data-key="' + e.key + '" style="width:auto; min-width:auto; min-height:36px; margin:0; padding:4px 10px;" title="Muokkaa">✏️</button>' +
-            '<button class="btn btn-small ext-del" data-key="' + e.key + '" style="width:auto; min-width:auto; min-height:36px; margin:0; padding:4px 10px; background:#b3402a; color:#fff;" title="Poista">🗑</button>' +
+            '<button class="btn btn-small ext-edit" data-key="' + e.key + '" style="width:auto; min-width:44px; min-height:44px; margin:0; padding:8px 12px;" title="Muokkaa">✏️</button>' +
+            '<button class="btn btn-small ext-del" data-key="' + e.key + '" style="width:auto; min-width:44px; min-height:44px; margin:0; padding:8px 12px; background:#b3402a; color:#fff;" title="Poista">🗑</button>' +
             '</div>';
         }).join('');
-        return '<details data-org="' + escapeHtml(o) + '" style="margin:6px 0;"' + (openOrgs.has(o) ? ' open' : '') + '><summary style="cursor:pointer; font-size:0.9em; color:var(--text-color); padding:4px 0;">👤 ' +
+        return '<details data-org="' + escapeHtml(o) + '" style="margin:6px 0;"' + (openOrgs.has(o) ? ' open' : '') + '><summary style="cursor:pointer; font-size:0.95em; color:var(--text-color); padding:10px 0; min-height:44px; box-sizing:border-box;">👤 ' +
             escapeHtml(o) + ' — ' + list.length + ' miittiä</summary>' +
             '<div style="margin:4px 0 8px 12px;">' + rows +
-            '<button class="btn btn-small ext-del-org" data-org="' + escapeHtml(o) + '" style="width:auto; min-width:auto; margin-top:6px; padding:6px 12px; background:#b3402a; color:#fff;">Poista kaikki (' + escapeHtml(o) + ')</button>' +
+            '<button class="btn btn-small ext-del-org" data-org="' + escapeHtml(o) + '" style="width:auto; min-width:auto; min-height:44px; margin-top:6px; padding:8px 14px; background:#b3402a; color:#fff;">Poista kaikki (' + escapeHtml(o) + ')</button>' +
             '</div></details>';
     }).join('');
     // GC-linkki avaa geocaching.comin uuteen välilehteen JA muokkausmodaalin taustalle
