@@ -2247,6 +2247,11 @@ function initReportBindings() {
         printBtn.onclick = () => printMiittiReport();
         printBtn.dataset.bound = '1';
     }
+    const chartBtn = document.getElementById('btn-chart-report');
+    if (chartBtn && !chartBtn.dataset.bound) {
+        chartBtn.onclick = () => runReportCharts();
+        chartBtn.dataset.bound = '1';
+    }
     const coordSel = document.getElementById('report-coords-from-event');
     if (coordSel && !coordSel.dataset.bound) {
         coordSel.onchange = () => {
@@ -2540,9 +2545,8 @@ function rptDateFi(iso) {
     return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : iso;
 }
 
-window.runMiittiReport = function() {
-    const out = document.getElementById('report-output');
-    if (!out) return;
+// Raportin suodatuslogiikka jaettuna: palauttaa {rows, events, allowedOrgs} tai null
+function collectReportRows() {
     const ownEvents = Array.isArray(allStatsData.events) ? allStatsData.events : [];
     const extEvents = Array.isArray(allStatsData.externalEvents) ? allStatsData.externalEvents : [];
 
@@ -2556,7 +2560,6 @@ window.runMiittiReport = function() {
     const coordsRaw = ((document.getElementById('report-coords') || {}).value || '').trim();
     const radiusM = parseInt(((document.getElementById('report-radius') || {}).value || '200'), 10) || 200;
     const center = coordsRaw ? parseReportCoords(coordsRaw) : null;
-    const coordsFailed = !!(coordsRaw && !center);
 
     // Järjestäjä-monivalinta: mitkä lähteet otetaan mukaan
     const orgChks = Array.from(document.querySelectorAll('#report-organizer-list .org-chk'));
@@ -2565,7 +2568,7 @@ window.runMiittiReport = function() {
         allowedOrgs = new Set(orgChks.filter(c => c.checked).map(c => c.value));
         if (!allowedOrgs.size) {
             if (typeof showToast === 'function') showToast('Valitse vähintään yksi järjestäjä raporttiin.', 'error');
-            return;
+            return null;
         }
     }
 
@@ -2605,6 +2608,25 @@ window.runMiittiReport = function() {
         }
         return true;
     }).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    return { rows: rows, events: events, allowedOrgs: allowedOrgs, center: center, coordsRaw: coordsRaw, coordsFailed: !!(coordsRaw && !center), radiusM: radiusM };
+}
+
+window.runMiittiReport = function() {
+    const out = document.getElementById('report-output');
+    if (!out) return;
+    const collected = collectReportRows();
+    if (!collected) return;
+    const rows = collected.rows, events = collected.events, allowedOrgs = collected.allowedOrgs;
+    const center = collected.center, coordsRaw = collected.coordsRaw, coordsFailed = collected.coordsFailed, radiusM = collected.radiusM;
+
+    const place = ((document.getElementById('report-place') || {}).value || '').trim().toLowerCase();
+    const locVal = ((document.getElementById('report-location') || {}).value || '').trim();
+    const yearVal = (document.getElementById('report-year') || {}).value || '';
+    const fromVal = (document.getElementById('report-date-from') || {}).value || '';
+    const toVal = (document.getElementById('report-date-to') || {}).value || '';
+    const typeVal = (document.getElementById('report-type') || {}).value || '';
+    const inclCancelled = !!(document.getElementById('report-include-cancelled') || {}).checked;
 
     const totalEvents = rows.length;
     const totalVisitors = rows.reduce((sum, e) => sum + (e.attendeeCount || 0), 0);
@@ -2769,3 +2791,125 @@ window.printMiittiReport = function() {
         '</head><body>' + out.innerHTML + '</body></html>');
     doc.close();
 };
+
+// ==========================================
+// RAPORTIN GRAAFINÄKYMÄ (samalla suodatuksella)
+// ==========================================
+const RPT_PALETTE = ['#16365e', '#8b5a2b', '#2e7d32', '#7b1fa2', '#c62828', '#0277bd', '#ef6c00', '#455a64'];
+window._rptChartInstances = [];
+
+window.runReportCharts = function() {
+    const box = document.getElementById('report-charts');
+    if (!box) return;
+    const collected = collectReportRows();
+    if (!collected) return;
+    const rows = collected.rows;
+    if (!rows.length) {
+        if (typeof showToast === 'function') showToast('Ei dataa valituilla suodattimilla.', 'error');
+        return;
+    }
+    box.innerHTML = '<div class="rpt-doc" style="text-align:center; padding:16px;">Ladataan graafeja…</div>';
+    const loader = (typeof mkLoadChartJs === 'function')
+        ? mkLoadChartJs()
+        : Promise.reject(new Error('Chart.js-lataaja puuttuu'));
+    loader.then(() => renderReportCharts(rows)).catch(e => {
+        console.error(e);
+        box.innerHTML = '<div class="rpt-doc" style="padding:16px;">Graafien lataus epäonnistui — tarkista verkkoyhteys.</div>';
+    });
+};
+
+function renderReportCharts(rows) {
+    const box = document.getElementById('report-charts');
+    if (!box || typeof Chart === 'undefined') return;
+    // Tuhoa vanhat kaaviot ennen uusien piirtoa
+    window._rptChartInstances.forEach(c => { try { c.destroy(); } catch (e) {} });
+    window._rptChartInstances = [];
+
+    const ownLabel = (typeof MK_Config !== 'undefined' && MK_Config.OWNER_NICK) ? MK_Config.OWNER_NICK : 'Omat';
+    const orgOf = e => e._org || ownLabel;
+    const orgs = [];
+    rows.forEach(e => { const o = orgOf(e); if (orgs.indexOf(o) === -1) orgs.push(o); });
+    orgs.sort((a, b) => a === ownLabel ? -1 : b === ownLabel ? 1 : a.localeCompare(b, 'fi'));
+    const colorOf = o => RPT_PALETTE[orgs.indexOf(o) % RPT_PALETTE.length];
+
+    // --- 1. Kävijät kuukausittain, pinottuna järjestäjittäin ---
+    const months = [];
+    const monthSet = {};
+    rows.forEach(e => {
+        const m = (e.date || '').slice(0, 7);
+        if (m && monthSet[m] === undefined) { monthSet[m] = true; months.push(m); }
+    });
+    months.sort();
+    const monthLabels = months.map(m => { const p = m.split('-'); return parseInt(p[1], 10) + '/' + p[0]; });
+    const monthlyDatasets = orgs.map(o => ({
+        label: o,
+        backgroundColor: colorOf(o),
+        stack: 'org',
+        data: months.map(m => rows.reduce((s, e) => s + ((e.date || '').slice(0, 7) === m && orgOf(e) === o ? (e.attendeeCount || 0) : 0), 0))
+    }));
+
+    // --- 2. Järjestäjävertailu: miitit + kävijät + keskiarvo ---
+    const orgAgg = orgs.map(o => {
+        const evts = rows.filter(e => orgOf(e) === o);
+        const v = evts.reduce((s, e) => s + (e.attendeeCount || 0), 0);
+        return { n: evts.length, v: v, avg: evts.length ? (v / evts.length) : 0 };
+    });
+
+    // --- 3. Miittikohtainen kävijäkehitys (viiva per järjestäjä) ---
+    const perEventDatasets = orgs.map(o => {
+        const evts = rows.filter(e => orgOf(e) === o);
+        return {
+            label: o,
+            borderColor: colorOf(o),
+            backgroundColor: colorOf(o),
+            data: evts.map(e => ({ x: rptDateFi(e.date), y: e.attendeeCount || 0 })),
+            tension: 0.3, pointRadius: 3, fill: false
+        };
+    });
+    const allLabels = [];
+    rows.forEach(e => { const d = rptDateFi(e.date); if (allLabels.indexOf(d) === -1) allLabels.push(d); });
+
+    const chartCard = (title, id) =>
+        '<div class="rpt-chart-block" style="margin-bottom:20px;">' +
+        '<div style="font-weight:700; color:#16365e; margin-bottom:8px;">' + title + '</div>' +
+        '<div style="position:relative; height:240px;"><canvas id="' + id + '"></canvas></div></div>';
+
+    box.innerHTML =
+        '<div class="rpt-doc">' +
+        '<div class="rpt-brand">MK MIITTIKIRJA</div>' +
+        '<div class="rpt-title" style="font-size:1.3em;">Raportin graafit</div>' +
+        '<div class="rpt-meta" style="margin-bottom:14px;">' + rows.length + ' miittiä valituilla suodattimilla</div>' +
+        chartCard('Kävijät kuukausittain (pinottu järjestäjittäin)', 'rpt-c1') +
+        chartCard('Järjestäjävertailu', 'rpt-c2') +
+        chartCard('Kävijämäärä per miitti (aikajärjestys)', 'rpt-c3') +
+        '</div>';
+
+    const mkOpts = extra => Object.assign({
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 14, font: { size: 11 } } } },
+        scales: { y: { beginAtZero: true } }
+    }, extra || {});
+
+    window._rptChartInstances.push(new Chart(document.getElementById('rpt-c1'), {
+        type: 'bar',
+        data: { labels: monthLabels, datasets: monthlyDatasets },
+        options: mkOpts({ scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } })
+    }));
+    window._rptChartInstances.push(new Chart(document.getElementById('rpt-c2'), {
+        type: 'bar',
+        data: {
+            labels: orgs,
+            datasets: [
+                { label: 'Miittejä', data: orgAgg.map(a => a.n), backgroundColor: '#9db8dd' },
+                { label: 'Kävijöitä', data: orgAgg.map(a => a.v), backgroundColor: '#16365e' },
+                { label: 'Keskiarvo/miitti', data: orgAgg.map(a => Math.round(a.avg * 10) / 10), backgroundColor: '#e0a458' }
+            ]
+        },
+        options: mkOpts()
+    }));
+    window._rptChartInstances.push(new Chart(document.getElementById('rpt-c3'), {
+        type: 'line',
+        data: { labels: allLabels, datasets: perEventDatasets },
+        options: mkOpts({ interaction: { mode: 'index', intersect: false } })
+    }));
+}
