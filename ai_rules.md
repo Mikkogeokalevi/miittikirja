@@ -16,7 +16,8 @@ miitit/
 │   │   ├── years/       (miittivuodet)
 │   │   └── lastImportDate (viimeisin CSV-tuonti)
 │   ├── events/          (miittitapahtumat)
-│   └── logs/           (vieraskirjamerkinnät)
+│   ├── logs/           (vieraskirjamerkinnät)
+│   └── externalEvents/  (kavereiden miitit — VAIN raporttia varten, ei omiin tilastoihin)
 ```
 
 ### Calendar Data Structure
@@ -80,10 +81,31 @@ miitit/
 
 ## Important Constraints
 
-### Firebase Rules
-- Users can only access their own data: `miitit/{userId}/`
-- Calendar data stored under: `miitit/{userId}/calendar`
-- No interference with other projects in same database
+### Firebase Rules (koko ruleset — projekti jakaa DB:n muiden projektien kanssa)
+```json
+{
+  "rules": {
+    "tapahtumat":  { ".read": "auth != null", ".write": "auth != null" },
+    "tehtavalista": { ".read": "auth != null", ".write": "auth != null" },
+    "ajopaivakirja": { "$uid": { ".read": "$uid === auth.uid", ".write": "$uid === auth.uid", ".indexOn": ["startTime"] } },
+    "users":       { "$uid": { ".read": "$uid === auth.uid", ".write": "$uid === auth.uid" } },
+    "refuelings":  { "$uid": { ".read": "$uid === auth.uid", ".write": "$uid === auth.uid" } },
+    "miitit": {
+      "$uid": {
+        ".write": "$uid === auth.uid",
+        "calendar": { ".read": "$uid === auth.uid", ".write": "$uid === auth.uid" },
+        "events":   { ".read": true, ".indexOn": ["date"], "$eventId": {} },
+        "logs":     { ".read": true, "$eventId": { "$logId": { ".write": "!data.exists() && newData.exists()" } } },
+        "externalEvents": { ".read": "$uid === auth.uid", ".write": "$uid === auth.uid" }
+      }
+    },
+    "poi": { "$uid": { ".read": "$uid === auth.uid", ".write": "$uid === auth.uid" } }
+  }
+}
+```
+- `.write` juuressa `miitit/$uid` periytyy alisolmuihin, mutta `.read` pitää määritellä solmukohtaisesti
+- `events`/`logs` luettavissa julkisesti (vieras-QR), `externalEvents` vain omistajalle
+- ÄLÄ muuta muiden projektien solmuja (tapahtumat, tehtavalista, ajopaivakirja, users, refuelings, poi)
 
 ### Mobile Compatibility — TÄRKEIN SÄÄNTÖ
 **Vierasnäkymän (QR-kirjaus) TÄYTYY toimia eri ikäisillä puhelimilla — vanhat iPhonet ja Androidit mukaan lukien.** Miiteillä kävijöillä on kaikenikäisiä laitteita. Paino päivityksissä aina yhteensopivuuteen.
@@ -192,9 +214,10 @@ parts.push(current.trim());
 ## Development Notes
 
 ### File Structure
-- `calendar.js` - Calendar functionality
-- `style.css` - Calendar styles (responsive)
-- `index.html` - Calendar tab and modal
+- `calendar.js` - POISTETTU v7.40.0 (kalenteritab korvattu 📄 Raportti-tabilla)
+- `stats.js` - Tilastot, graafit, kartta, miittiraportti, externalEvents-tuonti
+- `style.css` - Tyylit (mm. `.rpt-*` raporttidokumentti)
+- `index.html` - Näkymät ja modaalit
 - `app.js` - Main app logic and Firebase init
 
 ### Theme Support
