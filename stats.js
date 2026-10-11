@@ -2432,7 +2432,7 @@ function renderExternalList() {
         const list = byOrg[o].slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
         const rows = list.map(e => {
             const gcLink = e.gc
-                ? ' <a href="https://www.geocaching.com/geocache/' + encodeURIComponent(e.gc) + '" target="_blank" rel="noopener" style="color:var(--primary-color); font-size:0.8em; text-decoration:none;">' + escapeHtml(e.gc) + '</a>'
+                ? ' <a href="https://www.geocaching.com/geocache/' + encodeURIComponent(e.gc) + '" target="_blank" rel="noopener" class="ext-gc" data-key="' + e.key + '" style="color:var(--primary-color); font-size:0.8em; text-decoration:none;" title="Avaa geocaching.com + muokkaus"> ' + escapeHtml(e.gc) + '</a>'
                 : '';
             return '<div style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:3px 0; font-size:0.85em;">' +
             '<span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-color);">' +
@@ -2447,6 +2447,8 @@ function renderExternalList() {
             '<button class="btn btn-small ext-del-org" data-org="' + escapeHtml(o) + '" style="width:auto; min-width:auto; margin-top:6px; padding:6px 12px; background:#b3402a; color:#fff;">Poista kaikki (' + escapeHtml(o) + ')</button>' +
             '</div></details>';
     }).join('');
+    // GC-linkki avaa geocaching.comin uuteen välilehteen JA muokkausmodaalin taustalle
+    el.querySelectorAll('.ext-gc').forEach(a => a.addEventListener('click', () => openExtEdit(a.getAttribute('data-key'))));
     el.querySelectorAll('.ext-edit').forEach(b => b.onclick = () => openExtEdit(b.getAttribute('data-key')));
     el.querySelectorAll('.ext-del').forEach(b => b.onclick = () => removeExternalEvent(b.getAttribute('data-key')));
     el.querySelectorAll('.ext-del-org').forEach(b => b.onclick = () => removeExternalOrganizer(b.getAttribute('data-org')));
@@ -2466,6 +2468,8 @@ function openExtEdit(key) {
     if (m) m.style.display = 'block';
     const saveBtn = document.getElementById('btn-save-ext-edit');
     if (saveBtn) saveBtn.onclick = () => saveExtEdit();
+    // Valmiina heti kävijämäärän korjausta varten
+    setTimeout(() => { const c = document.getElementById('ext-edit-count'); if (c) c.focus(); }, 50);
 }
 
 async function saveExtEdit() {
