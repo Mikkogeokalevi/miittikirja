@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.40.0";
+const APP_VERSION = "7.41.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",

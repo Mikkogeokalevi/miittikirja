@@ -420,6 +420,10 @@
                             <option value="cito">CITO</option>
                             <option value="cce">Juhlat / CCE</option>
                         </select>
+                        <select id="report-organizer" style="flex:1; min-width:120px; display:none;">
+                            <option value="">Kaikki järjestäjät</option>
+                            <option value="__own__">Vain omat</option>
+                        </select>
                     </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
                         <div style="flex:2; min-width:200px;">
@@ -442,6 +446,15 @@
                     <label style="display:flex; align-items:center; font-size:0.9em; color:var(--text-color);">
                         <input type="checkbox" id="report-include-cancelled" style="width:auto; min-height:auto; margin:0 8px 0 0;"> Näytä myös perutut miitit
                     </label>
+                    <details style="margin-top:2px;">
+                        <summary style="cursor:pointer; font-size:0.85em; color:var(--text-muted); padding:4px 0;">👥 Tuo kaverin miitit raporttiin (GPX-tiedosto)</summary>
+                        <div style="margin-top:6px;">
+                            <input type="file" id="report-ext-file" accept=".gpx" style="margin-bottom:6px;">
+                            <button id="btn-import-ext" class="btn btn-blue btn-small" disabled style="width:auto; min-width:160px;">📥 Tuo miitit</button>
+                            <div id="report-ext-status" style="font-size:0.85em; color:var(--text-muted); margin-top:6px;"></div>
+                            <div id="report-ext-list"></div>
+                        </div>
+                    </details>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
                         <button id="btn-run-report" class="btn btn-blue btn-small" style="flex:1; min-width:150px;">🔍 Muodosta raportti</button>
                         <button id="btn-print-report" class="btn btn-green btn-small" style="flex:1; min-width:150px;">🖨️ Tulosta / PDF</button>

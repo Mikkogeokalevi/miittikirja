@@ -5,7 +5,8 @@
 
 let allStatsData = {
     events: [],
-    attendees: {}
+    attendees: {},
+    externalEvents: []
 
 };
 
@@ -199,6 +200,23 @@ async function initStats() {
             typeCounts[type] += 1;
             evt.seqNumber = typeCounts[type];
         });
+
+        // Vieraiden järjestäjien miitit (vain raporttia varten, ei omiin tilastoihin)
+        try {
+            const extSnap = await db.ref('miitit/' + currentUser.uid + '/externalEvents').once('value');
+            const extEvents = [];
+            extSnap.forEach(c => {
+                const e = c.val() || {};
+                e.key = c.key;
+                if (!Array.isArray(e.attendeeNames)) e.attendeeNames = [];
+                e.attendeeCount = e.attendeeNames.length;
+                extEvents.push(e);
+            });
+            allStatsData.externalEvents = extEvents;
+        } catch (extErr) {
+            console.warn('Ulkoisten miittien lataus ohitettu:', extErr);
+            allStatsData.externalEvents = [];
+        }
 
         allStatsData.events = events;
         populateYearFilter(events);
@@ -2154,15 +2172,29 @@ function populateReportFilters(events) {
     }
     const coordSel = document.getElementById('report-coords-from-event');
     if (coordSel) {
-        const withCoords = (events || []).filter(e => e.coords).slice()
+        const withCoords = (events || []).concat(allStatsData.externalEvents || [])
+            .filter(e => e.coords)
             .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
         coordSel.innerHTML = '<option value="">📍 Poimi koordinaatit miitistä…</option>';
         withCoords.forEach(e => {
             const opt = document.createElement('option');
             opt.value = e.coords;
-            opt.innerText = rptDateFi(e.date) + ' · ' + (e.name || 'Miitti');
+            opt.innerText = rptDateFi(e.date) + ' · ' + (e.name || 'Miitti') + (e.organizer ? ' (' + e.organizer + ')' : '');
             coordSel.appendChild(opt);
         });
+    }
+    const orgSel = document.getElementById('report-organizer');
+    if (orgSel) {
+        const orgs = [];
+        (allStatsData.externalEvents || []).forEach(e => {
+            const o = (e.organizer || '').trim();
+            if (o && orgs.indexOf(o) === -1) orgs.push(o);
+        });
+        orgs.sort((a, b) => a.localeCompare(b, 'fi'));
+        orgSel.innerHTML = '<option value="">Kaikki järjestäjät</option>' +
+            '<option value="__own__">Vain omat</option>' +
+            orgs.map(o => '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>').join('');
+        orgSel.style.display = orgs.length ? '' : 'none';
     }
 }
 
@@ -2210,6 +2242,170 @@ function initReportBindings() {
         };
         coordSel.dataset.bound = '1';
     }
+    const extFile = document.getElementById('report-ext-file');
+    const extBtn = document.getElementById('btn-import-ext');
+    if (extFile && extBtn && !extFile.dataset.bound) {
+        extFile.onchange = () => { extBtn.disabled = !(extFile.files && extFile.files.length); };
+        extFile.dataset.bound = '1';
+    }
+    if (extBtn && !extBtn.dataset.bound) {
+        extBtn.onclick = () => importExternalGPX();
+        extBtn.dataset.bound = '1';
+    }
+    renderExternalList();
+}
+
+// ==========================================
+// VIERAIDEN JÄRJESTÄJIEN GPX-TUONTI (vain raportti)
+// ==========================================
+function gpTagVal(parent, tagName) {
+    let el = parent.getElementsByTagName(tagName)[0];
+    if (!el && tagName.indexOf(':') !== -1) el = parent.getElementsByTagName(tagName.split(':')[1])[0];
+    return el ? el.textContent : '';
+}
+
+function gpTagAll(parent, tagName) {
+    let list = parent.getElementsByTagName(tagName);
+    if ((!list || !list.length) && tagName.indexOf(':') !== -1) {
+        list = parent.getElementsByTagName(tagName.split(':')[1]);
+    }
+    return list;
+}
+
+function parseExternalGPX(xmlText) {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+    if (xmlDoc.getElementsByTagName('parsererror').length) return null;
+    const wpts = xmlDoc.getElementsByTagName('wpt');
+    const out = [];
+    for (let i = 0; i < wpts.length; i++) {
+        const wpt = wpts[i];
+        const gsCache = gpTagAll(wpt, 'groundspeak:cache')[0];
+        const combined = ((gpTagVal(wpt, 'type') || '') + ' ' + (gsCache ? gpTagVal(gsCache, 'groundspeak:type') : '')).toLowerCase();
+        let myType = 'miitti';
+        let isEvent = false;
+        if (combined.indexOf('cache in trash out') !== -1) { isEvent = true; myType = 'cito'; }
+        else if (combined.indexOf('community celebration') !== -1 || combined.indexOf('lost and found') !== -1 || combined.indexOf('celebration') !== -1) { isEvent = true; myType = 'cce'; }
+        else if (combined.indexOf('event cache') !== -1 || combined.indexOf('mega') !== -1) { isEvent = true; }
+        if (!isEvent) continue;
+
+        const organizer = (gpTagVal(wpt, 'groundspeak:placed_by') || gpTagVal(wpt, 'placed_by') || 'vieras').trim();
+        let name = gpTagVal(wpt, 'urlname');
+        if (gsCache) name = gpTagVal(gsCache, 'groundspeak:name') || name;
+        const timeRaw = gpTagVal(wpt, 'time') || '';
+        const names = new Set();
+        const logs = gpTagAll(wpt, 'groundspeak:log');
+        for (let j = 0; j < logs.length; j++) {
+            const lt = (gpTagVal(logs[j], 'groundspeak:type') || '').trim().toLowerCase();
+            // Attended-lokit: geocaching.com käyttää "attended", osa vientityökaluista "unknown".
+            // Ohitetaan muut (archived, will attend, write note, maintenance jne.)
+            if (lt !== 'attended' && lt !== 'unknown' && lt !== 'webcam photo taken' && lt !== 'found it') continue;
+            const finder = (gpTagVal(logs[j], 'groundspeak:finder') || '').trim();
+            if (finder) names.add(finder);
+        }
+        const attendeeNames = Array.from(names);
+        out.push({
+            gc: gpTagVal(wpt, 'name') || '',
+            name: name || 'Miitti',
+            date: timeRaw ? timeRaw.split('T')[0] : '',
+            time: timeRaw && timeRaw.indexOf('T') !== -1 ? timeRaw.split('T')[1].slice(0, 5) : '',
+            coords: (wpt.getAttribute('lat') || '') + ', ' + (wpt.getAttribute('lon') || ''),
+            organizer: organizer,
+            type: myType,
+            attendeeNames: attendeeNames,
+            attendeeCount: attendeeNames.length
+        });
+    }
+    return out;
+}
+
+async function importExternalGPX() {
+    const fileInput = document.getElementById('report-ext-file');
+    const statusEl = document.getElementById('report-ext-status');
+    if (!fileInput || !fileInput.files || !fileInput.files.length || !currentUser) return;
+    const file = fileInput.files[0];
+    if (statusEl) statusEl.innerText = 'Luetaan tiedostoa…';
+    try {
+        const text = await file.text();
+        const parsed = parseExternalGPX(text);
+        if (!parsed || !parsed.length) {
+            if (statusEl) statusEl.innerText = 'Tiedostosta ei löytynyt yhtään miittiä.';
+            return;
+        }
+        const orgs = {};
+        parsed.forEach(e => { orgs[e.organizer] = (orgs[e.organizer] || 0) + 1; });
+        const orgSummary = Object.entries(orgs).map(([o, c]) => o + ': ' + c).join(', ');
+        const attendeesTotal = parsed.reduce((s, e) => s + e.attendeeCount, 0);
+        const ok = await customConfirm('Tuo kaverin miitit',
+            'Tiedostosta löytyi ' + parsed.length + ' miittiä (' + orgSummary + ') ja ' + attendeesTotal + ' kävijää lokeista.\n\n' +
+            'Tiedot tallennetaan vain raporttia varten — eivät vaikuta omiin tilastoihisi. Jatketaanko?');
+        if (!ok) { if (statusEl) statusEl.innerText = 'Tuonti peruttu.'; return; }
+
+        const ref = db.ref('miitit/' + currentUser.uid + '/externalEvents');
+        const existing = new Set();
+        (allStatsData.externalEvents || []).forEach(e => { if (e.gc) existing.add((e.gc + '').toUpperCase()); });
+        const updates = {};
+        let added = 0, skipped = 0;
+        parsed.forEach(e => {
+            const key = (e.gc || '').toUpperCase();
+            if (key && existing.has(key)) { skipped++; return; }
+            e.importedAt = Date.now();
+            updates[ref.push().key] = e;
+            added++;
+        });
+        if (added > 0) await ref.update(updates);
+
+        // Päivitä muistissa oleva lista
+        const snap = await ref.once('value');
+        const fresh = [];
+        snap.forEach(c => { const e = c.val() || {}; e.key = c.key; if (!Array.isArray(e.attendeeNames)) e.attendeeNames = []; e.attendeeCount = e.attendeeNames.length; fresh.push(e); });
+        allStatsData.externalEvents = fresh;
+        populateReportFilters(allStatsData.events);
+        renderExternalList();
+        fileInput.value = '';
+        const btn = document.getElementById('btn-import-ext');
+        if (btn) btn.disabled = true;
+        if (statusEl) statusEl.innerText = '';
+        await showInfo('Tuonti valmis',
+            'Tuotiin ' + added + ' miittiä (' + orgSummary + ')' +
+            (skipped ? '\nOhitettiin ' + skipped + ' jo tuotua (sama GC-koodi).' : '') +
+            '\n\nValitse raporttiin järjestäjä-suodattimesta "' + Object.keys(orgs)[0] + '" tai "Kaikki järjestäjät".');
+    } catch (e) {
+        console.error('GPX-tuonti epäonnistui:', e);
+        if (statusEl) statusEl.innerText = 'Tuonti epäonnistui: ' + e.message;
+    }
+}
+
+function renderExternalList() {
+    const el = document.getElementById('report-ext-list');
+    if (!el) return;
+    const evts = allStatsData.externalEvents || [];
+    if (!evts.length) { el.innerHTML = ''; return; }
+    const byOrg = {};
+    evts.forEach(e => { const k = e.organizer || 'vieras'; byOrg[k] = (byOrg[k] || 0) + 1; });
+    el.innerHTML = Object.keys(byOrg).sort().map(o =>
+        '<div style="display:flex; align-items:center; justify-content:space-between; padding:4px 0; font-size:0.9em;">' +
+        '<span>👤 ' + escapeHtml(o) + ' — ' + byOrg[o] + ' miittiä</span>' +
+        '<button class="btn btn-small ext-del" data-org="' + escapeHtml(o) + '" style="width:auto; min-width:auto; margin:0; padding:6px 12px; background:#b3402a; color:#fff;">Poista</button></div>'
+    ).join('');
+    el.querySelectorAll('.ext-del').forEach(b => {
+        b.onclick = () => removeExternalOrganizer(b.getAttribute('data-org'));
+    });
+}
+
+async function removeExternalOrganizer(org) {
+    if (!currentUser) return;
+    const evts = (allStatsData.externalEvents || []).filter(e => (e.organizer || '') === org);
+    const ok = await customConfirm('Poista tuodut miitit',
+        'Poistetaanko järjestäjän "' + org + '" ' + evts.length + ' miittiä raporttidatasta pysyvästi?');
+    if (!ok) return;
+    const updates = {};
+    evts.forEach(e => { updates[e.key] = null; });
+    await db.ref('miitit/' + currentUser.uid + '/externalEvents').update(updates);
+    allStatsData.externalEvents = (allStatsData.externalEvents || []).filter(e => (e.organizer || '') !== org);
+    populateReportFilters(allStatsData.events);
+    renderExternalList();
+    showToast('Järjestäjän ' + org + ' tiedot poistettu.', 'success');
 }
 
 function rptDateFi(iso) {
@@ -2221,7 +2417,8 @@ function rptDateFi(iso) {
 window.runMiittiReport = function() {
     const out = document.getElementById('report-output');
     if (!out) return;
-    const events = Array.isArray(allStatsData.events) ? allStatsData.events : [];
+    const ownEvents = Array.isArray(allStatsData.events) ? allStatsData.events : [];
+    const extEvents = Array.isArray(allStatsData.externalEvents) ? allStatsData.externalEvents : [];
 
     const place = ((document.getElementById('report-place') || {}).value || '').trim().toLowerCase();
     const locVal = ((document.getElementById('report-location') || {}).value || '').trim();
@@ -2229,11 +2426,19 @@ window.runMiittiReport = function() {
     const fromVal = (document.getElementById('report-date-from') || {}).value || '';
     const toVal = (document.getElementById('report-date-to') || {}).value || '';
     const typeVal = (document.getElementById('report-type') || {}).value || '';
+    const orgVal = (document.getElementById('report-organizer') || {}).value || '';
     const inclCancelled = !!(document.getElementById('report-include-cancelled') || {}).checked;
     const coordsRaw = ((document.getElementById('report-coords') || {}).value || '').trim();
     const radiusM = parseInt(((document.getElementById('report-radius') || {}).value || '200'), 10) || 200;
     const center = coordsRaw ? parseReportCoords(coordsRaw) : null;
     const coordsFailed = !!(coordsRaw && !center);
+
+    // Omat + ulkoiset miitit samaan listaan (_org erottaa järjestäjän)
+    let reportEvents = ownEvents.map(e => Object.assign({}, e, { _org: '' }))
+        .concat(extEvents.map(e => Object.assign({}, e, { _org: e.organizer || 'vieras' })));
+    if (orgVal === '__own__') reportEvents = reportEvents.filter(e => !e._org);
+    else if (orgVal) reportEvents = reportEvents.filter(e => e._org === orgVal);
+    const events = reportEvents;
 
     // Sanapohjainen haku: sanajärjestys vapaa, >=4-kirjaimisille hyväksytään 4-merkin vartalo (nastolan -> nastola)
     const queryWords = place ? place.split(/\s+/).filter(Boolean) : [];
@@ -2281,6 +2486,8 @@ window.runMiittiReport = function() {
     if (yearVal) filterBits.push('Vuosi: ' + yearVal);
     if (fromVal || toVal) filterBits.push('Aikaväli: ' + (fromVal ? rptDateFi(fromVal) : 'alku') + ' - ' + (toVal ? rptDateFi(toVal) : 'loppu'));
     if (typeVal) filterBits.push('Tyyppi: ' + typeVal);
+    if (orgVal === '__own__') filterBits.push('Järjestäjä: vain omat');
+    else if (orgVal) filterBits.push('Järjestäjä: ' + orgVal);
     if (center) filterBits.push('≤ ' + (radiusM >= 1000 ? (radiusM / 1000) + ' km' : radiusM + ' m') + ' koordinaateista ' + coordsRaw);
     if (coordsFailed) filterBits.push('⚠ Koordinaatteja ei tunnistettu — säderajausta ei käytetty');
     if (!inclCancelled) filterBits.push('Perutut ohitettu');
@@ -2303,13 +2510,15 @@ window.runMiittiReport = function() {
 
     // Taulukko, vuosiväliotsikot jos useampi vuosi
     const multiYear = (new Set(rows.map(e => (e.date || '').slice(0, 4)))).size > 1;
+    const showOrgCol = rows.some(e => e._org);
+    const colCount = showOrgCol ? 8 : 7;
     let bodyHtml = '';
     let lastYear = '';
     rows.forEach((evt, i) => {
         const yr = (evt.date || '').slice(0, 4);
         if (multiYear && yr !== lastYear) {
             lastYear = yr;
-            bodyHtml += '<tr class="rpt-year-row"><td colspan="7">' + escapeHtml(yr) + '</td></tr>';
+            bodyHtml += '<tr class="rpt-year-row"><td colspan="' + colCount + '">' + escapeHtml(yr) + '</td></tr>';
         }
         const cancelled = (evt.name || '').indexOf('/ PERUTTU /') !== -1;
         bodyHtml += '<tr' + (cancelled ? ' class="rpt-cancelled"' : '') + '>' +
@@ -2319,8 +2528,16 @@ window.runMiittiReport = function() {
             '<td>' + escapeHtml(evt.name || '-') + '</td>' +
             '<td>' + escapeHtml(evt.gc || evt.gcCode || '') + '</td>' +
             '<td>' + escapeHtml((evt.location || evt.loc || '') + '') + '</td>' +
+            (showOrgCol ? '<td>' + escapeHtml(evt._org || '') + '</td>' : '') +
             '<td class="rpt-num">' + (evt.attendeeCount || 0) + '</td></tr>';
     });
+
+    // Järjestäjäerittely meta-riville kun mukana useampi lähde
+    if (showOrgCol) {
+        const byOrg = {};
+        rows.forEach(e => { const k = e._org || 'Omat'; byOrg[k] = (byOrg[k] || 0) + 1; });
+        filterBits.push('Erittely: ' + Object.entries(byOrg).map(([k, v]) => k + ' ' + v).join(' · '));
+    }
 
     const firstDate = rows[0].date || '';
     const lastDate = rows[rows.length - 1].date || '';
@@ -2342,11 +2559,12 @@ window.runMiittiReport = function() {
                 (bestEvt ? '<div class="rpt-sum-item"><div class="rpt-sum-label">Eniten kävijöitä</div><div class="rpt-sum-value">' + (bestEvt.attendeeCount || 0) + '</div><div class="rpt-sum-sub">' + escapeHtml(bestEvt.name || '') + '</div></div>' : '') +
             '</div>' +
             '<div class="rpt-table-wrap"><table class="rpt-table"><thead><tr>' +
-                '<th class="rpt-num">#</th><th>Päivämäärä</th><th>Klo</th><th>Miitti</th><th>GC</th><th>Paikka</th><th class="rpt-num">Kävijät</th>' +
+                '<th class="rpt-num">#</th><th>Päivämäärä</th><th>Klo</th><th>Miitti</th><th>GC</th><th>Paikka</th>' +
+                (showOrgCol ? '<th>Järjestäjä</th>' : '') + '<th class="rpt-num">Kävijät</th>' +
             '</tr></thead><tbody>' + bodyHtml + '</tbody>' +
             '<tfoot>' +
-                '<tr class="rpt-total"><td colspan="6">YHTEENSÄ</td><td class="rpt-num">' + totalVisitors + '</td></tr>' +
-                '<tr class="rpt-total"><td colspan="6">Keskiarvo / miitti</td><td class="rpt-num">' + avg.toFixed(1).replace('.', ',') + '</td></tr>' +
+                '<tr class="rpt-total"><td colspan="' + (colCount - 1) + '">YHTEENSÄ</td><td class="rpt-num">' + totalVisitors + '</td></tr>' +
+                '<tr class="rpt-total"><td colspan="' + (colCount - 1) + '">Keskiarvo / miitti</td><td class="rpt-num">' + avg.toFixed(1).replace('.', ',') + '</td></tr>' +
             '</tfoot></table></div>' +
             '<div class="rpt-foot">Luotu MK Miittikirjalla · ' + escapeHtml(genStamp) + '</div>' +
         '</div>';
