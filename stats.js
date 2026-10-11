@@ -2355,18 +2355,43 @@ async function importExternalGPX() {
         if (!ok) { if (statusEl) statusEl.innerText = 'Tuonti peruttu.'; return; }
 
         const ref = db.ref('miitit/' + currentUser.uid + '/externalEvents');
-        const existing = new Set();
-        (allStatsData.externalEvents || []).forEach(e => { if (e.gc) existing.add((e.gc + '').toUpperCase()); });
+        const existingByGc = new Map();
+        (allStatsData.externalEvents || []).forEach(e => { if (e.gc) existingByGc.set((e.gc + '').toUpperCase(), e); });
         const updates = {};
-        let added = 0, skipped = 0;
+        let added = 0, merged = 0, skipped = 0;
         parsed.forEach(e => {
             const key = (e.gc || '').toUpperCase();
-            if (key && existing.has(key)) { skipped++; return; }
+            const old = key ? existingByGc.get(key) : null;
+            if (old) {
+                // Käsin korjattua kävijämäärää (override) ei kosketa koskaan
+                if (old.attendeeCountOverride != null) { skipped++; return; }
+                // Yhdistä löytäjät päällekkäin — uusi GPX saa vain lisätä nimiä, ei koskaan poistaa
+                const mergedNames = old.attendeeNames.slice();
+                const seen = new Set(old.attendeeNames.map(n => normalizeNickname(n)));
+                let addedNames = 0;
+                e.attendeeNames.forEach(n => {
+                    const k = normalizeNickname(n);
+                    if (k && !seen.has(k)) { seen.add(k); mergedNames.push(n); addedNames++; }
+                });
+                updates[old.key] = {
+                    name: e.name || old.name,
+                    date: e.date || old.date,
+                    time: e.time || old.time,
+                    coords: e.coords || old.coords,
+                    type: e.type || old.type,
+                    organizer: e.organizer || old.organizer,
+                    attendeeNames: mergedNames,
+                    attendeeCount: mergedNames.length,
+                    importedAt: Date.now()
+                };
+                if (addedNames) merged++; else skipped++;
+                return;
+            }
             e.importedAt = Date.now();
             updates[ref.push().key] = e;
             added++;
         });
-        if (added > 0) await ref.update(updates);
+        if (added + merged > 0) await ref.update(updates);
 
         // Päivitä muistissa oleva lista
         const snap = await ref.once('value');
@@ -2380,9 +2405,10 @@ async function importExternalGPX() {
         if (btn) btn.disabled = true;
         if (statusEl) statusEl.innerText = '';
         await showInfo('Tuonti valmis',
-            'Tuotiin ' + added + ' miittiä (' + orgSummary + ')' +
-            (skipped ? '\nOhitettiin ' + skipped + ' jo tuotua (sama GC-koodi).' : '') +
-            '\n\nValitse raporttiin järjestäjä-suodattimesta "' + Object.keys(orgs)[0] + '" tai "Kaikki järjestäjät".');
+            'Tuotiin ' + added + ' uutta miittiä (' + orgSummary + ')' +
+            (merged ? '\nPäivitettiin ' + merged + ' aiemmin tuotua — lisättiin löytäjiä lokeista.' : '') +
+            (skipped ? '\nOhitettiin ' + skipped + ' (ei uusia löytäjiä tai käsin korjattu määrä).' : '') +
+            '\n\nValitse raporttiin järjestäjät-ruksista haluamasi kombinaatio.');
     } catch (e) {
         console.error('GPX-tuonti epäonnistui:', e);
         const denied = e && (e.code === 'PERMISSION_DENIED' || /permission.denied/i.test(e.message || ''));
