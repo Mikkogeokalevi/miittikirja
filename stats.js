@@ -2421,20 +2421,27 @@ async function importExternalGPX() {
 function renderExternalList() {
     const el = document.getElementById('report-ext-list');
     if (!el) return;
+    // Säilytä avoimet järjestäjäryhmät renderöinnin yli (muokkaus palaa samaan näkymään)
+    const openOrgs = new Set();
+    el.querySelectorAll('details[data-org]').forEach(d => { if (d.open) openOrgs.add(d.getAttribute('data-org')); });
     const evts = allStatsData.externalEvents || [];
     if (!evts.length) { el.innerHTML = ''; return; }
     const byOrg = {};
     evts.forEach(e => { const k = e.organizer || 'vieras'; (byOrg[k] = byOrg[k] || []).push(e); });
     el.innerHTML = Object.keys(byOrg).sort().map(o => {
         const list = byOrg[o].slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-        const rows = list.map(e =>
-            '<div style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:3px 0; font-size:0.85em;">' +
+        const rows = list.map(e => {
+            const gcLink = e.gc
+                ? ' <a href="https://www.geocaching.com/geocache/' + encodeURIComponent(e.gc) + '" target="_blank" rel="noopener" style="color:var(--primary-color); font-size:0.8em; text-decoration:none;">' + escapeHtml(e.gc) + '</a>'
+                : '';
+            return '<div style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:3px 0; font-size:0.85em;">' +
             '<span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-color);">' +
-            escapeHtml(rptDateFi(e.date)) + ' · ' + escapeHtml(e.name || 'Miitti') + ' · 👤' + (e.attendeeCount || 0) + '</span>' +
+            escapeHtml(rptDateFi(e.date)) + ' · ' + escapeHtml(e.name || 'Miitti') + gcLink + ' · 👤' + (e.attendeeCount || 0) + '</span>' +
             '<button class="btn btn-small ext-edit" data-key="' + e.key + '" style="width:auto; min-width:auto; min-height:36px; margin:0; padding:4px 10px;" title="Muokkaa">✏️</button>' +
             '<button class="btn btn-small ext-del" data-key="' + e.key + '" style="width:auto; min-width:auto; min-height:36px; margin:0; padding:4px 10px; background:#b3402a; color:#fff;" title="Poista">🗑</button>' +
-            '</div>').join('');
-        return '<details style="margin:6px 0;"><summary style="cursor:pointer; font-size:0.9em; color:var(--text-color); padding:4px 0;">👤 ' +
+            '</div>';
+        }).join('');
+        return '<details data-org="' + escapeHtml(o) + '" style="margin:6px 0;"' + (openOrgs.has(o) ? ' open' : '') + '><summary style="cursor:pointer; font-size:0.9em; color:var(--text-color); padding:4px 0;">👤 ' +
             escapeHtml(o) + ' — ' + list.length + ' miittiä</summary>' +
             '<div style="margin:4px 0 8px 12px;">' + rows +
             '<button class="btn btn-small ext-del-org" data-org="' + escapeHtml(o) + '" style="width:auto; min-width:auto; margin-top:6px; padding:6px 12px; background:#b3402a; color:#fff;">Poista kaikki (' + escapeHtml(o) + ')</button>' +
