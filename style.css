@@ -2724,3 +2724,36 @@ body.theme-light .form-error { color: #B22222; }
     .wall-feed-box { max-width: 100%; max-height: 38vh; }
     .wall-chip { font-size: 0.9em; padding: 6px 10px; }
 }
+
+/* QR-portti + statistiikkapalkki */
+#wall-qr-wrap { position: relative; display: inline-block; }
+#wall-qr-mask {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13, 27, 42, 0.93);
+    border-radius: 12px;
+    border: 3px dashed #ff7b9c;
+    cursor: pointer;
+    color: #ff7b9c;
+    z-index: 3;
+}
+.wall-qr-mask-x { font-size: 3em; font-weight: 900; line-height: 1; }
+.wall-qr-mask-text { font-size: 0.8em; margin-top: 8px; color: #ffd9a0; font-weight: bold; text-align: center; padding: 0 6px; }
+.wall-qr-mask-hint { font-size: 0.65em; color: rgba(255,255,255,0.55); margin-top: 6px; }
+#wall-ticker {
+    text-align: center;
+    min-height: 1.5em;
+    padding: 6px 12px;
+    font-size: 1.1em;
+    color: #9bf6ff;
+    letter-spacing: 0.5px;
+}
+.wall-ticker-swap { animation: wallTickerIn 0.5s ease-out; }
+@keyframes wallTickerIn {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+}

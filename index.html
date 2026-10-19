@@ -577,9 +577,17 @@
                     <div id="wall-feed"></div>
                 </div>
             </div>
+            <div id="wall-ticker"></div>
             <div class="wall-corners">
                 <div class="wall-corner wall-corner-qr">
-                    <div id="wall-qr" class="wall-qr-box"></div>
+                    <div id="wall-qr-wrap">
+                        <div id="wall-qr" class="wall-qr-box"></div>
+                        <div id="wall-qr-mask" title="Napauta näyttääksesi QR-koodin ennenaikaisesti">
+                            <div class="wall-qr-mask-x">✕</div>
+                            <div class="wall-qr-mask-text" id="wall-qr-mask-text"></div>
+                            <div class="wall-qr-mask-hint">napauta avataksesi jo nyt</div>
+                        </div>
+                    </div>
                     <div class="wall-qr-text">Skannaa & kirjaudu</div>
                 </div>
                 <div class="wall-corner wall-corner-info" id="wall-info"></div>

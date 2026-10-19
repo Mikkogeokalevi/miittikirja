@@ -18,7 +18,13 @@ var mkWall = {
     weather: null,
     eventTimes: {},
     liveTimer: null,
-    allEvents: []
+    allEvents: [],
+    qrManual: false,
+    tickerTimer: null,
+    lastTickerIdx: -1,
+    ordinal: 0,
+    ordLabel: '',
+    nextEvent: null
 };
 
 function mkWallSortKey(e) {
@@ -98,6 +104,21 @@ function updateWallLive() {
     }
     if (mkWall.weather) parts.push(mkWall.weather.icon + ' ' + mkWall.weather.temp + '°C');
     el.innerText = parts.join('    ·    ');
+    updateWallQrMask();
+}
+
+// QR näkyy vasta kun miitti alkaa — tai jos käyttäjä on avannut manuaalisesti
+function updateWallQrMask() {
+    var mask = document.getElementById('wall-qr-mask');
+    if (!mask) return;
+    var t = mkWall.eventTimes || {};
+    var started = !t.start || new Date() >= t.start;
+    var show = started || mkWall.qrManual;
+    mask.style.display = show ? 'none' : 'flex';
+    var txt = document.getElementById('wall-qr-mask-text');
+    if (!show && txt) {
+        txt.innerText = t.start ? 'Avautuu ' + mkWallDur(t.start - new Date()) : 'Kirjautuminen avautuu miitin alkaessa';
+    }
 }
 
 function fetchWallWeather(ev) {
@@ -201,11 +222,13 @@ function renderWallFrame() {
         same.sort(function (a, b) { return mkWallSortKey(a) < mkWallSortKey(b) ? -1 : 1; });
         var ord = 0;
         for (var i = 0; i < same.length; i++) { if (same[i].key === ev.key) ord = i + 1; }
+        mkWall.ordinal = ord;
         if (ord > 0) {
             var nick = (typeof MK_Config !== 'undefined' && MK_Config.OWNER_NICK) ? MK_Config.OWNER_NICK : 'Järjestäjä';
             var label = ty === 'cito' ? 'CITO' : (ty === 'cce' ? 'JUHLA' : 'MIITTI');
+            mkWall.ordLabel = nick + 'N ' + ord + '. ' + label;
             badge.style.display = 'inline-block';
-            badge.innerText = nick.toUpperCase() + 'N ' + ord + '. ' + label;
+            badge.innerText = mkWall.ordLabel.toUpperCase();
         } else {
             badge.style.display = 'none';
         }
@@ -226,9 +249,11 @@ function renderWallFrame() {
     for (var i = 0; i < sorted.length; i++) { if (sorted[i].key === ev.key) idx = i; }
     if (idx >= 0 && idx < sorted.length - 1) {
         var n = sorted[idx + 1];
+        mkWall.nextEvent = n;
         nextEl.style.display = 'block';
         nextEl.innerText = 'SEURAAVAKSI: ' + (n.name || 'Miitti') + '  ·  ' + mkWallDate(n.date) + '  ' + (n.time || '');
     } else {
+        mkWall.nextEvent = null;
         nextEl.style.display = 'none';
     }
 
@@ -238,6 +263,12 @@ function renderWallFrame() {
     if (mkWall.liveTimer) clearInterval(mkWall.liveTimer);
     mkWall.liveTimer = setInterval(updateWallLive, 15000);
     fetchWallWeather(ev);
+    updateWallQrMask();
+
+    // Pyörivä statistiikkapalkki
+    if (mkWall.tickerTimer) clearInterval(mkWall.tickerTimer);
+    mkWall.tickerTimer = setInterval(updateWallTicker, 12000);
+    updateWallTicker();
 
     var q = document.getElementById('wall-qr');
     if (q && typeof QRCode !== 'undefined') {
@@ -353,6 +384,73 @@ function wallConfetti() {
     }
 }
 
+// --- Pyörivä statistiikkapalkki: satunnaisia faktatietoja 12 s välein ---
+function wallTickerMessages() {
+    var msgs = [];
+    var ev = mkWall.event || {};
+    var isSeries = mkWall.seriesEvents.length > 1;
+    var logs = mkWall.logs.slice().sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
+
+    if (logs.length) {
+        var l0 = logs[0];
+        msgs.push('🆕 Uusin kirjautuja: ' + (l0.nickname || '?') + (l0.from ? ' · ' + l0.from : ''));
+        var msgN = 0, places = {}, per = {};
+        logs.forEach(function (l) {
+            if (l.message) msgN++;
+            if (l.from) places[l.from] = 1;
+            if (l.nickname) {
+                var k = l.nickname.toLowerCase();
+                per[k] = per[k] || { name: l.nickname, evs: {} };
+                per[k].evs[l.eventKey] = 1;
+            }
+        });
+        if (msgN) msgs.push('💬 ' + msgN + ' tervehdystä kirjoitettu vieraskirjaan');
+        var pc = Object.keys(places).length;
+        if (pc > 1) msgs.push('📍 Kirjautujia ' + pc + ' eri paikkakunnalta');
+        if (isSeries) {
+            var top = null, topN = 0;
+            Object.keys(per).forEach(function (k) {
+                var c = Object.keys(per[k].evs).length;
+                if (c > topN) { topN = c; top = per[k].name; }
+            });
+            if (top && topN > 1) msgs.push('🔥 Sarjan ahkerin vieras: ' + top + ' — ' + topN + ' vuoroa');
+        }
+        var first = logs[logs.length - 1];
+        if (first && first.nickname && logs.length > 1) msgs.push('🥇 Avauskirjauksen teki ' + first.nickname);
+        if (l0.message) msgs.push('📢 "' + l0.message.slice(0, 60) + '"' + (l0.message.length > 60 ? '…' : '') + ' — ' + l0.nickname);
+    } else {
+        msgs.push('🎪 Vieraskirja odottaa ensimmäistä kirjautujaa…');
+        var st = mkWall.eventTimes.start;
+        if (st && st > new Date()) msgs.push('⏳ Kirjautuminen avautuu ' + mkWallDur(st - new Date()) + ' päästä');
+    }
+
+    if (isSeries) {
+        var tot = 0;
+        mkWall.seriesEvents.forEach(function (e) { tot += (mkWall.counts[e.key] || 0); });
+        msgs.push('📊 Sarjassa yhteensä ' + tot + ' kävijää');
+        msgs.push('🎖️ Vuoro ' + mkWall.vuoro + ' / ' + mkWall.seriesEvents.length);
+    }
+    if (mkWall.ordinal > 0) msgs.push('📈 Tämä on ' + mkWall.ordLabel);
+    if (mkWall.weather) msgs.push(mkWall.weather.icon + ' Ulkona nyt ' + mkWall.weather.temp + '°C');
+    if (mkWall.nextEvent) msgs.push('➡️ Seuraavaksi: ' + mkWall.nextEvent.name + ' ' + (mkWall.nextEvent.time || ''));
+    msgs.push('📱 Skannaa QR-koodi ja kirjaudu vieraskirjaan!');
+    return msgs;
+}
+
+function updateWallTicker() {
+    var el = document.getElementById('wall-ticker');
+    if (!el || !mkWall.open) return;
+    var msgs = wallTickerMessages();
+    if (!msgs.length) return;
+    var idx = Math.floor(Math.random() * msgs.length);
+    if (msgs.length > 1 && idx === mkWall.lastTickerIdx) idx = (idx + 1) % msgs.length;
+    mkWall.lastTickerIdx = idx;
+    el.innerText = msgs[idx];
+    el.classList.remove('wall-ticker-swap');
+    void el.offsetWidth;
+    el.classList.add('wall-ticker-swap');
+}
+
 function closeWall() {
     mkWall.open = false;
     mkWall.logRefs.forEach(function (r) { try { r.off(); } catch (e) {} });
@@ -361,7 +459,10 @@ function closeWall() {
     mkWall.logs = [];
     mkWall.lastTotal = null;
     mkWall.weather = null;
+    mkWall.qrManual = false;
+    mkWall.lastTickerIdx = -1;
     if (mkWall.liveTimer) { clearInterval(mkWall.liveTimer); mkWall.liveTimer = null; }
+    if (mkWall.tickerTimer) { clearInterval(mkWall.tickerTimer); mkWall.tickerTimer = null; }
     var view = document.getElementById('wall-view');
     if (view) view.style.display = 'none';
     if (mkWall.wakeLock && mkWall.wakeLock.release) {
@@ -381,3 +482,16 @@ if (wallCloseBtn) wallCloseBtn.onclick = closeWall;
 document.addEventListener('keydown', function (e) {
     if (mkWall.open && e.key === 'Escape') closeWall();
 });
+
+// QR-alueen napautus: ennen alkua vaihtaa manuaalista näyttöä/piilottamista
+var wallQrWrap = document.getElementById('wall-qr-wrap');
+if (wallQrWrap) {
+    wallQrWrap.onclick = function () {
+        var t = mkWall.eventTimes || {};
+        var started = !t.start || new Date() >= t.start;
+        if (!started) {
+            mkWall.qrManual = !mkWall.qrManual;
+            updateWallQrMask();
+        }
+    };
+}
