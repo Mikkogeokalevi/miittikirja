@@ -14,7 +14,11 @@ var mkWall = {
     seriesEvents: [],
     vuoro: 0,
     lastTotal: null,
-    wakeLock: null
+    wakeLock: null,
+    weather: null,
+    eventTimes: {},
+    liveTimer: null,
+    allEvents: []
 };
 
 function mkWallSortKey(e) {
@@ -24,6 +28,87 @@ function mkWallSortKey(e) {
 function mkWallDate(d) {
     var p = (d || '').split('-');
     return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : (d || '');
+}
+
+function mkWallParseCoords(str) {
+    if (!str) return null;
+    var s = String(str).trim();
+    var m = s.match(/([NSns])\s*(\d+)\s*°?\s*([\d\.,]+)\s*([EWew])\s*(\d+)\s*°?\s*([\d\.,]+)/);
+    if (m) {
+        var lat = parseInt(m[2], 10) + parseFloat(m[3].replace(',', '.')) / 60;
+        if (m[1].toUpperCase() === 'S') lat = -lat;
+        var lon = parseInt(m[5], 10) + parseFloat(m[6].replace(',', '.')) / 60;
+        if (m[4].toUpperCase() === 'W') lon = -lon;
+        return [lat, lon];
+    }
+    m = s.match(/(-?\d+[\.,]\d+)\s*[,;\s]\s*(-?\d+[\.,]\d+)/);
+    if (m) return [parseFloat(m[1].replace(',', '.')), parseFloat(m[2].replace(',', '.'))];
+    return null;
+}
+
+// Miitin alku/loppu: time-kentässä voi olla "20:30 - 21:00" tai pelkkä alku
+function mkWallEventTimes(ev) {
+    var times = (ev.time || '').match(/\d{1,2}[:.]\d{2}/g) || [];
+    function toDate(hm) {
+        if (!ev.date || !hm) return null;
+        var p = hm.replace('.', ':').split(':');
+        var d = new Date(ev.date + 'T00:00:00');
+        d.setHours(parseInt(p[0], 10), parseInt(p[1], 10), 0, 0);
+        return d;
+    }
+    return { start: toDate(times[0] || null), end: toDate(times[1] || null) };
+}
+
+function mkWallDur(ms) {
+    var mins = Math.round(ms / 60000);
+    if (mins < 60) return mins + ' MIN';
+    var h = Math.floor(mins / 60);
+    return h + ' H ' + (mins % 60) + ' MIN';
+}
+
+function mkWmoIcon(c) {
+    if (c === 0) return '☀️';
+    if (c <= 3) return '⛅';
+    if (c === 45 || c === 48) return '🌫️';
+    if (c >= 51 && c <= 57) return '🌦️';
+    if (c >= 61 && c <= 67) return '🌧️';
+    if (c >= 71 && c <= 77) return '🌨️';
+    if (c >= 80 && c <= 82) return '🌦️';
+    if (c >= 85 && c <= 86) return '🌨️';
+    if (c >= 95) return '⛈️';
+    return '🌤️';
+}
+
+function updateWallLive() {
+    var el = document.getElementById('wall-live');
+    if (!el || !mkWall.open) return;
+    var now = new Date();
+    var parts = ['⏰ ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2)];
+    var t = mkWall.eventTimes || {};
+    if (t.start) {
+        if (now < t.start) {
+            parts.push('ALKAA ' + mkWallDur(t.start - now) + ' PÄÄSTÄ');
+        } else if (t.end && now <= t.end) {
+            parts.push('KÄYNNISSÄ — loppuun ' + mkWallDur(t.end - now));
+        } else if (t.end) {
+            parts.push('PÄÄTTYNYT');
+        } else {
+            parts.push('KÄYNNISSÄ');
+        }
+    }
+    if (mkWall.weather) parts.push(mkWall.weather.icon + ' ' + mkWall.weather.temp + '°C');
+    el.innerText = parts.join('    ·    ');
+}
+
+function fetchWallWeather(ev) {
+    var ll = mkWallParseCoords(ev.coords);
+    if (!ll) return;
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + ll[0].toFixed(5) + '&longitude=' + ll[1].toFixed(5) + '&current=temperature_2m,weather_code&timezone=auto';
+    fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+        if (!mkWall.open || !j || !j.current) return;
+        mkWall.weather = { temp: Math.round(j.current.temperature_2m), icon: mkWmoIcon(j.current.weather_code) };
+        updateWallLive();
+    }).catch(function () {});
 }
 
 function openWall() {
@@ -133,6 +218,27 @@ function renderWallFrame() {
     if (ev.gc) meta.push(ev.gc);
     document.getElementById('wall-info').innerText = meta.join('  ·  ');
 
+    // Seuraava vuoro (sarjassa) tai seuraava miitti (muuten)
+    var nextEl = document.getElementById('wall-next');
+    var scope = isSeries ? mkWall.seriesEvents : (mkWall.allEvents || [ev]);
+    var sorted = scope.slice().sort(function (a, b) { return mkWallSortKey(a) < mkWallSortKey(b) ? -1 : 1; });
+    var idx = -1;
+    for (var i = 0; i < sorted.length; i++) { if (sorted[i].key === ev.key) idx = i; }
+    if (idx >= 0 && idx < sorted.length - 1) {
+        var n = sorted[idx + 1];
+        nextEl.style.display = 'block';
+        nextEl.innerText = 'SEURAAVAKSI: ' + (n.name || 'Miitti') + '  ·  ' + mkWallDate(n.date) + '  ' + (n.time || '');
+    } else {
+        nextEl.style.display = 'none';
+    }
+
+    // Live-rivi: kello + countdown + sää
+    mkWall.eventTimes = mkWallEventTimes(ev);
+    updateWallLive();
+    if (mkWall.liveTimer) clearInterval(mkWall.liveTimer);
+    mkWall.liveTimer = setInterval(updateWallLive, 15000);
+    fetchWallWeather(ev);
+
     var q = document.getElementById('wall-qr');
     if (q && typeof QRCode !== 'undefined') {
         q.innerHTML = '';
@@ -222,6 +328,8 @@ function closeWall() {
     mkWall.counts = {};
     mkWall.logs = [];
     mkWall.lastTotal = null;
+    mkWall.weather = null;
+    if (mkWall.liveTimer) { clearInterval(mkWall.liveTimer); mkWall.liveTimer = null; }
     var view = document.getElementById('wall-view');
     if (view) view.style.display = 'none';
     if (mkWall.wakeLock && mkWall.wakeLock.release) {
