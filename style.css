@@ -2637,3 +2637,15 @@ body.theme-light .form-error { color: #B22222; }
     .wall-qr-box { padding: 6px; }
     .wall-corner-info { font-size: 0.8em; }
 }
+
+/* Sarjamodaalin rivit */
+.series-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    min-height: 44px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+.series-row input[type="checkbox"] { width: 22px; height: 22px; flex-shrink: 0; }

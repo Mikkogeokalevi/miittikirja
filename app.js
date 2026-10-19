@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.44.0";
+const APP_VERSION = "7.45.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1614,6 +1614,94 @@ window.openEditModal = function(key) {
     });
 };
 
+// --- Miittisarjat: nimeä ja valitse miitit yhdellä silmäyksellä ---
+window.openSeriesModal = function() {
+    if (!currentUser) return;
+    db.ref('miitit/' + currentUser.uid + '/events').once('value').then(snap => {
+        const evs = [];
+        snap.forEach(c => { const v = c.val() || {}; v.key = c.key; evs.push(v); });
+        evs.sort((a, b) => ((a.date || '') + 'T' + (a.time || '00:00')) < ((b.date || '') + 'T' + (b.time || '00:00')) ? -1 : 1);
+        window.__seriesAllEvents = evs;
+        document.getElementById('series-name').value = '';
+        renderSeriesChips(evs);
+        renderSeriesEventList('');
+        document.getElementById('series-modal').style.display = 'block';
+    });
+};
+
+function renderSeriesChips(evs) {
+    const box = document.getElementById('series-existing');
+    if (!box) return;
+    const names = {};
+    evs.forEach(e => { if (e.series) names[e.series] = (names[e.series] || 0) + 1; });
+    const keys = Object.keys(names);
+    if (!keys.length) {
+        box.innerHTML = '<small style="color:var(--text-muted);">Ei sarjoja vielä — anna nimi ja ruksaa miitit alle.</small>';
+        return;
+    }
+    box.innerHTML = '<small style="display:block; color:var(--text-muted); margin-bottom:4px;">Olemassa olevat (napauta muokataksesi):</small>';
+    keys.forEach(n => {
+        const b = document.createElement('button');
+        b.className = 'btn btn-small btn-gray';
+        b.style.margin = '0 6px 6px 0';
+        b.innerText = n + ' (' + names[n] + ')';
+        b.onclick = () => {
+            document.getElementById('series-name').value = n;
+            renderSeriesEventList(n);
+        };
+        box.appendChild(b);
+    });
+}
+
+function renderSeriesEventList(seriesName) {
+    const box = document.getElementById('series-event-list');
+    if (!box) return;
+    box.innerHTML = '';
+    (window.__seriesAllEvents || []).forEach(e => {
+        const lbl = document.createElement('label');
+        lbl.className = 'series-row';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.dataset.key = e.key;
+        cb.checked = !!seriesName && (e.series || '') === seriesName;
+        const s = document.createElement('span');
+        let txt = (e.date || '—') + ' · ' + (e.name || '(nimetön)');
+        if (e.type && e.type !== 'miitti') txt += ' [' + e.type.toUpperCase() + ']';
+        if (e.series && e.series !== seriesName) txt += ' — sarjassa "' + e.series + '"';
+        s.innerText = txt;
+        lbl.appendChild(cb);
+        lbl.appendChild(s);
+        box.appendChild(lbl);
+    });
+}
+
+const btnSaveSeries = document.getElementById('btn-save-series');
+if (btnSaveSeries) {
+    btnSaveSeries.onclick = function() {
+        const name = document.getElementById('series-name').value.trim();
+        if (!name) { showToast('Anna sarjalle nimi', 'error'); return; }
+        const evs = window.__seriesAllEvents || [];
+        const sel = {};
+        document.querySelectorAll('#series-event-list input[type=checkbox]').forEach(cb => {
+            sel[cb.dataset.key] = cb.checked;
+        });
+        const jobs = [];
+        evs.forEach(e => {
+            const cur = e.series || '';
+            if (sel[e.key] && cur !== name) {
+                jobs.push(db.ref('miitit/' + currentUser.uid + '/events/' + e.key).update({ series: name }));
+            } else if (!sel[e.key] && cur === name) {
+                jobs.push(db.ref('miitit/' + currentUser.uid + '/events/' + e.key + '/series').remove());
+            }
+        });
+        Promise.all(jobs).then(() => {
+            const count = evs.filter(e => sel[e.key]).length;
+            closeModal();
+            showToast('Sarja "' + name + '" tallennettu (' + count + ' miittiä)');
+        }).catch(err => showToast('Virhe: ' + err.message, 'error'));
+    };
+}
+
 const btnSaveEdit = document.getElementById('btn-save-edit');
 if (btnSaveEdit) {
     btnSaveEdit.onclick = function() {
@@ -2152,13 +2240,13 @@ if (btnStatsNetImportModal) btnStatsNetImportModal.onclick = () => {
 };
 
 window.closeModal = () => {
-    ['edit-modal','mass-modal','log-edit-modal','confirm-modal','net-import-status-modal','visitor-test-modal','ext-edit-modal'].forEach(id => {
+    ['edit-modal','mass-modal','log-edit-modal','confirm-modal','net-import-status-modal','visitor-test-modal','ext-edit-modal','series-modal'].forEach(id => {
         const el = document.getElementById(id); if(el) el.style.display = "none";
     });
 };
 
 // Modaalien sulkeminen ESC-näppäimellä ja taustaa (backdrop) napauttamalla
-var MK_CLOSABLE_MODALS = ['edit-modal','mass-modal','log-edit-modal','net-import-status-modal','visitor-test-modal','user-profile-modal','ext-edit-modal'];
+var MK_CLOSABLE_MODALS = ['edit-modal','mass-modal','log-edit-modal','net-import-status-modal','visitor-test-modal','user-profile-modal','ext-edit-modal','series-modal'];
 
 function closeModalById(id) {
     if (id === 'confirm-modal') {

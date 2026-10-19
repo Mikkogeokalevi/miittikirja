@@ -58,6 +58,7 @@ function openWall() {
         if (!mkWall.open) return;
         var all = [];
         if (allSnap) allSnap.forEach(function (c) { var v = c.val() || {}; v.key = c.key; all.push(v); });
+        mkWall.allEvents = all;
 
         var seriesEvents = [mkWall.event];
         if (mkWall.event.series) {
@@ -109,7 +110,20 @@ function renderWallFrame() {
         badge.style.display = 'inline-block';
         badge.innerText = (ev.series || 'SARJA') + ' — VUORO ' + mkWall.vuoro + ' / ' + mkWall.seriesEvents.length;
     } else {
-        badge.style.display = 'none';
+        // Yksittäinen miitti: näytä järjestysnumero (esim. "MIKKOKALEVIN 95. MIITTI")
+        var ty = ev.type || 'miitti';
+        var same = (mkWall.allEvents || []).filter(function (e) { return (e.type || 'miitti') === ty; });
+        same.sort(function (a, b) { return mkWallSortKey(a) < mkWallSortKey(b) ? -1 : 1; });
+        var ord = 0;
+        for (var i = 0; i < same.length; i++) { if (same[i].key === ev.key) ord = i + 1; }
+        if (ord > 0) {
+            var nick = (typeof MK_Config !== 'undefined' && MK_Config.OWNER_NICK) ? MK_Config.OWNER_NICK : 'Järjestäjä';
+            var label = ty === 'cito' ? 'CITO' : (ty === 'cce' ? 'JUHLA' : 'MIITTI');
+            badge.style.display = 'inline-block';
+            badge.innerText = nick.toUpperCase() + 'N ' + ord + '. ' + label;
+        } else {
+            badge.style.display = 'none';
+        }
     }
 
     var meta = [];
