@@ -2757,3 +2757,18 @@ body.theme-light .form-error { color: #B22222; }
     0% { opacity: 0; transform: translateY(10px); }
     100% { opacity: 1; transform: translateY(0); }
 }
+
+/* Uutispalkki — vyöryvä teksti oikealta vasemmalle */
+#wall-ticker { overflow: hidden; white-space: nowrap; text-align: left; }
+#wall-ticker-track {
+    display: inline-block;
+    white-space: nowrap;
+    animation-name: wallTickerScroll;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-duration: 30s;
+}
+@keyframes wallTickerScroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}

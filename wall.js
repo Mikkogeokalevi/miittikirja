@@ -105,6 +105,7 @@ function updateWallLive() {
     if (mkWall.weather) parts.push(mkWall.weather.icon + ' ' + mkWall.weather.temp + '°C');
     el.innerText = parts.join('    ·    ');
     updateWallQrMask();
+    updateWallTicker();
 }
 
 // QR näkyy vasta kun miitti alkaa — tai jos käyttäjä on avannut manuaalisesti
@@ -265,9 +266,8 @@ function renderWallFrame() {
     fetchWallWeather(ev);
     updateWallQrMask();
 
-    // Pyörivä statistiikkapalkki
-    if (mkWall.tickerTimer) clearInterval(mkWall.tickerTimer);
-    mkWall.tickerTimer = setInterval(updateWallTicker, 12000);
+    // Uutispalkki (päivittyy datan mukana renderWallData/liveTimer-kutsuilla)
+    mkWall.tickerJoined = null;
     updateWallTicker();
 
     var q = document.getElementById('wall-qr');
@@ -362,6 +362,7 @@ function renderWallData() {
         chip.title = (l.from ? l.from + ' · ' : '') + (t ? ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) : '') + (l.message ? '\n"' + l.message + '"' : '');
         feed.appendChild(chip);
     });
+    updateWallTicker();
 }
 
 function wallConfetti() {
@@ -437,18 +438,25 @@ function wallTickerMessages() {
     return msgs;
 }
 
+// Uutispalkki: tilastot vyöryvät oikealta vasemmalle saumattomana looppina
 function updateWallTicker() {
-    var el = document.getElementById('wall-ticker');
-    if (!el || !mkWall.open) return;
+    var track = document.getElementById('wall-ticker-track');
+    if (!track || !mkWall.open) return;
     var msgs = wallTickerMessages();
     if (!msgs.length) return;
-    var idx = Math.floor(Math.random() * msgs.length);
-    if (msgs.length > 1 && idx === mkWall.lastTickerIdx) idx = (idx + 1) % msgs.length;
-    mkWall.lastTickerIdx = idx;
-    el.innerText = msgs[idx];
-    el.classList.remove('wall-ticker-swap');
-    void el.offsetWidth;
-    el.classList.add('wall-ticker-swap');
+    var joined = msgs.join('      •      ') + '      •      ';
+    if (joined === mkWall.tickerJoined) return; // ei muutoksia — älä keskeytä vyöryä
+    mkWall.tickerJoined = joined;
+    track.innerHTML = '';
+    // Kaksi identtistä palaa — translateX(-50%) tekee saumattoman loopin
+    for (var i = 0; i < 2; i++) {
+        var s = document.createElement('span');
+        s.className = 'wall-ticker-chunk';
+        s.innerText = joined;
+        track.appendChild(s);
+    }
+    var dur = Math.max(15, Math.round(joined.length * 0.16));
+    track.style.animationDuration = dur + 's';
 }
 
 function closeWall() {
