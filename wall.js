@@ -21,11 +21,10 @@ var mkWall = {
     allEvents: [],
     qrManual: false,
     tickerTimer: null,
-    lastTickerIdx: -1,
+    tickerIdx: -1,
     ordinal: 0,
     ordLabel: '',
     nextEvent: null,
-    tickerJoined: null,
     maskVisible: null,
     fxCode: null
 };
@@ -37,6 +36,11 @@ function mkWallSortKey(e) {
 function mkWallDate(d) {
     var p = (d || '').split('-');
     return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : (d || '');
+}
+
+function mkWallClock(d) {
+    var m = d.getMinutes();
+    return d.getHours() + '.' + (m < 10 ? '0' : '') + m;
 }
 
 function mkWallParseCoords(str) {
@@ -115,8 +119,18 @@ function updateWallLive() {
     }
     if (mkWall.weather) parts.push(mkWall.weather.icon + ' ' + mkWall.weather.temp + '°C');
     el.innerText = parts.join('    ·    ');
+    // Uutispalkin säälaatikko: kaupunki + kuvake + lämpö
+    var wcity = document.getElementById('wt-city');
+    if (wcity) {
+        var loc = ((mkWall.event || {}).location || '').split(',')[0].trim();
+        wcity.innerText = loc;
+        var wicon = document.getElementById('wt-icon');
+        var wtemp = document.getElementById('wt-temp');
+        if (wicon) wicon.innerText = mkWall.weather ? mkWall.weather.icon : '';
+        if (wtemp) wtemp.innerText = mkWall.weather ? mkWall.weather.temp + '°' : '';
+    }
     updateWallQrMask();
-    updateWallTicker();
+    updateWallTicker(false);
 }
 
 // QR näkyy vasta kun miitti alkaa — tai jos käyttäjä on avannut manuaalisesti
@@ -385,9 +399,11 @@ function renderWallFrame() {
     fetchWallWeather(ev);
     updateWallQrMask();
 
-    // Uutispalkki (päivittyy datan mukana renderWallData/liveTimer-kutsuilla)
-    mkWall.tickerJoined = null;
-    updateWallTicker();
+    // Uutispalkki: kierto 7 s välein, data päivittyy renderöinnissä
+    mkWall.tickerIdx = -1;
+    if (mkWall.tickerTimer) clearInterval(mkWall.tickerTimer);
+    mkWall.tickerTimer = setInterval(function () { updateWallTicker(true); }, 7000);
+    updateWallTicker(true);
 
     var q = document.getElementById('wall-qr');
     if (q && typeof QRCode !== 'undefined') {
@@ -481,7 +497,9 @@ function renderWallData() {
         chip.title = (l.from ? l.from + ' · ' : '') + (t ? ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) : '') + (l.message ? '\n"' + l.message + '"' : '');
         feed.appendChild(chip);
     });
-    updateWallTicker();
+    // Uusi kirjautuja näkyy palkissa heti (kohta 1 = uusin kirjautuja)
+    mkWall.tickerIdx = -1;
+    updateWallTicker(true);
 }
 
 function wallConfetti() {
@@ -504,16 +522,16 @@ function wallConfetti() {
     }
 }
 
-// --- Pyörivä statistiikkapalkki: satunnaisia faktatietoja 12 s välein ---
+// --- Uutispalkki (MTV-tyyli): faktat kiertävät yksitellen kategorioittain ---
 function wallTickerMessages() {
     var msgs = [];
-    var ev = mkWall.event || {};
     var isSeries = mkWall.seriesEvents.length > 1;
     var logs = mkWall.logs.slice().sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
+    function M(cat, text, ts) { msgs.push({ cat: cat, text: text, time: ts ? mkWallClock(new Date(ts)) : null }); }
 
     if (logs.length) {
         var l0 = logs[0];
-        msgs.push('🆕 Uusin kirjautuja: ' + (l0.nickname || '?') + (l0.from ? ' · ' + l0.from : ''));
+        M('KÄVIJÄT', 'Uusin kirjautuja: ' + (l0.nickname || '?') + (l0.from ? ' · ' + l0.from : ''), l0.timestamp);
         var msgN = 0, places = {}, per = {};
         logs.forEach(function (l) {
             if (l.message) msgN++;
@@ -524,60 +542,74 @@ function wallTickerMessages() {
                 per[k].evs[l.eventKey] = 1;
             }
         });
-        if (msgN) msgs.push('💬 ' + msgN + ' tervehdystä kirjoitettu vieraskirjaan');
+        if (msgN) M('VIESTIT', msgN + ' tervehdystä kirjoitettu vieraskirjaan');
         var pc = Object.keys(places).length;
-        if (pc > 1) msgs.push('📍 Kirjautujia ' + pc + ' eri paikkakunnalta');
+        if (pc > 1) M('PAIKAT', 'Kirjautujia ' + pc + ' eri paikkakunnalta');
         if (isSeries) {
             var top = null, topN = 0;
             Object.keys(per).forEach(function (k) {
                 var c = Object.keys(per[k].evs).length;
                 if (c > topN) { topN = c; top = per[k].name; }
             });
-            if (top && topN > 1) msgs.push('🔥 Sarjan ahkerin vieras: ' + top + ' — ' + topN + ' vuoroa');
+            if (top && topN > 1) M('SARJA', 'Sarjan ahkerin vieras: ' + top + ' — ' + topN + ' vuoroa');
         }
         var first = logs[logs.length - 1];
-        if (first && first.nickname && logs.length > 1) msgs.push('🥇 Avauskirjauksen teki ' + first.nickname);
-        if (l0.message) msgs.push('📢 "' + l0.message.slice(0, 60) + '"' + (l0.message.length > 60 ? '…' : '') + ' — ' + l0.nickname);
+        if (first && first.nickname && logs.length > 1) M('KÄVIJÄT', 'Avauskirjauksen teki ' + first.nickname, first.timestamp);
+        if (l0.message) M('VIESTIT', '"' + l0.message.slice(0, 60) + '"' + (l0.message.length > 60 ? '…' : '') + ' — ' + l0.nickname, l0.timestamp);
     } else {
-        msgs.push('🎪 Vieraskirja odottaa ensimmäistä kirjautujaa…');
+        M('KÄVIJÄT', 'Vieraskirja odottaa ensimmäistä kirjautujaa…');
         var st = mkWall.eventTimes.start;
-        if (st && st > new Date()) msgs.push('⏳ Kirjautuminen avautuu ' + mkWallDur(st - new Date()) + ' päästä');
+        if (st && st > new Date()) M('AIKA', 'Kirjautuminen avautuu ' + mkWallDur(st - new Date()) + ' päästä');
     }
 
     if (isSeries) {
         var tot = 0;
         mkWall.seriesEvents.forEach(function (e) { tot += (mkWall.counts[e.key] || 0); });
-        msgs.push('📊 Sarjassa yhteensä ' + tot + ' kävijää');
-        msgs.push('🎖️ Vuoro ' + mkWall.vuoro + ' / ' + mkWall.seriesEvents.length);
+        M('SARJA', 'Sarjassa yhteensä ' + tot + ' kävijää');
+        M('SARJA', 'Vuoro ' + mkWall.vuoro + ' / ' + mkWall.seriesEvents.length);
     }
-    if (mkWall.ordinal > 0) msgs.push('📈 Tämä on ' + mkWall.ordLabel);
-    if (mkWall.placeStats && mkWall.placeStats.total > 1) msgs.push('📍 ' + mkWall.placeStats.total + '. miitti tällä paikalla');
-    if (mkWall.placeStats && mkWall.placeStats.year > 1) msgs.push('📍 ' + mkWall.placeStats.year + ' miittiä tällä paikalla tänä vuonna');
-    if (mkWall.weather) msgs.push(mkWall.weather.icon + ' Ulkona nyt ' + mkWall.weather.temp + '°C');
-    if (mkWall.nextEvent) msgs.push('➡️ Seuraavaksi: ' + mkWall.nextEvent.name + ' ' + (mkWall.nextEvent.time || ''));
-    msgs.push('📱 Skannaa QR-koodi ja kirjaudu vieraskirjaan!');
+    if (mkWall.ordinal > 0) M('TILASTOT', 'Tämä on ' + mkWall.ordLabel);
+    if (mkWall.placeStats && mkWall.placeStats.total > 1) M('PAIKAT', mkWall.placeStats.total + '. miitti tällä paikalla');
+    if (mkWall.placeStats && mkWall.placeStats.year > 1) M('PAIKAT', mkWall.placeStats.year + ' miittiä tällä paikalla tänä vuonna');
+    if (mkWall.weather) M('SÄÄ', 'Ulkona nyt ' + mkWall.weather.temp + '°C ' + mkWall.weather.icon);
+    if (mkWall.nextEvent) M('SEURAAVAKSI', 'Seuraavaksi: ' + mkWall.nextEvent.name + ' ' + (mkWall.nextEvent.time || ''));
+    M('KIRJAUDU', 'Skannaa QR-koodi ja kirjaudu vieraskirjaan!');
     return msgs;
 }
 
-// Uutispalkki: tilastot vyöryvät oikealta vasemmalle saumattomana looppina
-function updateWallTicker() {
-    var track = document.getElementById('wall-ticker-track');
-    if (!track || !mkWall.open) return;
+// Uutispalkki: yksi otsikko kerrallaan, vaihtuu 7 s välein (advance=true)
+function updateWallTicker(advance) {
+    if (!mkWall.open) return;
+    var textEl = document.getElementById('wt-text');
+    if (!textEl) return;
     var msgs = wallTickerMessages();
     if (!msgs.length) return;
-    var joined = msgs.join('      •      ') + '      •      ';
-    if (joined === mkWall.tickerJoined) return; // ei muutoksia — älä keskeytä vyöryä
-    mkWall.tickerJoined = joined;
-    track.innerHTML = '';
-    // Kaksi identtistä palaa — translateX(-50%) tekee saumattoman loopin
-    for (var i = 0; i < 2; i++) {
-        var s = document.createElement('span');
-        s.className = 'wall-ticker-chunk';
-        s.innerText = joined;
-        track.appendChild(s);
+    if (advance) mkWall.tickerIdx = (mkWall.tickerIdx + 1) % msgs.length;
+    if (mkWall.tickerIdx < 0 || mkWall.tickerIdx >= msgs.length) mkWall.tickerIdx = 0;
+    var m = msgs[mkWall.tickerIdx];
+
+    if (textEl.innerText !== m.text) {
+        textEl.innerText = m.text;
+        var hl = document.getElementById('wt-headline');
+        if (hl) { hl.classList.remove('wt-swap'); void hl.offsetWidth; hl.classList.add('wt-swap'); }
     }
-    var dur = Math.max(15, Math.round(joined.length * 0.16));
-    track.style.animationDuration = dur + 's';
+    var kicker = document.getElementById('wt-kicker');
+    if (kicker) kicker.innerText = m.cat;
+    var timeEl = document.getElementById('wt-time');
+    if (timeEl) timeEl.innerText = m.time || mkWallClock(new Date());
+    var catsEl = document.getElementById('wt-cats');
+    if (catsEl) {
+        var seen = {};
+        catsEl.innerHTML = '';
+        msgs.forEach(function (mm) {
+            if (seen[mm.cat]) return;
+            seen[mm.cat] = 1;
+            var s = document.createElement('span');
+            s.innerText = mm.cat;
+            if (mm.cat === m.cat) s.className = 'on';
+            catsEl.appendChild(s);
+        });
+    }
 }
 
 function closeWall() {
@@ -589,10 +621,10 @@ function closeWall() {
     mkWall.lastTotal = null;
     mkWall.weather = null;
     mkWall.qrManual = false;
-    mkWall.lastTickerIdx = -1;
+    if (mkWall.tickerTimer) { clearInterval(mkWall.tickerTimer); mkWall.tickerTimer = null; }
+    mkWall.tickerIdx = -1;
     mkWall.maskVisible = null;
     mkWall.fxCode = null;
-    mkWall.tickerJoined = null;
     mkWall.placeStats = null;
     var fxEl = document.getElementById('wall-fx');
     if (fxEl) fxEl.innerHTML = '';

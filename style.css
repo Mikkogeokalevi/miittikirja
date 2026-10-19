@@ -2747,33 +2747,112 @@ body.theme-light .form-error { color: #B22222; }
 .wall-qr-mask-x { font-size: 3em; font-weight: 900; line-height: 1; }
 .wall-qr-mask-text { font-size: 0.8em; margin-top: 8px; color: #ffd9a0; font-weight: bold; text-align: center; padding: 0 6px; }
 .wall-qr-mask-hint { font-size: 0.65em; color: rgba(255,255,255,0.55); margin-top: 6px; }
-#wall-ticker {
-    text-align: center;
-    min-height: 1.5em;
-    padding: 6px 12px;
-    font-size: 1.1em;
-    color: #9bf6ff;
-    letter-spacing: 0.5px;
+/* Uutispalkki — MTV-tyylinen L-palkki: logo | kategoria + otsikko | sää */
+#wall-ticker { position: relative; padding: 14px 4px 10px; }
+.wt-bar {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    background: linear-gradient(180deg, #eef1f8 0%, #d9dfee 100%);
+    border-radius: 8px;
+    color: #1b2a47;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.45);
+    min-height: 74px;
 }
-.wall-ticker-swap { animation: wallTickerIn 0.5s ease-out; }
-@keyframes wallTickerIn {
-    0% { opacity: 0; transform: translateY(10px); }
-    100% { opacity: 1; transform: translateY(0); }
+.wt-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 8px 14px;
+    background: #0d1b2a;
+    color: #ffd9a0;
+    font-size: 0.75em;
+    font-weight: 900;
+    letter-spacing: 1px;
+    border-radius: 8px 0 0 8px;
+    flex-shrink: 0;
 }
-
-/* Uutispalkki — vyöryvä teksti oikealta vasemmalle */
-#wall-ticker { overflow: hidden; white-space: nowrap; text-align: left; }
-#wall-ticker-track {
-    display: inline-block;
-    white-space: nowrap;
-    animation-name: wallTickerScroll;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-    animation-duration: 30s;
+.wt-logo img { width: 42px; height: 42px; border-radius: 6px; }
+.wt-main {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 18px 20px 8px;
 }
-@keyframes wallTickerScroll {
-    from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
+.wt-kicker {
+    position: absolute;
+    top: 0;
+    left: 16px;
+    transform: translateY(-55%);
+    z-index: 2;
+    background: #fff;
+    padding: 2px 14px;
+    font-size: 0.7em;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    color: #5a6478;
+    border-radius: 4px 4px 0 0;
+    box-shadow: 0 -3px 8px rgba(0,0,0,0.18);
+}
+.wt-headline {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.4em;
+    font-weight: bold;
+}
+.wt-headline.wt-swap { animation: wtIn 0.45s ease-out; }
+@keyframes wtIn {
+    0% { opacity: 0; transform: translateX(40px); }
+    100% { opacity: 1; transform: translateX(0); }
+}
+.wt-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #e03131;
+    flex-shrink: 0;
+    box-shadow: 0 0 8px rgba(224,49,49,0.6);
+}
+#wt-time { color: #e03131; font-weight: 900; flex-shrink: 0; }
+#wt-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wt-cats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 28px;
+    margin-top: 6px;
+    font-size: 0.68em;
+    letter-spacing: 1.5px;
+    font-weight: bold;
+    color: #98a0b8;
+}
+.wt-cats span.on { color: #e03131; }
+.wt-weather {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 18px;
+    min-width: 96px;
+    flex-shrink: 0;
+    border-left: 1px solid rgba(27,42,71,0.12);
+}
+.wt-city { font-size: 0.78em; color: #5a6478; font-weight: bold; }
+.wt-wx { font-size: 1.5em; font-weight: 900; display: flex; align-items: center; gap: 6px; }
+@media (max-width: 700px) {
+    .wt-bar { min-height: 60px; }
+    .wt-headline { font-size: 1.05em; gap: 8px; }
+    .wt-logo { padding: 6px 8px; }
+    .wt-logo img { width: 30px; height: 30px; }
+    .wt-main { padding: 14px 12px 6px; }
+    .wt-cats { gap: 3px 14px; font-size: 0.6em; }
+    .wt-weather { min-width: 64px; padding: 6px 8px; }
+    .wt-wx { font-size: 1.1em; }
 }
 
 /* Seinä: brandausta, sää-efektejä ja QR-paljastus */
