@@ -13,5 +13,5 @@ const MK_Config = {
     OWNER_NICK: "mikkokalevi",
 
     // Sovelluksen versio (näytetään kirjautumissivulla)
-    VERSION: "7.43.0"
+    VERSION: "7.44.0"
 };

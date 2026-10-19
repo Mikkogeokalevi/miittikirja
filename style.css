@@ -2439,3 +2439,201 @@ body.theme-light .form-error { color: #B22222; }
         print-color-adjust: exact;
     }
 }
+
+/* ============ MIITTISEINÄ (live-näkymä isoille ruudoille) ============ */
+.btn-wall {
+    width: 100%;
+    margin-top: 10px;
+    background: #0d1b2a;
+    color: #fff;
+    border: 2px solid #64ffda;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+.btn-wall:hover { background: #16283f; }
+
+#wall-view {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: radial-gradient(ellipse at center, #16283f 0%, #0d1b2a 70%);
+    color: #fff;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: inherit;
+}
+
+#wall-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 10;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    font-size: 1.3em;
+    cursor: pointer;
+}
+#wall-close:hover { background: rgba(255,255,255,0.2); }
+
+.wall-inner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 20px 30px;
+    box-sizing: border-box;
+}
+
+#wall-title {
+    text-align: center;
+    font-size: 2.2em;
+    margin: 0;
+    color: #ffd9a0;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+#wall-series-badge {
+    display: none;
+    margin: 8px auto 0;
+    padding: 4px 18px;
+    background: rgba(100, 255, 218, 0.15);
+    border: 1px solid #64ffda;
+    border-radius: 20px;
+    color: #64ffda;
+    font-weight: bold;
+    font-size: 1em;
+    letter-spacing: 1px;
+}
+
+.wall-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    min-height: 0;
+}
+
+.wall-counter-box { text-align: center; }
+
+#wall-count {
+    font-size: 11em;
+    font-weight: 900;
+    line-height: 1;
+    color: #fff;
+    text-shadow: 0 0 40px rgba(100, 255, 218, 0.35);
+}
+#wall-count.wall-pulse { animation: wallPulse 0.8s ease-out; }
+@keyframes wallPulse {
+    0% { transform: scale(1); color: #fff; }
+    30% { transform: scale(1.25); color: #64ffda; }
+    100% { transform: scale(1); color: #fff; }
+}
+
+.wall-count-label {
+    font-size: 1.4em;
+    color: rgba(255,255,255,0.7);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+
+#wall-series-total {
+    display: none;
+    margin-top: 10px;
+    font-size: 1.1em;
+    color: #ffd9a0;
+}
+
+#wall-dots { margin-top: 12px; }
+.wall-dot {
+    display: inline-block;
+    width: 26px;
+    height: 26px;
+    line-height: 26px;
+    margin: 3px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.35);
+    color: rgba(255,255,255,0.55);
+    font-size: 0.75em;
+    text-align: center;
+    vertical-align: middle;
+}
+.wall-dot.filled { background: #64ffda; border-color: #64ffda; color: #0d1b2a; font-weight: bold; }
+.wall-dot.current { box-shadow: 0 0 0 3px #ffd9a0; }
+
+.wall-feed-box {
+    width: 340px;
+    max-width: 40vw;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    padding: 14px 18px;
+    align-self: center;
+}
+.wall-feed-title {
+    font-size: 0.85em;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.6);
+    margin-bottom: 10px;
+}
+.wall-feed-item {
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: 1.15em;
+    display: flex;
+    align-items: baseline;
+}
+.wall-feed-item:last-child { border-bottom: none; }
+.wall-feed-nick { color: #7fff9f; font-weight: bold; }
+.wall-feed-from { color: rgba(255,255,255,0.65); font-size: 0.85em; flex: 1; }
+.wall-feed-time { color: rgba(255,255,255,0.45); font-size: 0.8em; margin-left: 8px; }
+.wall-feed-item.wall-new { animation: wallSlideIn 0.6s ease-out; }
+@keyframes wallSlideIn {
+    0% { opacity: 0; transform: translateY(-14px); background: rgba(100,255,218,0.25); }
+    100% { opacity: 1; transform: translateY(0); background: transparent; }
+}
+.wall-feed-empty { color: rgba(255,255,255,0.45); font-style: italic; padding: 12px 0; }
+
+.wall-corners {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+.wall-corner-qr { text-align: center; }
+.wall-qr-box {
+    background: #fff;
+    padding: 10px;
+    border-radius: 12px;
+    display: inline-block;
+    line-height: 0;
+}
+.wall-qr-text {
+    margin-top: 8px;
+    font-size: 0.95em;
+    font-weight: bold;
+    color: #64ffda;
+    letter-spacing: 1px;
+}
+.wall-corner-info {
+    text-align: right;
+    font-size: 1.05em;
+    color: rgba(255,255,255,0.75);
+    padding-bottom: 8px;
+}
+
+/* Kapeat ruudut (puhelin pystyssä / pieni tabletti) */
+@media (max-width: 700px) {
+    .wall-inner { padding: 12px 14px; }
+    #wall-title { font-size: 1.4em; }
+    .wall-main { flex-direction: column; gap: 14px; justify-content: flex-start; }
+    #wall-count { font-size: 5em; }
+    .wall-feed-box { width: 100%; max-width: 100%; }
+    .wall-corners { align-items: center; }
+    .wall-qr-box { padding: 6px; }
+    .wall-corner-info { font-size: 0.8em; }
+}

@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.43.0";
+const APP_VERSION = "7.44.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1609,6 +1609,7 @@ window.openEditModal = function(key) {
         document.getElementById('edit-presign-message').value = e.preSignMessage || "";
         document.getElementById('edit-special-message').value = e.specialMessage || "";
         document.getElementById('edit-desc').value = e.descriptionHtml || "";
+        document.getElementById('edit-series').value = e.series || "";
         if(editModal) editModal.style.display = "block";
     });
 };
@@ -1627,7 +1628,8 @@ if (btnSaveEdit) {
             location: document.getElementById('edit-loc').value,
             preSignMessage: document.getElementById('edit-presign-message').value,
             specialMessage: document.getElementById('edit-special-message').value,
-            descriptionHtml: document.getElementById('edit-desc').value
+            descriptionHtml: document.getElementById('edit-desc').value,
+            series: document.getElementById('edit-series').value.trim()
         };
         db.ref('miitit/' + currentUser.uid + '/events/' + key).update(updateData).then(() => { 
             if(editModal) editModal.style.display = "none"; 

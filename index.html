@@ -501,6 +501,7 @@
                     <button id="btn-copy-qr-link" class="btn btn-small btn-gray" style="width:100%; margin:0;">📋 Kopioi linkki</button>
                 </div>
             </div>
+            <button id="btn-open-wall" class="btn btn-small btn-wall">📺 Miittiseinä — live-näkymä ruudulle</button>
         </div>
 
         <div id="gb-admin-tools" style="display:none;">
@@ -554,6 +555,33 @@
         <div id="attendee-list" class="log-list"></div>
     </div>
 
+    <div id="wall-view">
+        <button id="wall-close" title="Sulje (ESC)">✕</button>
+        <div class="wall-inner">
+            <h1 id="wall-title"></h1>
+            <div id="wall-series-badge"></div>
+            <div class="wall-main">
+                <div class="wall-counter-box">
+                    <div id="wall-count">0</div>
+                    <div class="wall-count-label">osallistujaa</div>
+                    <div id="wall-series-total"></div>
+                    <div id="wall-dots"></div>
+                </div>
+                <div class="wall-feed-box">
+                    <div class="wall-feed-title">Viimeisimmät kirjaukset</div>
+                    <div id="wall-feed"></div>
+                </div>
+            </div>
+            <div class="wall-corners">
+                <div class="wall-corner wall-corner-qr">
+                    <div id="wall-qr" class="wall-qr-box"></div>
+                    <div class="wall-qr-text">Skannaa & kirjaudu</div>
+                </div>
+                <div class="wall-corner wall-corner-info" id="wall-info"></div>
+            </div>
+        </div>
+    </div>
+
     <div id="confirm-modal" class="modal">
         <div class="modal-content confirm-modal-content">
             <h3 id="confirm-title"></h3><p id="confirm-message"></p>
@@ -578,6 +606,7 @@
             <label>Erikoisviesti kirjautumisikkunaan (ennen tallennusta)</label><textarea id="edit-presign-message" rows="3"></textarea>
             <label>Erikoisviesti kirjauksen jälkeen</label><textarea id="edit-special-message" rows="3"></textarea>
             <label>HTML Kuvaus</label><textarea id="edit-desc" rows="5"></textarea>
+            <label>Sarja (valinnainen — sama nimi yhdistää miitit, esim. Kenttäharjoitus)</label><input type="text" id="edit-series">
             <div style="display:flex; gap:10px;"><button id="btn-save-edit" class="btn btn-green">Tallenna</button><button onclick="closeModal()" class="btn btn-red">Peruuta</button></div>
         </div>
     </div>
@@ -659,6 +688,7 @@
     <script src="visitor.js"></script>
     
     <script src="app.js"></script>
+    <script src="wall.js"></script>
     <script src="stats.js"></script>
     
     <script>
