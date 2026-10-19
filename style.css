@@ -2817,7 +2817,8 @@ body.theme-light .form-error { color: #B22222; }
     box-shadow: 0 0 8px rgba(224,49,49,0.6);
 }
 #wt-time { color: #e03131; font-weight: 900; flex-shrink: 0; }
-#wt-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wt-text-wrap { flex: 1; min-width: 0; overflow: hidden; }
+#wt-text { display: inline-block; white-space: nowrap; }
 .wt-cats {
     display: flex;
     flex-wrap: wrap;

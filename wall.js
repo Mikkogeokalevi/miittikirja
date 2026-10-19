@@ -21,6 +21,7 @@ var mkWall = {
     allEvents: [],
     qrManual: false,
     tickerTimer: null,
+    scrollTimer: null,
     tickerIdx: -1,
     ordinal: 0,
     ordLabel: '',
@@ -394,10 +395,8 @@ function renderWallFrame() {
     fetchWallWeather(ev);
     updateWallQrMask();
 
-    // Uutispalkki: kierto 7 s välein, data päivittyy renderöinnissä
+    // Uutispalkki: oma ajoitus — pitkät tekstit scrollataan ensin loppuun
     mkWall.tickerIdx = -1;
-    if (mkWall.tickerTimer) clearInterval(mkWall.tickerTimer);
-    mkWall.tickerTimer = setInterval(function () { updateWallTicker(true); }, 7000);
     updateWallTicker(true);
 
     var q = document.getElementById('wall-qr');
@@ -572,7 +571,30 @@ function wallTickerMessages() {
     return msgs;
 }
 
-// Uutispalkki: yksi otsikko kerrallaan, vaihtuu 7 s välein (advance=true)
+// Uutispalkki: yksi otsikko kerrallaan. Pitkä teksti scrollataan ensin
+// kokonaan näkyviin — seuraavaan vaihdetaan vasta sen jälkeen.
+function scheduleWallTicker() {
+    if (mkWall.tickerTimer) clearTimeout(mkWall.tickerTimer);
+    if (mkWall.scrollTimer) { clearTimeout(mkWall.scrollTimer); mkWall.scrollTimer = null; }
+    var textEl = document.getElementById('wt-text');
+    var wrap = textEl ? textEl.parentNode : null;
+    var wait = 4500;
+    if (wrap && textEl) {
+        textEl.style.transition = 'none';
+        textEl.style.transform = 'translateX(0)';
+        var over = textEl.scrollWidth - wrap.clientWidth;
+        if (over > 4) {
+            var dur = Math.round(over / 0.045); // ~45 px/s
+            wait = 1200 + dur + 1800;
+            mkWall.scrollTimer = setTimeout(function () {
+                textEl.style.transition = 'transform ' + dur + 'ms linear';
+                textEl.style.transform = 'translateX(-' + over + 'px)';
+            }, 1200);
+        }
+    }
+    mkWall.tickerTimer = setTimeout(function () { updateWallTicker(true); }, wait);
+}
+
 function updateWallTicker(advance) {
     if (!mkWall.open) return;
     var textEl = document.getElementById('wt-text');
@@ -583,7 +605,8 @@ function updateWallTicker(advance) {
     if (mkWall.tickerIdx < 0 || mkWall.tickerIdx >= msgs.length) mkWall.tickerIdx = 0;
     var m = msgs[mkWall.tickerIdx];
 
-    if (textEl.innerText !== m.text) {
+    var changed = textEl.innerText !== m.text;
+    if (changed) {
         textEl.innerText = m.text;
         var hl = document.getElementById('wt-headline');
         if (hl) { hl.classList.remove('wt-swap'); void hl.offsetWidth; hl.classList.add('wt-swap'); }
@@ -605,6 +628,7 @@ function updateWallTicker(advance) {
             catsEl.appendChild(s);
         });
     }
+    if (changed || !mkWall.tickerTimer) scheduleWallTicker();
 }
 
 function closeWall() {
@@ -616,7 +640,8 @@ function closeWall() {
     mkWall.lastTotal = null;
     mkWall.weather = null;
     mkWall.qrManual = false;
-    if (mkWall.tickerTimer) { clearInterval(mkWall.tickerTimer); mkWall.tickerTimer = null; }
+    if (mkWall.tickerTimer) { clearTimeout(mkWall.tickerTimer); mkWall.tickerTimer = null; }
+    if (mkWall.scrollTimer) { clearTimeout(mkWall.scrollTimer); mkWall.scrollTimer = null; }
     mkWall.tickerIdx = -1;
     mkWall.maskVisible = null;
     mkWall.fxCode = null;
