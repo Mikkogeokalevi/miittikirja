@@ -2772,3 +2772,121 @@ body.theme-light .form-error { color: #B22222; }
     from { transform: translateX(0); }
     to { transform: translateX(-50%); }
 }
+
+/* Seinä: brandausta, sää-efektejä ja QR-paljastus */
+.wall-brand {
+    position: absolute;
+    top: 16px;
+    left: 18px;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0.85;
+}
+.wall-brand img {
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
+    box-shadow: 0 0 12px rgba(100,255,218,0.35);
+}
+.wall-brand span {
+    font-size: 0.85em;
+    color: #ffd9a0;
+    font-style: italic;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+#wall-fx {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 2;
+}
+.wall-snow {
+    position: absolute;
+    top: -30px;
+    color: #fff;
+    animation-name: wallSnowFall;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+@keyframes wallSnowFall {
+    0% { transform: translateY(0) translateX(0) rotate(0deg); }
+    100% { transform: translateY(110vh) translateX(40px) rotate(360deg); }
+}
+.wall-rain {
+    position: absolute;
+    top: -30px;
+    width: 2px;
+    height: 18px;
+    background: linear-gradient(to bottom, transparent, rgba(160,196,255,0.7));
+    border-radius: 2px;
+    animation-name: wallRainFall;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+@keyframes wallRainFall {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(110vh); }
+}
+.wall-star {
+    position: absolute;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #fff;
+    animation-name: wallTwinkle;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+@keyframes wallTwinkle {
+    0%, 100% { opacity: 0.1; }
+    50% { opacity: 0.9; }
+}
+.wall-fog {
+    position: absolute;
+    width: 120%;
+    height: 60%;
+    left: -10%;
+    background: radial-gradient(ellipse at center, rgba(200,210,225,0.14) 0%, transparent 65%);
+    animation-name: wallFogDrift;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+.wall-fog-0 { top: 5%; animation-duration: 18s; }
+.wall-fog-1 { top: 40%; animation-duration: 26s; animation-delay: -8s; }
+.wall-fog-2 { top: 70%; animation-duration: 22s; animation-delay: -15s; }
+@keyframes wallFogDrift {
+    0% { transform: translateX(-6%); opacity: 0.6; }
+    100% { transform: translateX(6%); opacity: 1; }
+}
+.wall-reveal-banner {
+    position: absolute;
+    top: 42%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 20;
+    padding: 14px 40px;
+    background: linear-gradient(135deg, #64ffda, #7fff9f);
+    color: #0d1b2a;
+    font-size: 1.8em;
+    font-weight: 900;
+    letter-spacing: 3px;
+    border-radius: 14px;
+    box-shadow: 0 0 60px rgba(100,255,218,0.8);
+    animation: wallRevealPop 4s ease-in-out forwards;
+}
+@keyframes wallRevealPop {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+    15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+    25% { transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+}
+.wall-qr-reveal-txt {
+    color: #7fff9f !important;
+    text-shadow: 0 0 14px rgba(127,255,159,0.9);
+    font-size: 1.05em !important;
+}

@@ -24,7 +24,10 @@ var mkWall = {
     lastTickerIdx: -1,
     ordinal: 0,
     ordLabel: '',
-    nextEvent: null
+    nextEvent: null,
+    tickerJoined: null,
+    maskVisible: null,
+    fxCode: null
 };
 
 function mkWallSortKey(e) {
@@ -115,10 +118,92 @@ function updateWallQrMask() {
     var t = mkWall.eventTimes || {};
     var started = !t.start || new Date() >= t.start;
     var show = started || mkWall.qrManual;
-    mask.style.display = show ? 'none' : 'flex';
+    var maskVisible = !show;
+    // Paljastus juhlanarvoisesti kun aika koittaa (ei manuaalista avausta)
+    if (mkWall.maskVisible === true && !maskVisible && started && !mkWall.qrManual) {
+        wallQrReveal();
+    }
+    mkWall.maskVisible = maskVisible;
+    mask.style.display = maskVisible ? 'flex' : 'none';
     var txt = document.getElementById('wall-qr-mask-text');
-    if (!show && txt) {
+    if (maskVisible && txt) {
         txt.innerText = t.start ? 'Avautuu ' + mkWallDur(t.start - new Date()) : 'Kirjautuminen avautuu miitin alkaessa';
+    }
+}
+
+function wallQrReveal() {
+    var t = document.getElementById('wall-qr-text');
+    if (t) {
+        t.innerText = '⚡ KIRJAUTUMINEN AUKI! ⚡';
+        t.classList.add('wall-qr-reveal-txt');
+    }
+    wallConfetti();
+    setTimeout(wallConfetti, 400);
+    var view = document.getElementById('wall-view');
+    if (view) {
+        var b = document.createElement('div');
+        b.className = 'wall-reveal-banner';
+        b.innerText = 'KIRJAUTUMINEN AUKI!';
+        view.appendChild(b);
+        setTimeout(function () {
+            if (b.parentNode) b.parentNode.removeChild(b);
+            if (t) { t.innerText = 'Skannaa & kirjaudu'; t.classList.remove('wall-qr-reveal-txt'); }
+        }, 4200);
+    }
+}
+
+// Sää-efektit: lumi / sade / tähdet / sumu — renderöidään vain kun koodi muuttuu
+function renderWallFx(code) {
+    var fx = document.getElementById('wall-fx');
+    if (!fx || mkWall.fxCode === code) return;
+    mkWall.fxCode = code;
+    fx.innerHTML = '';
+    if (code === null || code === undefined) return;
+    var i, el;
+    var isSnow = (code >= 71 && code <= 77) || code === 79 || code === 85 || code === 86;
+    var isRain = (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95;
+    var isFog = code === 45 || code === 48;
+    var isClear = code <= 3;
+    if (isSnow) {
+        for (i = 0; i < 36; i++) {
+            el = document.createElement('span');
+            el.className = 'wall-snow';
+            el.innerText = '❄';
+            el.style.left = (Math.random() * 100) + '%';
+            el.style.animationDuration = (4 + Math.random() * 6) + 's';
+            el.style.animationDelay = (Math.random() * 6) + 's';
+            el.style.fontSize = (8 + Math.random() * 12) + 'px';
+            el.style.opacity = 0.3 + Math.random() * 0.5;
+            fx.appendChild(el);
+        }
+    } else if (isRain) {
+        for (i = 0; i < 55; i++) {
+            el = document.createElement('span');
+            el.className = 'wall-rain';
+            el.style.left = (Math.random() * 100) + '%';
+            el.style.animationDuration = (0.45 + Math.random() * 0.5) + 's';
+            el.style.animationDelay = (Math.random() * 2) + 's';
+            fx.appendChild(el);
+        }
+    } else if (isFog) {
+        for (i = 0; i < 3; i++) {
+            el = document.createElement('div');
+            el.className = 'wall-fog wall-fog-' + i;
+            fx.appendChild(el);
+        }
+    } else if (isClear) {
+        for (i = 0; i < 32; i++) {
+            el = document.createElement('span');
+            el.className = 'wall-star';
+            el.style.left = (Math.random() * 100) + '%';
+            el.style.top = (Math.random() * 65) + '%';
+            el.style.animationDuration = (1.5 + Math.random() * 3) + 's';
+            el.style.animationDelay = (Math.random() * 3) + 's';
+            var sz = (1.5 + Math.random() * 2.5);
+            el.style.width = sz + 'px';
+            el.style.height = sz + 'px';
+            fx.appendChild(el);
+        }
     }
 }
 
@@ -129,6 +214,7 @@ function fetchWallWeather(ev) {
     fetch(url).then(function (r) { return r.json(); }).then(function (j) {
         if (!mkWall.open || !j || !j.current) return;
         mkWall.weather = { temp: Math.round(j.current.temperature_2m), icon: mkWmoIcon(j.current.weather_code) };
+        renderWallFx(j.current.weather_code);
         updateWallLive();
     }).catch(function () {});
 }
@@ -211,6 +297,11 @@ function renderWallFrame() {
     var isSeries = mkWall.seriesEvents.length > 1;
 
     document.getElementById('wall-title').innerText = ev.name || 'Miitti';
+    var brand = document.getElementById('wall-brand-text');
+    if (brand) {
+        var bn = (typeof MK_Config !== 'undefined' && MK_Config.OWNER_NICK) ? MK_Config.OWNER_NICK : 'järjestäjä';
+        brand.innerText = bn + 'n miittikirja';
+    }
 
     var badge = document.getElementById('wall-series-badge');
     if (isSeries) {
@@ -469,6 +560,11 @@ function closeWall() {
     mkWall.weather = null;
     mkWall.qrManual = false;
     mkWall.lastTickerIdx = -1;
+    mkWall.maskVisible = null;
+    mkWall.fxCode = null;
+    mkWall.tickerJoined = null;
+    var fxEl = document.getElementById('wall-fx');
+    if (fxEl) fxEl.innerHTML = '';
     if (mkWall.liveTimer) { clearInterval(mkWall.liveTimer); mkWall.liveTimer = null; }
     if (mkWall.tickerTimer) { clearInterval(mkWall.tickerTimer); mkWall.tickerTimer = null; }
     var view = document.getElementById('wall-view');
