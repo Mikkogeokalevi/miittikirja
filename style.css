@@ -2628,7 +2628,10 @@ body.theme-light .form-error { color: #B22222; }
 
 /* Kapeat ruudut (puhelin pystyssä / pieni tabletti) */
 @media (max-width: 700px) {
-    .wall-inner { padding: 12px 14px; }
+    .wall-inner { padding: 12px 14px; height: auto; flex: 1; min-height: 0; }
+    .wall-brand { position: static; align-self: flex-start; padding: 10px 12px 0; }
+    .wall-brand img { width: 34px; height: 34px; }
+    .wall-brand span { font-size: 0.75em; }
     #wall-title { font-size: 1.4em; }
     .wall-main { flex-direction: column; gap: 14px; justify-content: flex-start; }
     #wall-count { font-size: 5em; }
