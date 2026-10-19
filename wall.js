@@ -75,6 +75,14 @@ function mkWallDur(ms) {
     return h + ' H ' + (mins % 60) + ' MIN';
 }
 
+function mkWallDistM(a, b) {
+    var R = 6371000, rad = Math.PI / 180;
+    var dLat = (b[0] - a[0]) * rad, dLon = (b[1] - a[1]) * rad;
+    var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * R * Math.asin(Math.sqrt(h));
+}
+
 function mkWmoIcon(c) {
     if (c === 0) return '☀️';
     if (c <= 3) return '⛅';
@@ -349,6 +357,26 @@ function renderWallFrame() {
         nextEl.style.display = 'none';
     }
 
+    // Paikkatilastot: miitit samalla paikalla (koordinaatit ±150 m tai sama location)
+    var ll = mkWallParseCoords(ev.coords);
+    var pTot = 0, pYear = 0;
+    var curYear = (ev.date || '').slice(0, 4);
+    (mkWall.allEvents || []).forEach(function (e) {
+        var same = false;
+        if (ll) {
+            var ll2 = mkWallParseCoords(e.coords);
+            if (ll2 && mkWallDistM(ll, ll2) <= 150) same = true;
+        }
+        if (!same && e.location && ev.location &&
+            e.location.trim().toLowerCase() === ev.location.trim().toLowerCase()) same = true;
+        if (!same && e.key === ev.key) same = true;
+        if (same) {
+            pTot++;
+            if ((e.date || '').slice(0, 4) === curYear) pYear++;
+        }
+    });
+    mkWall.placeStats = { total: pTot, year: pYear };
+
     // Live-rivi: kello + countdown + sää
     mkWall.eventTimes = mkWallEventTimes(ev);
     updateWallLive();
@@ -523,6 +551,8 @@ function wallTickerMessages() {
         msgs.push('🎖️ Vuoro ' + mkWall.vuoro + ' / ' + mkWall.seriesEvents.length);
     }
     if (mkWall.ordinal > 0) msgs.push('📈 Tämä on ' + mkWall.ordLabel);
+    if (mkWall.placeStats && mkWall.placeStats.total > 1) msgs.push('📍 ' + mkWall.placeStats.total + '. miitti tällä paikalla');
+    if (mkWall.placeStats && mkWall.placeStats.year > 1) msgs.push('📍 ' + mkWall.placeStats.year + ' miittiä tällä paikalla tänä vuonna');
     if (mkWall.weather) msgs.push(mkWall.weather.icon + ' Ulkona nyt ' + mkWall.weather.temp + '°C');
     if (mkWall.nextEvent) msgs.push('➡️ Seuraavaksi: ' + mkWall.nextEvent.name + ' ' + (mkWall.nextEvent.time || ''));
     msgs.push('📱 Skannaa QR-koodi ja kirjaudu vieraskirjaan!');
@@ -563,6 +593,7 @@ function closeWall() {
     mkWall.maskVisible = null;
     mkWall.fxCode = null;
     mkWall.tickerJoined = null;
+    mkWall.placeStats = null;
     var fxEl = document.getElementById('wall-fx');
     if (fxEl) fxEl.innerHTML = '';
     if (mkWall.liveTimer) { clearInterval(mkWall.liveTimer); mkWall.liveTimer = null; }
