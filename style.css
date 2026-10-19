@@ -2668,3 +2668,59 @@ body.theme-light .form-error { color: #B22222; }
     color: rgba(255,255,255,0.8);
     width: fit-content;
 }
+
+/* Kirjautuneiden laatat + konfetti + pikatilastot */
+#wall-quickstats {
+    margin-top: 10px;
+    font-size: 1.05em;
+    color: #a0c4ff;
+    letter-spacing: 1px;
+}
+.wall-feed-box {
+    width: 520px;
+    max-width: 45vw;
+    max-height: 60vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.wall-chip {
+    display: inline-block;
+    padding: 8px 14px;
+    margin: 4px;
+    border-radius: 20px;
+    color: #0d1b2a;
+    font-weight: bold;
+    font-size: 1.05em;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+}
+.wall-chip.wall-new {
+    animation: wallChipIn 0.7s ease-out;
+    box-shadow: 0 0 0 3px #fff, 0 0 18px rgba(100,255,218,0.8);
+}
+@keyframes wallChipIn {
+    0% { transform: scale(0.3); opacity: 0; }
+    60% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); }
+}
+#wall-confetti {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 5;
+}
+.wall-confetti-piece {
+    position: absolute;
+    top: -20px;
+    border-radius: 2px;
+    opacity: 0;
+    animation: wallConfettiFall 3s ease-in forwards;
+}
+@keyframes wallConfettiFall {
+    0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+    100% { opacity: 0; transform: translateY(110vh) rotate(720deg); }
+}
+@media (max-width: 700px) {
+    .wall-feed-box { max-width: 100%; max-height: 38vh; }
+    .wall-chip { font-size: 0.9em; padding: 6px 10px; }
+}

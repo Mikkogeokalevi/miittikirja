@@ -284,41 +284,73 @@ function renderWallData() {
         dots.innerHTML = '';
     }
 
-    // Pulssi kun kokonaismäärä kasvaa
+    // Pulssi + konfetti kun kokonaismäärä kasvaa
     if (mkWall.lastTotal !== null && total > mkWall.lastTotal) {
         el.classList.remove('wall-pulse');
         void el.offsetWidth; // pakota animaation uudelleenkäynnistys
         el.classList.add('wall-pulse');
+        wallConfetti();
     }
     mkWall.lastTotal = total;
 
-    // Viimeisimmät kirjaukset (kaikki sarjan miitit sekaisin, uusin ensin)
+    var logs = mkWall.logs.slice().sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
+
+    // Pikatilastot laskurin alle: viestejä, paikkakuntia, viimeisin
+    var qs = document.getElementById('wall-quickstats');
+    if (qs) {
+        var msgCount = 0, places = {};
+        logs.forEach(function (l) {
+            if (l.message) msgCount++;
+            if (l.from) places[l.from] = 1;
+        });
+        var bits = [];
+        if (msgCount) bits.push('💬 ' + msgCount);
+        var pc = Object.keys(places).length;
+        if (pc) bits.push('📍 ' + pc + ' paikkaa');
+        if (logs.length && logs[0].timestamp) {
+            var lt = new Date(logs[0].timestamp);
+            bits.push('🕐 ' + ('0' + lt.getHours()).slice(-2) + ':' + ('0' + lt.getMinutes()).slice(-2));
+        }
+        qs.innerText = bits.join('   ');
+    }
+
+    // Kirjautuneiden laatat (seinä täyttyy — uusin ensin)
     var feed = document.getElementById('wall-feed');
-    var logs = mkWall.logs.slice().sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); }).slice(0, 8);
     feed.innerHTML = '';
     if (!logs.length) {
         feed.innerHTML = '<div class="wall-feed-empty">Odotetaan ensimmäistä kirjautujaa…</div>';
         return;
     }
+    var colors = ['#64ffda', '#ffd9a0', '#ff7b9c', '#7fff9f', '#a0c4ff', '#ffc6ff', '#fdffb6', '#9bf6ff'];
     logs.forEach(function (l, idx) {
-        var row = document.createElement('div');
-        row.className = 'wall-feed-item' + (idx === 0 ? ' wall-new' : '');
+        var chip = document.createElement('span');
+        chip.className = 'wall-chip' + (idx === 0 ? ' wall-new' : '');
+        chip.style.background = colors[idx % colors.length];
+        chip.innerText = l.nickname || '?';
         var t = l.timestamp ? new Date(l.timestamp) : null;
-        var timeStr = t ? ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) : '';
-        var nick = document.createElement('span');
-        nick.className = 'wall-feed-nick';
-        nick.innerText = l.nickname || '?';
-        var from = document.createElement('span');
-        from.className = 'wall-feed-from';
-        from.innerText = l.from ? ' / ' + l.from : '';
-        var tm = document.createElement('span');
-        tm.className = 'wall-feed-time';
-        tm.innerText = timeStr;
-        row.appendChild(nick);
-        row.appendChild(from);
-        row.appendChild(tm);
-        feed.appendChild(row);
+        chip.title = (l.from ? l.from + ' · ' : '') + (t ? ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) : '') + (l.message ? '\n"' + l.message + '"' : '');
+        feed.appendChild(chip);
     });
+}
+
+function wallConfetti() {
+    var box = document.getElementById('wall-confetti');
+    if (!box) return;
+    var colors = ['#64ffda', '#ffd9a0', '#ff7b9c', '#7fff9f', '#ffd700', '#ff8c42', '#a0c4ff'];
+    for (var i = 0; i < 26; i++) {
+        var c = document.createElement('span');
+        c.className = 'wall-confetti-piece';
+        c.style.left = (Math.random() * 100) + '%';
+        c.style.background = colors[i % colors.length];
+        c.style.animationDelay = (Math.random() * 0.5) + 's';
+        var sz = (6 + Math.random() * 8);
+        c.style.width = sz + 'px';
+        c.style.height = sz + 'px';
+        box.appendChild(c);
+        (function (el) {
+            setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 3400);
+        })(c);
+    }
 }
 
 function closeWall() {
