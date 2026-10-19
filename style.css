@@ -2748,7 +2748,7 @@ body.theme-light .form-error { color: #B22222; }
 .wall-qr-mask-text { font-size: 0.8em; margin-top: 8px; color: #ffd9a0; font-weight: bold; text-align: center; padding: 0 6px; }
 .wall-qr-mask-hint { font-size: 0.65em; color: rgba(255,255,255,0.55); margin-top: 6px; }
 /* Uutispalkki — MTV-tyylinen L-palkki: logo | kategoria + otsikko | sää */
-#wall-ticker { position: relative; padding: 14px 4px 10px; }
+#wall-ticker { position: relative; padding: 14px 4px 0; }
 .wt-bar {
     position: relative;
     display: flex;
