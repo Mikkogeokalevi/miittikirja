@@ -319,11 +319,6 @@ function renderWallFrame() {
     var isSeries = mkWall.seriesEvents.length > 1;
 
     document.getElementById('wall-title').innerText = ev.name || 'Miitti';
-    var brand = document.getElementById('wall-brand-text');
-    if (brand) {
-        var bn = (typeof MK_Config !== 'undefined' && MK_Config.OWNER_NICK) ? MK_Config.OWNER_NICK : 'järjestäjä';
-        brand.innerText = bn + 'n miittikirja';
-    }
 
     var badge = document.getElementById('wall-series-badge');
     if (isSeries) {

@@ -2629,9 +2629,6 @@ body.theme-light .form-error { color: #B22222; }
 /* Kapeat ruudut (puhelin pystyssä / pieni tabletti) */
 @media (max-width: 700px) {
     .wall-inner { padding: 12px 14px; height: auto; flex: 1; min-height: 0; }
-    .wall-brand { position: static; align-self: flex-start; padding: 10px 12px 0; }
-    .wall-brand img { width: 34px; height: 34px; }
-    .wall-brand span { font-size: 0.75em; }
     #wall-title { font-size: 1.4em; }
     .wall-main { flex-direction: column; gap: 14px; justify-content: flex-start; }
     #wall-count { font-size: 5em; }
@@ -2856,28 +2853,18 @@ body.theme-light .form-error { color: #B22222; }
 }
 
 /* Seinä: brandausta, sää-efektejä ja QR-paljastus */
-.wall-brand {
+.wall-watermark {
     position: absolute;
-    top: 16px;
-    left: 18px;
-    z-index: 6;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    opacity: 0.85;
-}
-.wall-brand img {
-    width: 46px;
-    height: 46px;
-    border-radius: 10px;
-    box-shadow: 0 0 12px rgba(100,255,218,0.35);
-}
-.wall-brand span {
-    font-size: 0.85em;
-    color: #ffd9a0;
-    font-style: italic;
-    letter-spacing: 1px;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 62vmin;
+    height: 62vmin;
+    object-fit: contain;
+    opacity: 0.05;
+    filter: grayscale(60%);
+    pointer-events: none;
+    z-index: -1;
 }
 #wall-fx {
     position: absolute;
