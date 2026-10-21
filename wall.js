@@ -25,6 +25,7 @@ var mkWall = {
     feedTimer: null,
     ended: false,
     endShown: false,
+    endDismissed: false,
     tickerIdx: -1,
     ordinal: 0,
     ordLabel: '',
@@ -141,16 +142,16 @@ function updateWallLive() {
 }
 
 // Loppunäyttö: "KIITOS KAIKILLE!" + lopputilastot koko ruudulle
+// Tilastot päivittyvät joka kutsulla — kuuntelijat täyttävät counts-rivit
+// vasta hetken viiveellä, joten ensimmäinen näyttö ei saa jäädä nollaksi.
 function updateWallEnd() {
     var el = document.getElementById('wall-end');
     if (!el) return;
-    if (!mkWall.ended) {
+    if (!mkWall.ended || mkWall.endDismissed) {
         if (mkWall.endShown) { el.style.display = 'none'; mkWall.endShown = false; }
         return;
     }
     el.style.display = 'flex';
-    if (mkWall.endShown) return;
-    mkWall.endShown = true;
     var sub = document.getElementById('wall-end-sub');
     if (sub) sub.innerText = (mkWall.event || {}).name || '';
     var msgN = 0, places = {};
@@ -176,8 +177,11 @@ function updateWallEnd() {
         s.innerText = b;
         stats.appendChild(s);
     });
-    wallConfetti();
-    wallConfetti();
+    if (!mkWall.endShown) {
+        mkWall.endShown = true;
+        wallConfetti();
+        wallConfetti();
+    }
 }
 
 // Tervetuloa-spotlight: uusi kirjautuja välähtää keskelle ruutua
@@ -558,6 +562,7 @@ function renderWallData() {
     feed.innerHTML = '';
     if (!logs.length) {
         feed.innerHTML = '<div class="wall-feed-empty">Odotetaan ensimmäistä kirjautujaa…</div>';
+        updateWallEnd();
         return;
     }
     var colors = ['#64ffda', '#ffd9a0', '#ff7b9c', '#7fff9f', '#a0c4ff', '#ffc6ff', '#fdffb6', '#9bf6ff'];
@@ -577,6 +582,8 @@ function renderWallData() {
     // Uusi kirjautuja näkyy palkissa heti (kohta 1 = uusin kirjautuja)
     mkWall.tickerIdx = -1;
     updateWallTicker(true);
+    // Loppunäytön tilastot tuoreena heti kun kuuntelija palauttaa dataa
+    updateWallEnd();
 }
 
 // Hidas ping-pong-skrollaus kun laatat eivät mahdu ruudulle (TV:llä ei scrollata)
@@ -745,6 +752,7 @@ function closeWall() {
     if (mkWall.feedTimer) { clearInterval(mkWall.feedTimer); mkWall.feedTimer = null; }
     mkWall.ended = false;
     mkWall.endShown = false;
+    mkWall.endDismissed = false;
     var endEl = document.getElementById('wall-end');
     if (endEl) endEl.style.display = 'none';
     var wEl = document.getElementById('wall-welcome');
@@ -780,6 +788,13 @@ if (wallThemeBtn) wallThemeBtn.onclick = function () {
     v.classList.toggle('wall-light', light);
     try { localStorage.setItem('mk_wall_theme', light ? 'light' : 'dark'); } catch (e) {}
     wallThemeBtn.innerText = light ? '🌙' : '☀️';
+};
+
+// Loppunäytön voi sulkea — seinä palaa normaaliksi kunnes se avataan uudelleen
+var wallEndCloseBtn = document.getElementById('wall-end-close');
+if (wallEndCloseBtn) wallEndCloseBtn.onclick = function () {
+    mkWall.endDismissed = true;
+    updateWallEnd();
 };
 var wallCloseBtn = document.getElementById('wall-close');
 if (wallCloseBtn) wallCloseBtn.onclick = closeWall;

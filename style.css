@@ -3058,6 +3058,18 @@ body.theme-light .form-error { color: #B22222; }
     font-size: 1.3em;
     font-weight: bold;
 }
+.wall-end-close {
+    margin-top: 34px;
+    padding: 12px 30px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 26px;
+    color: rgba(255,255,255,0.7);
+    font-size: 1em;
+    cursor: pointer;
+    letter-spacing: 1px;
+}
+.wall-end-close:hover { background: rgba(255,255,255,0.12); color: #fff; }
 @media (max-width: 700px) {
     .wall-end-title { font-size: 2.4em; }
     .wall-end-stat { font-size: 1em; padding: 8px 14px; }
@@ -3114,3 +3126,5 @@ body.theme-light .form-error { color: #B22222; }
 .wall-light .wall-end-title { color: #b35c00; text-shadow: none; }
 .wall-light .wall-end-sub { color: rgba(27,42,71,0.8); }
 .wall-light .wall-end-stat { background: rgba(27,42,71,0.06); border-color: rgba(27,42,71,0.18); color: #1b2a47; }
+.wall-light .wall-end-close { border-color: rgba(27,42,71,0.3); color: rgba(27,42,71,0.7); }
+.wall-light .wall-end-close:hover { background: rgba(27,42,71,0.1); color: #1b2a47; }
