@@ -2960,3 +2960,157 @@ body.theme-light .form-error { color: #B22222; }
     text-shadow: 0 0 14px rgba(127,255,159,0.9);
     font-size: 1.05em !important;
 }
+
+/* Teema-nappi (vaalea/tumma) */
+#wall-theme {
+    position: absolute;
+    top: 14px;
+    right: 74px;
+    z-index: 10;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.08);
+    font-size: 1.2em;
+    cursor: pointer;
+}
+#wall-theme:hover { background: rgba(255,255,255,0.2); }
+
+/* Tervetuloa-spotlight */
+.wall-welcome {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 15;
+    text-align: center;
+    display: none;
+    pointer-events: none;
+    width: 90%;
+}
+.wall-welcome.show { display: block; animation: wallWelcomeFx 3.6s ease-in-out forwards; }
+.wall-welcome-hi {
+    font-size: 1.4em;
+    letter-spacing: 6px;
+    color: #64ffda;
+    font-weight: 900;
+}
+.wall-welcome-name {
+    font-size: 4em;
+    font-weight: 900;
+    color: #fff;
+    margin: 8px 0;
+    text-shadow: 0 0 30px rgba(100,255,218,0.5);
+}
+.wall-welcome-sub { font-size: 1.4em; color: #ffd9a0; }
+@keyframes wallWelcomeFx {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+    12% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
+    20% { transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -56%) scale(0.95); }
+}
+@media (max-width: 700px) {
+    .wall-welcome-name { font-size: 2.4em; }
+    .wall-welcome-sub { font-size: 1em; }
+}
+
+/* Loppunäyttö */
+.wall-end {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    text-align: center;
+    padding: 30px;
+    background: radial-gradient(ellipse at center, #16283f 0%, #0d1b2a 75%);
+}
+.wall-end-kicker {
+    font-size: 1.2em;
+    letter-spacing: 6px;
+    color: #64ffda;
+    font-weight: 900;
+}
+.wall-end-title {
+    font-size: 4.5em;
+    font-weight: 900;
+    color: #ffd9a0;
+    text-shadow: 0 0 40px rgba(255,217,160,0.4);
+}
+.wall-end-sub { font-size: 1.6em; color: rgba(255,255,255,0.8); }
+.wall-end-stats {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 16px;
+}
+.wall-end-stat {
+    padding: 12px 22px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 24px;
+    font-size: 1.3em;
+    font-weight: bold;
+}
+@media (max-width: 700px) {
+    .wall-end-title { font-size: 2.4em; }
+    .wall-end-stat { font-size: 1em; padding: 8px 14px; }
+}
+
+/* Feedin ylivuoto: tiiviimpi asettelu */
+.wall-feed-box.wall-feed-dense .wall-chip {
+    font-size: 0.75em;
+    padding: 4px 9px;
+    margin: 2px;
+}
+
+/* Vaalea teema */
+#wall-view.wall-light {
+    background: radial-gradient(ellipse at center, #f7f9fd 0%, #dfe5f0 75%);
+    color: #1b2a47;
+}
+.wall-light #wall-title { color: #b35c00; text-shadow: none; }
+.wall-light #wall-count { color: #0d1b2a; text-shadow: 0 0 30px rgba(20,120,100,0.25); }
+.wall-light .wall-count-label { color: rgba(27,42,71,0.7); }
+.wall-light #wall-live { color: #b35c00; }
+.wall-light #wall-next { background: rgba(27,42,71,0.08); color: rgba(27,42,71,0.8); }
+.wall-light #wall-quickstats { color: #3a5a9f; }
+.wall-light #wall-series-total { color: #b35c00; }
+.wall-light #wall-series-badge {
+    background: rgba(15,157,132,0.12);
+    border-color: #0f9d84;
+    color: #0f9d84;
+}
+.wall-light .wall-dot { border-color: rgba(27,42,71,0.3); color: rgba(27,42,71,0.55); }
+.wall-light .wall-dot.filled { background: #0f9d84; border-color: #0f9d84; color: #fff; }
+.wall-light .wall-dot.current { box-shadow: 0 0 0 3px #b35c00; }
+.wall-light .wall-feed-box { background: rgba(255,255,255,0.5); border-color: rgba(27,42,71,0.15); }
+.wall-light .wall-feed-title { color: rgba(27,42,71,0.6); }
+.wall-light .wall-feed-empty { color: rgba(27,42,71,0.5); }
+.wall-light .wall-qr-text { color: #0f9d84; }
+.wall-light .wall-corner-info { color: rgba(27,42,71,0.7); }
+.wall-light #wall-close,
+.wall-light #wall-theme {
+    border-color: rgba(27,42,71,0.3);
+    background: rgba(27,42,71,0.06);
+    color: #1b2a47;
+}
+.wall-light #wall-close:hover,
+.wall-light #wall-theme:hover { background: rgba(27,42,71,0.14); }
+.wall-light .wall-watermark { opacity: 0.08; }
+.wall-light .wall-welcome-name { color: #0d1b2a; text-shadow: 0 0 24px rgba(15,157,132,0.35); }
+.wall-light .wall-welcome-hi { color: #0f9d84; }
+.wall-light .wall-welcome-sub { color: #b35c00; }
+.wall-light .wall-end {
+    background: radial-gradient(ellipse at center, #f7f9fd 0%, #dfe5f0 75%);
+}
+.wall-light .wall-end-kicker { color: #0f9d84; }
+.wall-light .wall-end-title { color: #b35c00; text-shadow: none; }
+.wall-light .wall-end-sub { color: rgba(27,42,71,0.8); }
+.wall-light .wall-end-stat { background: rgba(27,42,71,0.06); border-color: rgba(27,42,71,0.18); color: #1b2a47; }
