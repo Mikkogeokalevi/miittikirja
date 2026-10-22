@@ -27,6 +27,7 @@ var mkWall = {
     endShown: false,
     endDismissed: false,
     tickerIdx: -1,
+    accentHex: null,
     ordinal: 0,
     ordLabel: '',
     nextEvent: null,
@@ -90,6 +91,74 @@ function mkWallDistM(a, b) {
     var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
         Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// --- Miitin teemaväri seinälle ---
+function mkWallHexToRgb(hex) {
+    var h = (hex || '').replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var n = parseInt(h, 16);
+    if (isNaN(n)) return null;
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function mkWallRgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    var l = (mx + mn) / 2;
+    if (mx === mn) return { h: 0, s: 0, l: l };
+    var d = mx - mn;
+    var s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    var h;
+    if (mx === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (mx === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    return { h: h * 60, s: s, l: l };
+}
+function mkWallHslToRgb(h, s, l) {
+    h = ((h % 360) + 360) % 360;
+    function f(n) {
+        var k = (n + h / 30) % 12;
+        var a = s * Math.min(l, 1 - l);
+        return Math.round((l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255);
+    }
+    return [f(0), f(8), f(4)];
+}
+// Sama väri kuin vierasnäkymässä (extractThemeColorFromDescription),
+// normalisoituna näkyväksi tummalla seinällä + johdannaisvärit
+function mkWallThemeFromColor(hex) {
+    var rgb = mkWallHexToRgb(hex);
+    if (!rgb) return null;
+    var hsl = mkWallRgbToHsl(rgb[0], rgb[1], rgb[2]);
+    var h = hsl.h;
+    var s = Math.min(1, Math.max(0.55, hsl.s));
+    var l = Math.min(0.78, Math.max(0.5, hsl.l));
+    var a = mkWallHslToRgb(h, s, l);
+    var a2 = mkWallHslToRgb(h + 35, Math.min(1, s * 0.85), Math.min(0.8, l + 0.14));
+    var ad = mkWallHslToRgb(h, Math.min(1, s * 0.85), 0.36);
+    var a2d = mkWallHslToRgb(h + 35, Math.min(1, s * 0.8), 0.38);
+    function css(c) { return 'rgb(' + c.join(',') + ')'; }
+    return {
+        accent: css(a), accentRgb: a.join(','),
+        accent2: css(a2), accent2Rgb: a2.join(','),
+        accentDeep: css(ad), accent2Deep: css(a2d)
+    };
+}
+function applyWallTheme(ev) {
+    var view = document.getElementById('wall-view');
+    if (!view) return;
+    var props = ['--w-accent', '--w-accent-rgb', '--w-accent2', '--w-accent2-rgb', '--w-accent-deep', '--w-accent2-deep'];
+    var col = (ev.themeColor || '').trim() ||
+        (typeof extractThemeColorFromDescription === 'function' ? extractThemeColorFromDescription(ev.descriptionHtml || '') : null);
+    var t = col ? mkWallThemeFromColor(col) : null;
+    props.forEach(function (p) { view.style.removeProperty(p); });
+    mkWall.accentHex = t ? t.accent : null;
+    if (!t) return;
+    view.style.setProperty('--w-accent', t.accent);
+    view.style.setProperty('--w-accent-rgb', t.accentRgb);
+    view.style.setProperty('--w-accent2', t.accent2);
+    view.style.setProperty('--w-accent2-rgb', t.accent2Rgb);
+    view.style.setProperty('--w-accent-deep', t.accentDeep);
+    view.style.setProperty('--w-accent2-deep', t.accent2Deep);
 }
 
 function mkWmoIcon(c) {
@@ -397,6 +466,7 @@ function renderWallFrame() {
     var ev = mkWall.event || {};
     var isSeries = mkWall.seriesEvents.length > 1;
 
+    applyWallTheme(ev);
     document.getElementById('wall-title').innerText = ev.name || 'Miitti';
 
     var badge = document.getElementById('wall-series-badge');
@@ -607,6 +677,7 @@ function wallConfetti() {
     var box = document.getElementById('wall-confetti');
     if (!box) return;
     var colors = ['#64ffda', '#ffd9a0', '#ff7b9c', '#7fff9f', '#ffd700', '#ff8c42', '#a0c4ff'];
+    if (mkWall.accentHex) colors.push(mkWall.accentHex, mkWall.accentHex);
     for (var i = 0; i < 26; i++) {
         var c = document.createElement('span');
         c.className = 'wall-confetti-piece';
