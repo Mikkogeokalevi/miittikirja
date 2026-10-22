@@ -23,6 +23,8 @@ var mkWall = {
     tickerTimer: null,
     scrollTimer: null,
     feedTimer: null,
+    byeTimer: null,
+    byeIdx: -1,
     ended: false,
     endShown: false,
     endDismissed: false,
@@ -218,6 +220,7 @@ function updateWallEnd() {
     if (!el) return;
     if (!mkWall.ended || mkWall.endDismissed) {
         if (mkWall.endShown) { el.style.display = 'none'; mkWall.endShown = false; }
+        if (mkWall.byeTimer) { clearInterval(mkWall.byeTimer); mkWall.byeTimer = null; }
         return;
     }
     el.style.display = 'flex';
@@ -250,7 +253,31 @@ function updateWallEnd() {
         mkWall.endShown = true;
         wallConfetti();
         wallConfetti();
+        // Heippa-viestit pyörivät loppunäytöllä
+        mkWall.byeIdx = -1;
+        updateWallBye();
+        if (mkWall.byeTimer) clearInterval(mkWall.byeTimer);
+        mkWall.byeTimer = setInterval(updateWallBye, 15000);
     }
+}
+
+// Loppunäytön heippa-viesti (listat config.js:ssä: WALL_BYE_MESSAGES)
+function mkWallByeMessages() {
+    var m = (typeof MK_Config !== 'undefined' && MK_Config.WALL_BYE_MESSAGES) ? MK_Config.WALL_BYE_MESSAGES : null;
+    if (m && m.length) return m;
+    return ['Kiitos että tulitte!'];
+}
+
+function updateWallBye() {
+    var el = document.getElementById('wall-end-bye');
+    if (!el) return;
+    var msgs = mkWallByeMessages();
+    if (msgs.length === 1) mkWall.byeIdx = 0;
+    else mkWall.byeIdx = (mkWall.byeIdx + 1 + Math.floor(Math.random() * (msgs.length - 1))) % msgs.length;
+    el.innerText = msgs[mkWall.byeIdx];
+    el.classList.remove('swap');
+    void el.offsetWidth;
+    el.classList.add('swap');
 }
 
 // Tervetuloa-spotlight: uusi kirjautuja välähtää keskelle ruutua
@@ -846,6 +873,7 @@ function closeWall() {
     if (mkWall.tickerTimer) { clearTimeout(mkWall.tickerTimer); mkWall.tickerTimer = null; }
     if (mkWall.scrollTimer) { clearTimeout(mkWall.scrollTimer); mkWall.scrollTimer = null; }
     if (mkWall.feedTimer) { clearInterval(mkWall.feedTimer); mkWall.feedTimer = null; }
+    if (mkWall.byeTimer) { clearInterval(mkWall.byeTimer); mkWall.byeTimer = null; }
     mkWall.ended = false;
     mkWall.endShown = false;
     mkWall.endDismissed = false;
