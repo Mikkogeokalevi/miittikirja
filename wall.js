@@ -288,6 +288,9 @@ function updateWallQrMask() {
     }
     mkWall.maskVisible = maskVisible;
     mask.style.display = maskVisible ? 'flex' : 'none';
+    // 🔍-nappi näkyy vain kun QR on aktiivinen
+    var zb = document.getElementById('wall-qr-zoom-btn');
+    if (zb) zb.style.display = maskVisible ? 'none' : 'inline-block';
     var txt = document.getElementById('wall-qr-mask-text');
     if (maskVisible && txt) {
         txt.innerText = t.start ? 'Avautuu ' + mkWallDur(t.start - new Date()) : 'Kirjautuminen avautuu miitin alkaessa';
@@ -548,6 +551,8 @@ function renderWallFrame() {
     updateWallTicker(true);
 
     var q = document.getElementById('wall-qr');
+    var big = document.getElementById('wall-qr-big');
+    if (big) big.innerHTML = '';
     if (q && typeof QRCode !== 'undefined') {
         q.innerHTML = '';
         var baseUrl = window.location.href.split('?')[0];
@@ -560,7 +565,27 @@ function renderWallFrame() {
             colorLight: '#ffffff',
             correctLevel: QRCode.CorrectLevel.H
         });
+        // 🔍-nappi: iso QR koko ruudulle (luotu laiskasti vasta avattaessa)
+        var zb = document.getElementById('wall-qr-zoom-btn');
+        if (zb) zb.onclick = function () {
+            var z = document.getElementById('wall-qr-zoom');
+            if (!z) return;
+            if (big && !big.innerHTML) {
+                var size = Math.round(Math.min(window.innerWidth, window.innerHeight) * 0.7);
+                new QRCode(big, {
+                    text: guestUrl,
+                    width: size,
+                    height: size,
+                    colorDark: '#0d1b2a',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }
+            z.style.display = 'flex';
+        };
     }
+    var zoomOv = document.getElementById('wall-qr-zoom');
+    if (zoomOv) zoomOv.onclick = function () { zoomOv.style.display = 'none'; };
 }
 
 function renderWallData() {
@@ -826,6 +851,8 @@ function closeWall() {
     mkWall.endDismissed = false;
     var endEl = document.getElementById('wall-end');
     if (endEl) endEl.style.display = 'none';
+    var zoomEl = document.getElementById('wall-qr-zoom');
+    if (zoomEl) zoomEl.style.display = 'none';
     var wEl = document.getElementById('wall-welcome');
     if (wEl) wEl.classList.remove('show');
     mkWall.tickerIdx = -1;

@@ -3134,3 +3134,43 @@ body.theme-light .form-error { color: #B22222; }
 .wall-light .wall-end-stat { background: rgba(27,42,71,0.06); border-color: rgba(27,42,71,0.18); color: #1b2a47; }
 .wall-light .wall-end-close { border-color: rgba(27,42,71,0.3); color: rgba(27,42,71,0.7); }
 .wall-light .wall-end-close:hover { background: rgba(27,42,71,0.1); color: #1b2a47; }
+
+/* QR-zoomaus: iso koodi koko ruudulle */
+#wall-qr-zoom-btn {
+    margin-top: 8px;
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 20px;
+    color: rgba(255,255,255,0.85);
+    font-size: 0.85em;
+    font-weight: bold;
+    cursor: pointer;
+}
+#wall-qr-zoom-btn:hover { background: rgba(255,255,255,0.18); }
+#wall-qr-zoom {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    background: rgba(13,27,42,0.94);
+    cursor: pointer;
+}
+#wall-qr-big.wall-qr-box { padding: 24px; border-radius: 20px; }
+.wall-qr-zoom-hint {
+    color: rgba(255,255,255,0.6);
+    font-size: 0.95em;
+    letter-spacing: 1px;
+}
+.wall-light #wall-qr-zoom-btn {
+    background: rgba(27,42,71,0.08);
+    border-color: rgba(27,42,71,0.25);
+    color: rgba(27,42,71,0.85);
+}
+.wall-light #wall-qr-zoom-btn:hover { background: rgba(27,42,71,0.16); }
+.wall-light #wall-qr-zoom { background: rgba(240,244,250,0.94); }
+.wall-light .wall-qr-zoom-hint { color: rgba(27,42,71,0.6); }
