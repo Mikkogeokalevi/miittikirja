@@ -15,21 +15,25 @@ const MK_Config = {
     // Miittiseinän loppunäytön "heippa"-viestit — pyörivät ~15 s välein.
     // Lisää / poista / muokkaa vapaasti tässä listassa.
     WALL_BYE_MESSAGES: [
-        "FTF-tunnelmaa kaikille kotimatkalle!",
+        "Kotiin → geocaching.com → Attended → onnellinen järjestäjä!",
         "Muistakaa logata Attended — järjestäjä kiittää!",
-        "DNF:tä ei tänään — kaikki löysivät perille!",
-        "Ämpäri taskuun ja kohti uusia seikkailuita!",
+        "DNF:tä ei tänään — kaikki saavat löydön!",
         "Lokikirja sulkeutuu — seikkailut eivät!",
         "Geokätköilijä ei sanoa hyvästi — hän sanoo TFTC!",
-        "Kiitos että tulitte — teistä tuli osa historiaa!",
+        "Kiitos että tulitte — teistä tuli osa lokikirjan historiaa!",
         "Hyvää matkaa kotiin!",
         "Nähdään seuraavassa miitissä!",
         "Teitte miitistä muistamisen arvoisen!",
-        "Viedään hyvä olo mukaan poluille!",
-        "Hanskat takaisin kaupunkiin ja swagit matkaan!",
-        "Trackablet muistavat tämän illan — hei hei!",
+        "Heippa! Viedään hyvä olo mukaan poluille!",
         "Kuka vei loput pullat? — kiitti ja hei!",
-        "GPS opastaa kotiin — ja kohti seuraavaa!"
+        "GPS opastaa kotiin — ja kohti seuraavaa!",
+        "Kiitos illasta — näistä hetkistä miitit tehdään!",
+        "Tulipa hyvä mieli — kiitos että olitte!",
+        "Kävijät tekee miitin — kiitos että teitte!",
+        "Ihana nähdä teitä kaikkia taas!",
+        "Kiitos — tänne on aina ilo kutsua!",
+        "Jokainen kävijä teki tästä paremman!",
+        "Hyvä seura pitää pahan ilmankin loitolla!",
     ],
 
     // Sovelluksen versio (näytetään kirjautumissivulla)
