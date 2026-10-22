@@ -257,7 +257,7 @@ function updateWallEnd() {
         mkWall.byeIdx = -1;
         updateWallBye();
         if (mkWall.byeTimer) clearInterval(mkWall.byeTimer);
-        mkWall.byeTimer = setInterval(updateWallBye, 15000);
+        mkWall.byeTimer = setInterval(updateWallBye, 10000);
     }
 }
 
