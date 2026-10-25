@@ -228,9 +228,9 @@ function updateWallEnd() {
         return;
     }
     el.style.display = 'flex';
-    // Miitin nimi ylimmäiseksi kickeriin, alle jää pelkkä heippa-viesti
-    var kicker = document.getElementById('wall-end-kicker');
-    if (kicker) kicker.innerText = ((mkWall.event || {}).name || 'MIITTI') + ' PÄÄTTYNYT';
+    // Päättyneen miitin nimi ylimmäiseksi omalle riville
+    var nm = document.getElementById('wall-end-name');
+    if (nm) nm.innerText = (mkWall.event || {}).name || '';
     var sub = document.getElementById('wall-end-sub');
     if (sub) sub.innerText = '';
     var msgN = 0, places = {};

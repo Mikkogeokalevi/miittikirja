@@ -3036,6 +3036,13 @@ body.theme-light .form-error { color: #B22222; }
     padding: 30px;
     background: radial-gradient(ellipse at center, #16283f 0%, #0d1b2a 75%);
 }
+.wall-end-name {
+    font-size: 1.7em;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: 1px;
+}
+.wall-light .wall-end-name { color: #1b2a47; }
 .wall-end-kicker {
     font-size: 1.2em;
     letter-spacing: 6px;
@@ -3050,7 +3057,7 @@ body.theme-light .form-error { color: #B22222; }
 }
 .wall-end-sub { font-size: 1.6em; color: rgba(255,255,255,0.8); }
 .wall-end-bye {
-    font-size: 1.5em;
+    font-size: 1.9em;
     font-style: italic;
     color: rgba(255,255,255,0.85);
     min-height: 1.4em;
@@ -3061,7 +3068,8 @@ body.theme-light .form-error { color: #B22222; }
     100% { opacity: 1; transform: translateY(0); }
 }
 @media (max-width: 700px) {
-    .wall-end-bye { font-size: 1.05em; }
+    .wall-end-bye { font-size: 1.3em; }
+    .wall-end-name { font-size: 1.2em; }
 }
 .wall-end-stats {
     display: flex;
@@ -3407,29 +3415,39 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
 .wall-light .wall-spot-name { color: #1b2a47; }
 .wall-light .wall-spot-sub { color: rgba(27,42,71,0.75); }
 
-/* ============ SEINÄ: loppunayton "seuraava miitti" ============ */
+/* ============ SEINÄ: loppunayton "seuraava miitti" -mainoslaatikko ============ */
 .wall-end-next {
-    margin-top: 26px;
+    margin-top: 34px;
+    padding: 20px 40px;
     text-align: center;
-    opacity: 0.85;
+    border: 2px solid var(--w-accent-deep);
+    border-radius: 20px;
+    background: rgba(255,255,255,0.05);
+    box-shadow: 0 0 30px rgba(var(--w-accent-rgb), 0.15), inset 0 0 20px rgba(var(--w-accent-rgb),0.05);
 }
 .wall-end-next-label {
-    font-size: 0.7em;
-    letter-spacing: 3px;
-    font-weight: 700;
+    font-size: 0.85em;
+    letter-spacing: 4px;
+    font-weight: 800;
     color: var(--w-accent2);
 }
 .wall-end-next-when {
-    margin-top: 6px;
-    font-size: 1.15em;
-    font-weight: 700;
+    margin-top: 10px;
+    font-size: 1.55em;
+    font-weight: 800;
     color: #ffffff;
     font-variant-numeric: tabular-nums;
 }
 .wall-end-next-name {
-    margin-top: 4px;
-    font-size: 0.95em;
-    color: rgba(255,255,255,0.75);
+    margin-top: 6px;
+    font-size: 1.15em;
+    color: rgba(255,255,255,0.85);
 }
+@media (max-width: 700px) {
+    .wall-end-next { padding: 14px 22px; margin-top: 24px; }
+    .wall-end-next-when { font-size: 1.15em; }
+    .wall-end-next-name { font-size: 0.95em; }
+}
+.wall-light .wall-end-next { background: rgba(27,42,71,0.04); border-color: var(--w-accent-deep); box-shadow: none; }
 .wall-light .wall-end-next-when { color: #1b2a47; }
-.wall-light .wall-end-next-name { color: rgba(27,42,71,0.75); }
+.wall-light .wall-end-next-name { color: rgba(27,42,71,0.8); }
