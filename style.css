@@ -3406,3 +3406,30 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
 .wall-light .wall-spot-card { background: rgba(27,42,71,0.05); border-color: rgba(27,42,71,0.2); }
 .wall-light .wall-spot-name { color: #1b2a47; }
 .wall-light .wall-spot-sub { color: rgba(27,42,71,0.75); }
+
+/* ============ SEINÄ: loppunayton "seuraava miitti" ============ */
+.wall-end-next {
+    margin-top: 26px;
+    text-align: center;
+    opacity: 0.85;
+}
+.wall-end-next-label {
+    font-size: 0.7em;
+    letter-spacing: 3px;
+    font-weight: 700;
+    color: var(--w-accent2);
+}
+.wall-end-next-when {
+    margin-top: 6px;
+    font-size: 1.15em;
+    font-weight: 700;
+    color: #ffffff;
+    font-variant-numeric: tabular-nums;
+}
+.wall-end-next-name {
+    margin-top: 4px;
+    font-size: 0.95em;
+    color: rgba(255,255,255,0.75);
+}
+.wall-light .wall-end-next-when { color: #1b2a47; }
+.wall-light .wall-end-next-name { color: rgba(27,42,71,0.75); }

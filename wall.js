@@ -253,6 +253,31 @@ function updateWallEnd() {
         s.innerText = b;
         stats.appendChild(s);
     });
+    // Loppunäytön alalaitaan: seuraava tuleva miitti
+    var nx = document.getElementById('wall-end-next');
+    if (nx) {
+        nx.innerHTML = '';
+        var now = new Date();
+        var nxt = null;
+        (mkWall.allEvents || []).forEach(function (e) {
+            if (!e || e.key === (mkWall.event || {}).key) return;
+            var t = mkWallEventTimes(e);
+            var st = t.start || new Date((e.date || '') + 'T00:00:00');
+            if (st && st > now && (!nxt || st < nxt.t)) nxt = { e: e, t: st };
+        });
+        if (nxt) {
+            var l1 = document.createElement('div');
+            l1.className = 'wall-end-next-label';
+            l1.innerText = 'SEURAAVA MIITTI';
+            var l2 = document.createElement('div');
+            l2.className = 'wall-end-next-when';
+            l2.innerText = mkWallDate(nxt.e.date) + (nxt.e.time ? '  ' + nxt.e.time : '');
+            var l3 = document.createElement('div');
+            l3.className = 'wall-end-next-name';
+            l3.innerText = (nxt.e.name || '') + (nxt.e.location ? '  ·  ' + nxt.e.location : '');
+            nx.appendChild(l1); nx.appendChild(l2); nx.appendChild(l3);
+        }
+    }
     if (!mkWall.endShown) {
         mkWall.endShown = true;
         wallConfetti();
