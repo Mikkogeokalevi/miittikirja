@@ -228,8 +228,11 @@ function updateWallEnd() {
         return;
     }
     el.style.display = 'flex';
+    // Miitin nimi ylimmäiseksi kickeriin, alle jää pelkkä heippa-viesti
+    var kicker = document.getElementById('wall-end-kicker');
+    if (kicker) kicker.innerText = ((mkWall.event || {}).name || 'MIITTI') + ' PÄÄTTYNYT';
     var sub = document.getElementById('wall-end-sub');
-    if (sub) sub.innerText = (mkWall.event || {}).name || '';
+    if (sub) sub.innerText = '';
     var msgN = 0, places = {};
     mkWall.logs.forEach(function (l) {
         if (l.message) msgN++;
