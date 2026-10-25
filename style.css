@@ -2518,16 +2518,16 @@ body.theme-light .form-error { color: #B22222; }
 .wall-main {
     flex: 1;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
     gap: 40px;
     min-height: 0;
 }
 
-.wall-counter-box { text-align: center; }
+.wall-counter-box { text-align: center; align-self: center; flex-shrink: 0; }
 
 #wall-count {
-    font-size: 11em;
+    font-size: clamp(4.5em, 8vw, 9em);
     font-weight: 900;
     line-height: 1;
     color: #fff;
@@ -2632,6 +2632,14 @@ body.theme-light .form-error { color: #B22222; }
     padding-bottom: 8px;
 }
 
+/* Keskitason ruudut (iPad vaakataso ym.) — taulu saa leijonanosan tilasta */
+@media (max-width: 1100px) {
+    .wall-main { gap: 20px; }
+    .wall-feed-box { min-width: 0; }
+    #wall-count { font-size: clamp(4em, 8vw, 6em); }
+    .wall-note { width: 124px; min-height: 94px; font-size: 0.95em; padding: 22px 10px 10px; }
+}
+
 /* Kapeat ruudut (puhelin pystyssä / pieni tabletti) */
 @media (max-width: 700px) {
     .wall-inner { padding: 12px 14px; height: auto; flex: 1; min-height: 0; }
@@ -2683,17 +2691,22 @@ body.theme-light .form-error { color: #B22222; }
     letter-spacing: 1px;
 }
 .wall-feed-box {
-    width: 520px;
-    max-width: 45vw;
-    max-height: 60vh;
+    flex: 1;
+    align-self: stretch;
+    width: auto;
+    max-width: none;
+    max-height: none;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     border: 2px solid rgba(var(--w-accent-rgb), 0.35);
     background:
         repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 26px),
         repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 26px),
         rgba(255,255,255,0.05);
 }
+.wall-feed-box::-webkit-scrollbar { display: none; }
 /* ============ ILMOITUSTAULU: postit-laput ============ */
 #wall-feed {
     display: flex;
@@ -2769,7 +2782,7 @@ body.theme-light .form-error { color: #B22222; }
     100% { opacity: 0; transform: translateY(110vh) rotate(720deg); }
 }
 @media (max-width: 700px) {
-    .wall-feed-box { max-width: 100%; max-height: 38vh; }
+    .wall-feed-box { max-width: 100%; max-height: 42vh; }
     .wall-note { width: 112px; min-height: 84px; font-size: 0.9em; padding: 20px 9px 9px; }
 }
 
