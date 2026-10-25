@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.58.0";
+const APP_VERSION = "7.59.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1240,6 +1240,7 @@ function loadEvents() {
             const isArchived = (evt.isArchived === true);
             const hasPreSignMessage = typeof evt.preSignMessage === 'string' && evt.preSignMessage.trim().length > 0;
             const hasSpecialMessage = typeof evt.specialMessage === 'string' && evt.specialMessage.trim().length > 0;
+            const hasSeries = typeof evt.series === 'string' && evt.series.trim().length > 0;
             const countId = `count-${isAdminMode ? 'adm' : 'usr'}-${evt.key}`;
             
             // Muotoillaan nimi numeron kanssa
@@ -1257,8 +1258,9 @@ function loadEvents() {
                 div.innerHTML = `
                     <div style="display:flex; justify-content:space-between;"><strong>${displayName}</strong><span>${evt.date}</span></div>
                     <div style="font-size:0.8em; color:var(--text-muted); margin-bottom:5px;">🕓 ${evt.time || '-'}</div>
-                    ${(hasPreSignMessage || hasSpecialMessage)
+                    ${(hasPreSignMessage || hasSpecialMessage || hasSeries)
                         ? `<div style="margin:2px 0 6px 0; display:flex; gap:6px; flex-wrap:wrap;">
+                            ${hasSeries ? `<span style="font-size:0.75em; color:#5b3fa0; font-weight:bold; background:#f0e8ff; border:1px solid #c9b8ea; border-radius:999px; padding:2px 8px;">🔗 ${evt.series}</span>` : ''}
                             ${hasPreSignMessage ? '<span style="font-size:0.75em; color:#8B4513; font-weight:bold; background:#fff7e6; border:1px solid #d8b48a; border-radius:999px; padding:2px 8px;">📝 Viesti ennen kirjausta</span>' : ''}
                             ${hasSpecialMessage ? '<span style="font-size:0.75em; color:#8B4513; font-weight:bold; background:#fff7e6; border:1px solid #d8b48a; border-radius:999px; padding:2px 8px;">🎁 Viesti kirjauksen jälkeen</span>' : ''}
                         </div>`
@@ -1303,6 +1305,7 @@ function loadEvents() {
                 div.innerHTML = `
                     <div style="display:flex; justify-content:space-between;"><strong>${displayName}</strong><span>${evt.date}</span></div>
                     <div style="font-size:0.8em; color:var(--text-muted); margin-bottom:5px;">🕓 ${evt.time || '-'} • ${evt.location || ''}</div>
+                    ${hasSeries ? `<div style="font-size:0.78em; color:#7b5aa6; font-weight:600; margin-bottom:5px;">🔗 Sarja: ${evt.series}</div>` : ''}
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                          <span id="${countId}" style="font-weight:bold; font-size:0.9em;">👤 0 osallistujaa</span>
                          <button class="btn btn-green btn-small" style="width:auto;" onclick="openGuestbook('${evt.key}')">📖 Avaa miittikirja</button>

@@ -91,7 +91,9 @@ const visitorTranslations = {
         passportStamps: "{0}/{1} leimaa",
         yearAttendance: "Olet käynyt {0} % tämän vuoden miiteistä ({1}/{2})",
         offlineBanner: "📡 Ei verkkoyhteyttä — kirjaukset tallentuvat jonoon ja lähetetään kun yhteys palaa.",
-        weakBanner: "🐌 Heikko verkkoyhteys — kirjaukset voivat kestää hetken."
+        weakBanner: "🐌 Heikko verkkoyhteys — kirjaukset voivat kestää hetken.",
+        seriesPromoTitle: "Tulossa sarja!",
+        seriesPromoLine: "{0} miittiä · alkaa {1}"
     },
     en: {
         title: "Mikkokalevi's Digital Guestbook",
@@ -180,7 +182,9 @@ const visitorTranslations = {
         passportStamps: "{0}/{1} stamps",
         yearAttendance: "You've attended {0}% of this year's meetups ({1}/{2})",
         offlineBanner: "📡 No connection — entries are queued and sent when back online.",
-        weakBanner: "🐌 Slow connection — entries may take a moment."
+        weakBanner: "🐌 Slow connection — entries may take a moment.",
+        seriesPromoTitle: "Series coming!",
+        seriesPromoLine: "{0} meetups · starts {1}"
     },
     sv: {
         title: "Mikkokalevis Digitala Gästbok",
@@ -269,7 +273,9 @@ const visitorTranslations = {
         passportStamps: "{0}/{1} stämplar",
         yearAttendance: "Du har varit på {0} % av årets träffar ({1}/{2})",
         offlineBanner: "📡 Ingen uppkoppling — loggar köas och skickas när nätet är tillbaka.",
-        weakBanner: "🐌 Svag uppkoppling — loggar kan ta en stund."
+        weakBanner: "🐌 Svag uppkoppling — loggar kan ta en stund.",
+        seriesPromoTitle: "Serie på gång!",
+        seriesPromoLine: "{0} träffar · börjar {1}"
     },
     et: {
         title: "Mikkokalevi digitaalne külalisteraamat",
@@ -358,7 +364,9 @@ const visitorTranslations = {
         passportStamps: "{0}/{1} tempelt",
         yearAttendance: "Oled käinud {0}% selle aasta miitidest ({1}/{2})",
         offlineBanner: "📡 Ühendust pole — kirjed lähevad järjekorda ja saadetakse hiljem.",
-        weakBanner: "🐌 Nõrk ühendus — kirjed võivad võtta aega."
+        weakBanner: "🐌 Nõrk ühendus — kirjed võivad võtta aega.",
+        seriesPromoTitle: "Seeria tulekul!",
+        seriesPromoLine: "{0} miitti · algab {1}"
     }
 };
 
@@ -2034,6 +2042,21 @@ async function computeVisitorStats(targetHost, eventId, nick, virtualLog, preloa
             }
         } catch (e) { /* ei kriittinen */ }
 
+        // --- Sarjamainos: tulossa oleva sarja (jos nykyinen miitti ei ole siinä) ---
+        try {
+            const curEvt = eventsMap[eventId];
+            const curSeries = (curEvt && curEvt.series) ? curEvt.series : '';
+            const seriesPromos = {};
+            (upcomingEvents || []).forEach(e => {
+                if (e.series && e.series !== curSeries) {
+                    if (!seriesPromos[e.series]) seriesPromos[e.series] = { name: e.series, count: 0, firstDate: e.date };
+                    seriesPromos[e.series].count++;
+                }
+            });
+            const promo = Object.values(seriesPromos).sort((a, b) => a.firstDate < b.firstDate ? -1 : 1)[0];
+            if (promo) stats.upcomingSeries = promo;
+        } catch (e) { /* ei kriittinen */ }
+
     } catch (statsErr) {
         console.warn("Stats error:", statsErr);
         userHistory = null;
@@ -2558,6 +2581,20 @@ function showVisitorModalWithLang(nick, history, stats) {
          nextBox.innerHTML = `<span style="color:var(--vv-muted-color); font-style:italic;">${t.noNextEvent}</span>`;
     }
     footer.appendChild(nextBox);
+
+    // A2) Sarjamainos — jos tulossa oleva sarja eikä nykyinen miitti kuulu siihen
+    if (stats.upcomingSeries) {
+        const sp = stats.upcomingSeries;
+        const promoBox = document.createElement('div');
+        promoBox.className = 'visitor-series-promo';
+        const promoDate = formatVisitorDateOnly(sp.firstDate) || sp.firstDate;
+        promoBox.innerHTML = '🎖️ <strong>' + visitorEscapeHtml(t.seriesPromoTitle || 'Tulossa sarja!')
+            + '</strong> ' + visitorEscapeHtml(sp.name) + '<br><span>'
+            + visitorEscapeHtml((t.seriesPromoLine || '{0} miittiä · alkaa {1}')
+                .replace('{0}', sp.count).replace('{1}', promoDate))
+            + '</span>';
+        footer.appendChild(promoBox);
+    }
 
     // B) Napit
     const btnCopy = document.createElement('button');

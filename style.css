@@ -3277,3 +3277,15 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
     user-select: none;
 }
 .series-past-group summary:hover { color: var(--text-color); }
+
+/* ============ VIERASNÄKYMÄ: sarjamainos ============ */
+.visitor-series-promo {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: linear-gradient(135deg, #f0e8ff, #e8f0ff);
+    border: 1px solid #c9b8ea;
+    border-radius: 10px;
+    text-align: center;
+    color: #4a3575;
+}
+.visitor-series-promo span { font-size: 0.95em; }
