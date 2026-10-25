@@ -80,7 +80,7 @@ const MK_Config = {
         "Tämän lapun alle on kätketty DNF.",
         "Koordinaatit tarkistettu kahdesti — ja silti väärin.",
         "Täällä ei ole kätköä. Tai on. Tarkista vielä kerran.",
-        "Tämä lappu on FTF — ensimmäisenä taululle.",
+        "Tämä lappu on FTF — putoaa pian - First To Fall.",
         "Jos löydät kätkön, älä kerro muggleille missä se oli.",
         "Sateenvarjo ei ole D/T-väline, mutta auttaa silti.",
         "Miitin paras välipiste on aina kahvipiste.",
