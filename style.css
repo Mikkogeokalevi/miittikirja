@@ -2720,6 +2720,7 @@ body.theme-light .form-error { color: #B22222; }
 /* ============ ILMOITUSTAULU: postit-laput ============ */
 #wall-feed {
     position: relative;
+    z-index: 2; /* pinontakonteksti: lappujen kasvava z-index ei koskaan nouse overlayjen päälle */
     flex: 1;
     min-height: 0;
 }
@@ -3126,7 +3127,10 @@ body.theme-light .form-error { color: #B22222; }
     gap: 14px;
     text-align: center;
     padding: 30px;
-    background: radial-gradient(ellipse at center, #16283f 0%, #0d1b2a 75%);
+    /* Puoliläpikuultava + sumentava: taulun laput elävät haaleina taustalla */
+    background: radial-gradient(ellipse at center, rgba(22,40,63,0.85) 0%, rgba(13,27,42,0.88) 75%);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
 }
 .wall-end-name {
     font-size: 1.7em;
@@ -3248,7 +3252,7 @@ body.theme-light .form-error { color: #B22222; }
 .wall-light .wall-welcome-hi { color: var(--w-accent-deep); }
 .wall-light .wall-welcome-sub { color: var(--w-accent2-deep); }
 .wall-light .wall-end {
-    background: radial-gradient(ellipse at center, #f7f9fd 0%, #dfe5f0 75%);
+    background: radial-gradient(ellipse at center, rgba(247,249,253,0.87) 0%, rgba(223,229,240,0.9) 75%);
 }
 .wall-light .wall-end-kicker { color: var(--w-accent-deep); }
 .wall-light .wall-end-title { color: var(--w-accent2-deep); text-shadow: none; }
