@@ -1157,11 +1157,21 @@ function tickWallBoard() {
     var dims = wallBoardCapacity();
     var liveN = Object.keys(mkWall.liveNotes).length;
     if (liveN < dims.cap && mkWall.pool.length && now >= (mkWall.nextSpawnAt || 0)) {
+        // 📷 Kuvalaput ovat erikoislapuja — ne saavat paikan aina ensin
+        var pick = null;
         for (var t = 0; t < mkWall.pool.length; t++) {
-            var it = mkWall.pool[mkWall.poolIdx % mkWall.pool.length];
-            mkWall.poolIdx++;
-            if (!mkWall.liveNotes[it.key]) { spawnWallNote(it); break; }
+            var cand = mkWall.pool[t];
+            if (cand.type === 'photo' && !mkWall.liveNotes[cand.key]) { pick = cand; break; }
         }
+        // Muut kiertävät vuorotelulla
+        if (!pick) {
+            for (t = 0; t < mkWall.pool.length; t++) {
+                cand = mkWall.pool[mkWall.poolIdx % mkWall.pool.length];
+                mkWall.poolIdx++;
+                if (!mkWall.liveNotes[cand.key]) { pick = cand; break; }
+            }
+        }
+        if (pick) spawnWallNote(pick);
         mkWall.nextSpawnAt = now + 1400 + Math.random() * 3200;
     }
 }
