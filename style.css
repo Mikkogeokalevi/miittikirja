@@ -2494,6 +2494,29 @@ body.theme-light .form-error { color: #B22222; }
     box-sizing: border-box;
 }
 
+/* Yläreuna: vasen sarake (nimi+info) + oikea sarake (aikalaskuri) vaakatasossa */
+#wall-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+#wall-head-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+}
+@media (orientation: landscape) and (min-width: 700px) {
+    #wall-head {
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 30px;
+    }
+    #wall-head-left { flex: 1; }
+    #wall-countdown { margin: 0; flex-shrink: 0; }
+}
+
 #wall-title {
     text-align: center;
     font-size: 2.2em;
