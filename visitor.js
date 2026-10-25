@@ -88,6 +88,7 @@ const visitorTranslations = {
         saveCardFail: "Tallennus epäonnistui",
         saveCardHint: "Pidä painallus kuvan päällä ja valitse Tallenna kuva",
         reactionsPrompt: "Miltä miitti tuntui? Naputtele emojeja — ne kelluvat ison näytön seinälle!",
+        reactionsHint: "Täysin anonyymi — seinä näyttää vain laskurin, ei kuka naputti.",
         logTextTemplate: "Attended \"{0}\" ({1}). Kiitos miitistä! Kirjauduttu myös sähköiseen vieraskirjaan miittipaikalla.",
         passportTitle: "Kävijäpassi",
         passportStamps: "{0}/{1} leimaa",
@@ -184,6 +185,7 @@ const visitorTranslations = {
         saveCardFail: "Save failed",
         saveCardHint: "Long-press the image to save it",
         reactionsPrompt: "How was the meet? Tap the emojis — they float onto the big screen!",
+        reactionsHint: "Fully anonymous — the wall only shows the count, not who tapped.",
         logTextTemplate: "Attended \"{0}\" ({1}). Thanks for the event! Also signed the digital guestbook on-site.",
         passportTitle: "Visitor Passport",
         passportStamps: "{0}/{1} stamps",
@@ -280,6 +282,7 @@ const visitorTranslations = {
         saveCardFail: "Sparandet misslyckades",
         saveCardHint: "Håll kvar på bilden och välj Spara bild",
         reactionsPrompt: "Hur var träffen? Tryck på emojierna — de svävar upp på storbilden!",
+        reactionsHint: "Helt anonymt — väggen visar bara antalet, inte vem som tryckte.",
         logTextTemplate: "Attended \"{0}\" ({1}). Tack för eventet! Loggade även i den digitala gästboken på plats.",
         passportTitle: "Besökspass",
         passportStamps: "{0}/{1} stämplar",
@@ -376,6 +379,7 @@ const visitorTranslations = {
         saveCardFail: "Salvestus ebaõnnestus",
         saveCardHint: "Hoia pilti pikalt all ja vali Salvesta pilt",
         reactionsPrompt: "Kuidas kohtumine meeldis? Koputa emojisid — need hõljuvad suurele ekraanile!",
+        reactionsHint: "Täiesti anonüümne — sein näitab ainult arvu, mitte kes koputas.",
         logTextTemplate: "Attended \"{0}\" ({1}). Aitäh ürituse eest! Kirjutasin ka kohapeal digitaalsesse külalisteraamatut.",
         passportTitle: "Külastuspass",
         passportStamps: "{0}/{1} tempelt",
@@ -2561,6 +2565,10 @@ function showVisitorModalWithLang(nick, history, stats) {
             btnWrap.appendChild(b);
         });
         reactRow.appendChild(btnWrap);
+        const reactHint = document.createElement('div');
+        reactHint.className = 'vv-react-hint';
+        reactHint.innerText = '🔒 ' + (t.reactionsHint || 'Täysin anonyymi — seinä näyttää vain laskurin, ei kuka naputti.');
+        reactRow.appendChild(reactHint);
         badgeEl.insertAdjacentElement('afterend', reactRow);
     }
 
