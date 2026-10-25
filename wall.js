@@ -268,6 +268,17 @@ function updateWallEnd() {
         s.innerText = b;
         stats.appendChild(s);
     });
+    // Osallistujien nimilista — henkilökohtainen kiitos
+    var namesEl = document.getElementById('wall-end-names');
+    if (namesEl) {
+        var names = [];
+        mkWall.logs.forEach(function (l) {
+            if (l.eventKey !== (mkWall.event || {}).key) return;
+            var n = (l.nickname || '').trim();
+            if (n && names.indexOf(n) < 0) names.push(n);
+        });
+        namesEl.innerText = names.length ? 'KIITOS:  ' + names.join('  ·  ') : '';
+    }
     // Loppunäytön alalaitaan: seuraava tuleva miitti
     var nx = document.getElementById('wall-end-next');
     if (nx) {
@@ -638,9 +649,10 @@ function openWall() {
         mkWall.eventRef.on('value', function (snap) {
             if (!mkWall.open) return;
             var v = snap.val() || {}; v.key = evId;
-            var prevNote = (mkWall.event || {}).wallNote;
+            var prev = mkWall.event || {};
             mkWall.event = v;
-            if (v.wallNote !== prevNote) {
+            if (v.wallNote !== prev.wallNote || v.wallPhotoUrls !== prev.wallPhotoUrls
+                || JSON.stringify(v.wallPhotos || []) !== JSON.stringify(prev.wallPhotos || [])) {
                 buildWallPool(mkWall.logs.slice().sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); }));
             }
         });
@@ -935,6 +947,9 @@ function buildWallPool(logs) {
     // Kiinteät 📌-laput isännältä — yksi rivi = yksi lappu (max 4), ei kierrä eikä haalistu
     var pinTexts = mkWallPinTexts();
     for (var pi = 0; pi < pinTexts.length; pi++) pool.push({ type: 'pin', key: 'wallpin' + pi, text: pinTexts[pi] });
+    // Polaroid-kuvalaput — kiertävät muiden mukana
+    var photos = mkWallPhotos();
+    for (var ph = 0; ph < photos.length; ph++) pool.push({ type: 'photo', key: 'photo' + ph, src: photos[ph] });
     mkWall.pool = pool;
     var ok = {};
     pool.forEach(function (p) { ok[p.key] = 1; });
@@ -947,6 +962,16 @@ function mkWallPinTexts() {
         .map(function (s) { return s.trim(); })
         .filter(function (s) { return s.length > 0; })
         .slice(0, 4);
+}
+
+// Polaroid-kuvalaput: URL-linkit + laitteelta ladatut (data-URL) — max 6
+function mkWallPhotos() {
+    var ev = mkWall.event || {};
+    var urls = (ev.wallPhotoUrls || '').split('\n')
+        .map(function (s) { return s.trim(); })
+        .filter(function (s) { return /^https?:\/\//i.test(s); });
+    var ups = Array.isArray(ev.wallPhotos) ? ev.wallPhotos.filter(function (s) { return typeof s === 'string' && s.length > 10; }) : [];
+    return urls.concat(ups).slice(0, 6);
 }
 
 // Kiinteät laput: lätkäistään heti, tekstit päivittyvät lennossa, eivät poistu koskaan
@@ -969,11 +994,12 @@ function makeWallNoteEl(it) {
     if (it.type === 'fact') note.className += ' wall-note-fact';
     if (it.type === 'joke') note.className += ' wall-note-joke';
     if (it.type === 'pin') note.className += ' wall-note-pin';
+    if (it.type === 'photo') note.className += ' wall-note-photo';
     if (it.type === 'empty') note.className += ' wall-note-empty';
     note.setAttribute('data-k', it.key);
     note.style.setProperty('--rot', (Math.round(Math.random() * 12) - 6) + 'deg');
     var palette = ['#fff9a3', '#ffd0dc', '#cde7ff', '#d5f5c0', '#ffe0b3', '#e8d7ff'];
-    var colr = it.type === 'fact' ? '#dcecff' : (it.type === 'joke' ? '#ffe3ef' : (it.type === 'empty' ? '#eeeeee' : (it.type === 'pin' ? '#ffe9a8' : palette[Math.floor(Math.random() * palette.length)])));
+    var colr = it.type === 'fact' ? '#dcecff' : (it.type === 'joke' ? '#ffe3ef' : (it.type === 'empty' ? '#eeeeee' : (it.type === 'pin' ? '#ffe9a8' : (it.type === 'photo' ? '#ffffff' : palette[Math.floor(Math.random() * palette.length)]))));
     note.style.background = 'linear-gradient(180deg, #ffffff88 0%, ' + colr + ' 18%, ' + colr + ' 100%)';
     if (it.type === 'log') {
         var l = it.l;
@@ -1010,6 +1036,13 @@ function makeWallNoteEl(it) {
         ptx.innerText = it.text || ((mkWall.event || {}).wallNote || '').trim();
         note.appendChild(plbl);
         note.appendChild(ptx);
+    } else if (it.type === 'photo') {
+        var im = document.createElement('img');
+        im.className = 'wall-note-img';
+        im.alt = '';
+        im.src = it.src;
+        im.onerror = function () { fadeWallNote(it.key); };
+        note.appendChild(im);
     } else if (it.type === 'fact' || it.type === 'joke') {
         var list = it.type === 'fact' ? mkWallFacts() : mkWallJokes();
         var lbl = document.createElement('div');

@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.67.2";
+const APP_VERSION = "7.68.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1461,6 +1461,9 @@ window.openGuestbook = function(eventKey) {
         // Kiinteä seinälappu + erikoisviestit — älä yliaja jos käyttäjä kirjoittaa parhaillaan
         const wnEl = document.getElementById('gb-wall-note');
         if (wnEl && document.activeElement !== wnEl) wnEl.value = evt.wallNote || '';
+        const phEl = document.getElementById('gb-wall-photos');
+        if (phEl && document.activeElement !== phEl) phEl.value = evt.wallPhotoUrls || '';
+        renderGbPhotoThumbs(evt);
         const pmEl = document.getElementById('gb-presign-message');
         if (pmEl && document.activeElement !== pmEl) pmEl.value = evt.preSignMessage || '';
         const smEl = document.getElementById('gb-special-message');
@@ -1812,6 +1815,91 @@ if (btnGbArchive) {
     btnGbArchive.onclick = function() {
         if (!currentUser || !currentEventId) return;
         toggleArchive(currentEventId, !currentEventArchived);
+    };
+}
+
+// --- Seinän kuvalaput: URL-linkit + laitteelta ladatut (pakataan pieneksi) ---
+function renderGbPhotoThumbs(evt) {
+    const box = document.getElementById('gb-wall-photos-list');
+    if (!box) return;
+    const photos = Array.isArray(evt && evt.wallPhotos) ? evt.wallPhotos : [];
+    box.innerHTML = '';
+    photos.forEach((src, i) => {
+        const w = document.createElement('div');
+        w.style.cssText = 'position:relative; width:64px; height:64px; flex:0 0 auto;';
+        const im = document.createElement('img');
+        im.src = src;
+        im.style.cssText = 'width:100%; height:100%; object-fit:cover; border-radius:6px; border:1px solid #ccc;';
+        const x = document.createElement('button');
+        x.innerText = '✕';
+        x.title = 'Poista kuva';
+        x.style.cssText = 'position:absolute; top:-7px; right:-7px; width:22px; height:22px; border-radius:50%; border:none; background:#b71c1c; color:#fff; font-size:0.75em; cursor:pointer; padding:0; line-height:1;';
+        x.onclick = () => removeGbPhoto(i);
+        w.appendChild(im); w.appendChild(x);
+        box.appendChild(w);
+    });
+}
+
+window.removeGbPhoto = function(i) {
+    if (!currentUser || !currentEventId) return;
+    const ref = db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId);
+    ref.once('value').then(s => {
+        const arr = Array.isArray((s.val() || {}).wallPhotos) ? (s.val().wallPhotos.slice()) : [];
+        arr.splice(i, 1);
+        return ref.update({ wallPhotos: arr });
+    });
+};
+
+// Pienennetään kuva canvas:lla — kännykän megapikselit -> ~900px JPEG-data-URL
+function compressImageToDataUrl(file, maxDim, quality) {
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            const w = img.naturalWidth || 1, h = img.naturalHeight || 1;
+            const scale = Math.min(1, maxDim / Math.max(w, h));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(w * scale));
+            canvas.height = Math.max(1, Math.round(h * scale));
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = reject;
+        img.src = url;
+    });
+}
+
+const btnSaveWallPhotos = document.getElementById('btn-save-wall-photos');
+if (btnSaveWallPhotos) {
+    btnSaveWallPhotos.onclick = function() {
+        if (!currentUser || !currentEventId) return;
+        const val = document.getElementById('gb-wall-photos').value.trim();
+        db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({ wallPhotoUrls: val })
+            .then(() => showToast('📷 Kuvalinkit tallennettu!'));
+    };
+}
+
+const btnAddWallPhoto = document.getElementById('btn-add-wall-photo');
+const gbPhotoFile = document.getElementById('gb-wall-photo-file');
+if (btnAddWallPhoto && gbPhotoFile) {
+    btnAddWallPhoto.onclick = () => gbPhotoFile.click();
+    gbPhotoFile.onchange = async function() {
+        if (!currentUser || !currentEventId || !gbPhotoFile.files.length) return;
+        const files = Array.from(gbPhotoFile.files).slice(0, 6);
+        gbPhotoFile.value = '';
+        try {
+            showToast('📷 Pakataan kuvia...');
+            const dataUrls = await Promise.all(files.map(f => compressImageToDataUrl(f, 900, 0.72)));
+            const ref = db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId);
+            const snap = await ref.once('value');
+            const cur = Array.isArray((snap.val() || {}).wallPhotos) ? snap.val().wallPhotos.slice() : [];
+            const merged = cur.concat(dataUrls).slice(0, 6);
+            await ref.update({ wallPhotos: merged });
+            showToast('📷 ' + dataUrls.length + ' kuvaa lisätty seinälle!');
+        } catch (e) {
+            showToast('Kuvan lisäys epäonnistui', 'error');
+        }
     };
 }
 

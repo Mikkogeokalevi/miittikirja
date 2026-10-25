@@ -524,6 +524,15 @@
                 <button id="btn-save-wall-note" class="btn btn-small btn-green" style="width:100%; margin-top:4px;">💾 Tallenna seinälappu</button>
             </div>
 
+            <div style="margin-bottom:10px; border:1px dashed #9db8d8; border-radius:8px; padding:10px; background:#f5f9ff;">
+                <label style="font-size:0.85em; font-weight:bold; color:#2a5a8a; display:block; margin-bottom:4px;">📷 Kuvalaput seinälle — polaroidit kiertävät taululla (max 6)</label>
+                <textarea id="gb-wall-photos" rows="2" placeholder="Kuvalinkki per rivi (https://...)"></textarea>
+                <button id="btn-save-wall-photos" class="btn btn-small btn-green" style="width:100%; margin-top:4px;">💾 Tallenna kuvalinkit</button>
+                <div id="gb-wall-photos-list" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:8px;"></div>
+                <input type="file" id="gb-wall-photo-file" accept="image/*" multiple style="display:none;">
+                <button id="btn-add-wall-photo" class="btn btn-small btn-gray" style="width:100%; margin-top:6px;">📱 Lisää kuva laitteelta — pienennetään automaattisesti</button>
+            </div>
+
             <div class="details-box" style="margin-bottom:10px;">
                 <div class="details-header" onclick="toggleDetails('gb-messages-content')"><span>✉️ Erikoisviestit vieraille</span><span>▼</span></div>
                 <div id="gb-messages-content" class="details-content" style="display:none; padding:10px;">
@@ -647,6 +656,7 @@
             <div class="wall-end-bye" id="wall-end-bye"></div>
             <div class="wall-end-sub" id="wall-end-sub"></div>
             <div class="wall-end-stats" id="wall-end-stats"></div>
+            <div class="wall-end-names" id="wall-end-names"></div>
             <button id="wall-end-close" class="wall-end-close">Näytä miittiseinä</button>
             <div id="wall-end-next" class="wall-end-next"></div>
         </div>
