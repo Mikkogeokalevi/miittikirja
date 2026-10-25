@@ -923,24 +923,35 @@ function buildWallPool(logs) {
         if (jokes.length && (!facts.length || i % 3 === 2)) pool.push({ type: 'joke', key: 'j' + i });
         else if (facts.length) pool.push({ type: 'fact', key: 'f' + i });
     }
-    // Kiinteä 📌-lappu isännältä — ei kierrä eikä haalistu koskaan
-    var pinText = ((mkWall.event || {}).wallNote || '').trim();
-    if (pinText) pool.push({ type: 'pin', key: 'wallpin' });
+    // Kiinteät 📌-laput isännältä — yksi rivi = yksi lappu (max 4), ei kierrä eikä haalistu
+    var pinTexts = mkWallPinTexts();
+    for (var pi = 0; pi < pinTexts.length; pi++) pool.push({ type: 'pin', key: 'wallpin' + pi, text: pinTexts[pi] });
     mkWall.pool = pool;
     var ok = {};
     pool.forEach(function (p) { ok[p.key] = 1; });
     for (var k in mkWall.liveNotes) if (!ok[k]) fadeWallNote(k);
-    updateWallPin(pinText);
+    updateWallPin(pinTexts);
 }
 
-// Kiinteä lappu: lätkäistään heti, teksti päivittyy lennossa, ei poistu koskaan
-function updateWallPin(pinText) {
-    if (pinText === undefined) pinText = ((mkWall.event || {}).wallNote || '').trim();
-    var rec = mkWall.liveNotes['wallpin'];
-    if (!pinText) { if (rec) fadeWallNote('wallpin'); return; }
-    if (!rec) { spawnWallNote({ type: 'pin', key: 'wallpin' }); return; }
-    var tx = rec.el.querySelector('.wall-note-fact-text');
-    if (tx && tx.innerText !== pinText) tx.innerText = pinText;
+function mkWallPinTexts() {
+    return (((mkWall.event || {}).wallNote || '').split('\n'))
+        .map(function (s) { return s.trim(); })
+        .filter(function (s) { return s.length > 0; })
+        .slice(0, 4);
+}
+
+// Kiinteät laput: lätkäistään heti, tekstit päivittyvät lennossa, eivät poistu koskaan
+function updateWallPin(pinTexts) {
+    if (pinTexts === undefined) pinTexts = mkWallPinTexts();
+    for (var i = 0; i < 4; i++) {
+        var key = 'wallpin' + i;
+        var txt = pinTexts[i];
+        var rec = mkWall.liveNotes[key];
+        if (!txt) { if (rec) fadeWallNote(key); continue; }
+        if (!rec) { spawnWallNote({ type: 'pin', key: key, text: txt }); continue; }
+        var tx = rec.el.querySelector('.wall-note-fact-text');
+        if (tx && tx.innerText !== txt) tx.innerText = txt;
+    }
 }
 
 function makeWallNoteEl(it) {
@@ -987,7 +998,7 @@ function makeWallNoteEl(it) {
         plbl.innerText = '📌 ISÄNNÄLTÄ';
         var ptx = document.createElement('div');
         ptx.className = 'wall-note-fact-text';
-        ptx.innerText = ((mkWall.event || {}).wallNote || '').trim();
+        ptx.innerText = it.text || ((mkWall.event || {}).wallNote || '').trim();
         note.appendChild(plbl);
         note.appendChild(ptx);
     } else if (it.type === 'fact' || it.type === 'joke') {
