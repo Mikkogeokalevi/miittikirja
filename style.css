@@ -2735,7 +2735,13 @@ body.theme-light .form-error { color: #B22222; }
     color: #232347;
     transform: rotate(var(--rot, 0deg));
     box-shadow: 0 4px 10px rgba(0,0,0,0.42);
-    transition: transform 0.5s ease, box-shadow 0.5s ease;
+    transition: transform 0.5s ease, box-shadow 0.5s ease, opacity 0.9s ease;
+}
+/* Vanhin lappu haalistuu pois — elävä taulu */
+.wall-note-out {
+    opacity: 0 !important;
+    transform: rotate(var(--rot, 0deg)) translateY(26px) scale(0.85) !important;
+    pointer-events: none;
 }
 .wall-note::before {
     content: '';

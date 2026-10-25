@@ -44,7 +44,12 @@ var mkWall = {
     boardOffset: 0,
     boardShown: {},
     factOffset: 0,
-    jokeOffset: 0
+    jokeOffset: 0,
+    pool: [],
+    liveNotes: {},
+    poolIdx: 0,
+    nextSpawnAt: 0,
+    zTop: 0
 };
 
 function mkWallSortKey(e) {
@@ -379,6 +384,9 @@ function updateWallSpotlight() {
     var curKey = (mkWall.event || {}).key;
     var attendees = mkWall.logs.filter(function (l) { return l.eventKey === curKey; });
     attendees.sort(function (a, b) { return (a.timestamp || 0) - (b.timestamp || 0); });
+    // Karuselli kiertää mieluiten taululla elossa olevia lappuja
+    var live = attendees.filter(function (l) { return mkWall.liveNotes[l.key]; });
+    if (live.length) attendees = live;
     if (!attendees.length) { mkWall.spotKey = null; applyWallSpot(null); return; }
     if (mkWall.spotIdx < 0 || mkWall.spotIdx >= attendees.length) mkWall.spotIdx = 0;
     var l = attendees[mkWall.spotIdx];
@@ -411,6 +419,8 @@ function applyWallSpot(l) {
     for (var i = 0; i < kids.length; i++) {
         var on = l && kids[i].getAttribute('data-k') === mkWall.spotKey;
         kids[i].classList.toggle('wall-note-spot', !!on);
+        // Korostettu lappu päällimmäiseksi — uusien lappujen z-index kasvaa koko ajan
+        kids[i].style.zIndex = on ? '9999' : (mkWall.liveNotes[kids[i].getAttribute('data-k')] ? String(mkWall.liveNotes[kids[i].getAttribute('data-k')].z || 1) : '');
         var ex = kids[i].querySelector('.wall-note-extra');
         if (ex) {
             if (on && extra) { ex.innerText = extra; ex.style.display = 'block'; }
@@ -637,9 +647,9 @@ function openWall() {
         if (mkWall.spotTimer) clearInterval(mkWall.spotTimer);
         mkWall.spotTimer = setInterval(function () { mkWall.spotIdx++; updateWallSpotlight(); }, 12000);
         updateWallSpotlight();
-        // Taulun oma kierto ylivuodon varalle (8 s)
+        // Elävä taulu: 1 s scheduleri — laput tippuvat epäsäännöllisesti, vanhat haalistuvat
         if (mkWall.boardTimer) clearInterval(mkWall.boardTimer);
-        mkWall.boardTimer = setInterval(tickWallBoard, 8000);
+        mkWall.boardTimer = setInterval(tickWallBoard, 1000);
     }).catch(function (err) {
         var feed = document.getElementById('wall-feed');
         if (feed) feed.innerHTML = '<div class="wall-feed-empty">Latausvirhe: ' + err.message + '</div>';
@@ -819,6 +829,7 @@ function renderWallData() {
     }
 
     // Pulssi + konfetti + tervetuloa kun kokonaismäärä kasvaa
+    var freshKey = null;
     if (mkWall.lastTotal !== null && total > mkWall.lastTotal) {
         el.classList.remove('wall-pulse');
         void el.offsetWidth; // pakota animaation uudelleenkäynnistys
@@ -830,6 +841,7 @@ function renderWallData() {
             if (!newest || (l.timestamp || 0) > (newest.timestamp || 0)) newest = l;
         });
         wallWelcome(newest);
+        freshKey = newest && newest.key;
     }
     mkWall.lastTotal = total;
 
@@ -855,12 +867,9 @@ function renderWallData() {
     }
 
     // Kirjautuneiden laatat (seinä täyttyy — uusin ensin)
-    var feed = document.getElementById('wall-feed');
-    feed.innerHTML = '';
-    // Ilmoitustaulu: laput lätkitään ruudukkoon — ylivuodosta taulu kiertää itse,
-    // tyhjät paikat täyttävät TIESITKÖ-faktalaput
-    mkWall.boardOffset = 0;
-    renderWallNotes(logs);
+    // Elävä taulu: pooli uusiksi, uusi kirjaus ilmestyy heti; ei pyyhitä feediä
+    buildWallPool(logs);
+    if (freshKey) ensureWallNote(freshKey);
     if (!logs.length) {
         updateWallEnd();
         return;
@@ -886,128 +895,165 @@ function wallBoardCapacity() {
     return { cap: cols * rows, cols: cols, rows: rows };
 }
 
-// Laput absoluuttisesti ruudukkoon päällekkäin — offset jakso kiertää ikkunaa.
-// Tyhjät paikat täytetään TIESITKÖ-faktalapuilla; tyhjälle taululle oma lappu.
-// Uudet laput "lätkäistään" paikalleen porrastetusti.
-function renderWallNotes(logs) {
-    var feed = document.getElementById('wall-feed');
-    if (!feed) return;
+// --- Elävä ilmoitustaulu ---
+// Laput ilmestyvät yksitellen epäsäännöllisin väliajoin sinne tänne;
+// vanhimmat haalistuvat pois ja palaavat myöhemmin kierron kautta.
+
+// Pool: kirjautujat + täyttölaput (fakta/höpö). Elävät laput säilyvät.
+function buildWallPool(logs) {
     var dims = wallBoardCapacity();
-    var total = logs.length;
-    var facts = mkWallFacts();
-    // Slot-jono: odotuslappu tyhjälle taululle, sitten kirjautujat, loput faktoja
-    var items = [];
-    if (!total) items.push({ type: 'empty' });
-    var nLogs = Math.min(dims.cap - items.length, total);
-    for (var i = 0; i < nLogs; i++) {
-        items.push({ type: 'log', l: logs[(mkWall.boardOffset + i) % total] });
+    var facts = mkWallFacts(), jokes = mkWallJokes();
+    var pool = [];
+    if (!logs.length) pool.push({ type: 'empty', key: 'empty' });
+    logs.forEach(function (l) { pool.push({ type: 'log', l: l, key: l.key }); });
+    for (var i = 0; i < dims.cap; i++) {
+        if (jokes.length && (!facts.length || i % 3 === 2)) pool.push({ type: 'joke', key: 'j' + i });
+        else if (facts.length) pool.push({ type: 'fact', key: 'f' + i });
     }
-    var jokes = mkWallJokes();
-    var fillers = 0;
-    while (items.length < dims.cap && (facts.length || jokes.length)) {
-        var useJoke = jokes.length && (!facts.length || fillers % 3 === 2);
-        if (useJoke) {
-            items.push({ type: 'joke', fi: mkWall.jokeOffset % jokes.length });
-            mkWall.jokeOffset = (mkWall.jokeOffset + 1) % jokes.length;
-        } else {
-            items.push({ type: 'fact', fi: mkWall.factOffset % facts.length });
-            mkWall.factOffset = (mkWall.factOffset + 1) % facts.length;
-        }
-        fillers++;
-    }
-    var n = items.length;
-    if (!n) return;
-    var W = feed.clientWidth || 600, H = feed.clientHeight || 400;
-    var rowsUsed = Math.max(1, Math.min(dims.rows, Math.ceil(n / dims.cols)));
-    var cw = W / dims.cols, ch = H / rowsUsed;
-    var palette = ['#fff9a3', '#ffd0dc', '#cde7ff', '#d5f5c0', '#ffe0b3', '#e8d7ff'];
-    var prev = mkWall.boardShown || {};
-    var shown = {};
-    feed.innerHTML = '';
-    for (i = 0; i < n; i++) {
-        var it = items[i];
-        var key = it.type === 'log' ? it.l.key : (it.type === 'fact' ? 'f' + it.fi : (it.type === 'joke' ? 'j' + it.fi : 'empty'));
-        shown[key] = 1;
-        var h = mkWallNoteHash(key + i);
-        var note = document.createElement('div');
-        var isNew = !prev[key];
-        note.className = 'wall-note' + (isNew ? ' wall-note-new' : '');
-        if (it.type === 'fact') note.className += ' wall-note-fact';
-        if (it.type === 'joke') note.className += ' wall-note-joke';
-        if (it.type === 'empty') note.className += ' wall-note-empty';
-        note.setAttribute('data-k', key);
-        note.style.setProperty('--rot', ((h % 11) - 5) + 'deg');
-        var col = i % dims.cols, row = Math.floor(i / dims.cols);
-        var jx = (h % 21) - 10, jy = ((h >> 4) % 17) - 8;
-        note.style.left = Math.max(0, Math.round(col * cw + (cw - 140) / 2 + jx)) + 'px';
-        var topY = Math.round(row * ch + (ch - 104) / 2 + jy);
-        note.style.top = Math.max(0, Math.min(topY, Math.max(0, H - 178))) + 'px';
-        note.style.zIndex = String(i + 1);
-        if (isNew) note.style.animationDelay = (i * 0.08) + 's';
-        var colr = it.type === 'fact' ? '#dcecff' : (it.type === 'joke' ? '#ffe3ef' : (it.type === 'empty' ? '#eeeeee' : palette[h % palette.length]));
-        note.style.background = 'linear-gradient(180deg, #ffffff88 0%, ' + colr + ' 18%, ' + colr + ' 100%)';
-        if (it.type === 'log') {
-            var l = it.l;
-            var nm = document.createElement('div');
-            nm.className = 'wall-note-name';
-            nm.innerText = l.nickname || '?';
-            note.appendChild(nm);
-            var sbits = [];
-            if (l.from) sbits.push(l.from);
-            var t = l.timestamp ? new Date(l.timestamp) : null;
-            if (t) sbits.push(('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2));
-            if (sbits.length) {
-                var sb = document.createElement('div');
-                sb.className = 'wall-note-sub';
-                sb.innerText = sbits.join(' · ');
-                note.appendChild(sb);
-            }
-            if (l.message) {
-                var mg = document.createElement('div');
-                mg.className = 'wall-note-msg';
-                mg.innerText = '"' + l.message + '"';
-                note.appendChild(mg);
-            }
-            var ex = document.createElement('div');
-            ex.className = 'wall-note-extra';
-            ex.style.display = 'none';
-            note.appendChild(ex);
-        } else if (it.type === 'fact' || it.type === 'joke') {
-            var lbl = document.createElement('div');
-            lbl.className = 'wall-note-label';
-            lbl.innerText = it.type === 'fact' ? 'TIESITKÖ?' : 'HÖPÖ HÖPÖ';
-            var tx = document.createElement('div');
-            tx.className = 'wall-note-fact-text';
-            tx.innerText = it.type === 'fact' ? facts[it.fi] : jokes[it.fi];
-            note.appendChild(lbl);
-            note.appendChild(tx);
-        } else {
-            var em = document.createElement('div');
-            em.className = 'wall-note-fact-text';
-            em.innerText = 'Odotetaan ensimmäistä kirjautujaa…';
-            note.appendChild(em);
-        }
-        feed.appendChild(note);
-    }
-    mkWall.boardShown = shown;
+    mkWall.pool = pool;
+    var ok = {};
+    pool.forEach(function (p) { ok[p.key] = 1; });
+    for (var k in mkWall.liveNotes) if (!ok[k]) fadeWallNote(k);
 }
 
-// Taulun kierto: ylivuodosta ikkuna liikkuu (vanhin katoaa, uusi lätkäistään),
-// tyhjillä paikoilla faktalaput vaihtuvat. Taulu elää ilman uusia kirjauksia.
+function makeWallNoteEl(it) {
+    var note = document.createElement('div');
+    note.className = 'wall-note wall-note-new';
+    if (it.type === 'fact') note.className += ' wall-note-fact';
+    if (it.type === 'joke') note.className += ' wall-note-joke';
+    if (it.type === 'empty') note.className += ' wall-note-empty';
+    note.setAttribute('data-k', it.key);
+    note.style.setProperty('--rot', (Math.round(Math.random() * 12) - 6) + 'deg');
+    var palette = ['#fff9a3', '#ffd0dc', '#cde7ff', '#d5f5c0', '#ffe0b3', '#e8d7ff'];
+    var colr = it.type === 'fact' ? '#dcecff' : (it.type === 'joke' ? '#ffe3ef' : (it.type === 'empty' ? '#eeeeee' : palette[Math.floor(Math.random() * palette.length)]));
+    note.style.background = 'linear-gradient(180deg, #ffffff88 0%, ' + colr + ' 18%, ' + colr + ' 100%)';
+    if (it.type === 'log') {
+        var l = it.l;
+        var nm = document.createElement('div');
+        nm.className = 'wall-note-name';
+        nm.innerText = l.nickname || '?';
+        note.appendChild(nm);
+        var sbits = [];
+        if (l.from) sbits.push(l.from);
+        var t = l.timestamp ? new Date(l.timestamp) : null;
+        if (t) sbits.push(('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2));
+        if (sbits.length) {
+            var sb = document.createElement('div');
+            sb.className = 'wall-note-sub';
+            sb.innerText = sbits.join(' · ');
+            note.appendChild(sb);
+        }
+        if (l.message) {
+            var mg = document.createElement('div');
+            mg.className = 'wall-note-msg';
+            mg.innerText = '"' + l.message + '"';
+            note.appendChild(mg);
+        }
+        var ex = document.createElement('div');
+        ex.className = 'wall-note-extra';
+        ex.style.display = 'none';
+        note.appendChild(ex);
+    } else if (it.type === 'fact' || it.type === 'joke') {
+        var list = it.type === 'fact' ? mkWallFacts() : mkWallJokes();
+        var lbl = document.createElement('div');
+        lbl.className = 'wall-note-label';
+        lbl.innerText = it.type === 'fact' ? 'TIESITKÖ?' : 'HÖPÖ HÖPÖ';
+        var tx = document.createElement('div');
+        tx.className = 'wall-note-fact-text';
+        if (it.type === 'fact') {
+            tx.innerText = list[mkWall.factOffset % list.length] || '';
+            mkWall.factOffset = (mkWall.factOffset + 1) % list.length;
+        } else {
+            tx.innerText = list[mkWall.jokeOffset % list.length] || '';
+            mkWall.jokeOffset = (mkWall.jokeOffset + 1) % list.length;
+        }
+        note.appendChild(lbl);
+        note.appendChild(tx);
+    } else {
+        var em = document.createElement('div');
+        em.className = 'wall-note-fact-text';
+        em.innerText = 'Odotetaan ensimmäistä kirjautujaa…';
+        note.appendChild(em);
+    }
+    return note;
+}
+
+// Satunnainen paikka — preferoidaan kohtaa joka ei ole toisen lapun päällä
+function mkWallPickPos(W, H) {
+    var best = null, bestScore = -1;
+    for (var t = 0; t < 7; t++) {
+        var x = Math.random() * Math.max(1, W - 160);
+        var y = Math.random() * Math.max(1, H - 150);
+        var minD = 1e9;
+        for (var k in mkWall.liveNotes) {
+            var r = mkWall.liveNotes[k];
+            var dx = r.x - x, dy = r.y - y;
+            var d = dx * dx + dy * dy;
+            if (d < minD) minD = d;
+        }
+        var score = Math.min(minD, 30000);
+        if (score > bestScore) { bestScore = score; best = { x: x, y: y }; }
+    }
+    return best || { x: 10, y: 10 };
+}
+
+function spawnWallNote(it) {
+    var feed = document.getElementById('wall-feed');
+    if (!feed || !it || mkWall.liveNotes[it.key]) return;
+    var el = makeWallNoteEl(it);
+    var W = feed.clientWidth || 600, H = feed.clientHeight || 400;
+    var pos = mkWallPickPos(W, H);
+    el.style.left = Math.round(pos.x) + 'px';
+    el.style.top = Math.round(pos.y) + 'px';
+    el.style.zIndex = String(++mkWall.zTop);
+    feed.appendChild(el);
+    mkWall.liveNotes[it.key] = { el: el, x: pos.x, y: pos.y, z: mkWall.zTop, dieAt: Date.now() + 18000 + Math.random() * 26000 };
+}
+
+function fadeWallNote(key) {
+    var rec = mkWall.liveNotes[key];
+    if (!rec) return;
+    delete mkWall.liveNotes[key];
+    rec.el.classList.add('wall-note-out');
+    setTimeout(function () { if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el); }, 950);
+}
+
+// Uusi kirjautuminen taululle heti — tarvittaessa vanhin väistää
+function ensureWallNote(key) {
+    if (!key || mkWall.liveNotes[key]) return;
+    var it = null;
+    for (var i = 0; i < mkWall.pool.length; i++) if (mkWall.pool[i].key === key) it = mkWall.pool[i];
+    if (!it) return;
+    var dims = wallBoardCapacity();
+    var keys = Object.keys(mkWall.liveNotes);
+    if (keys.length >= dims.cap) {
+        var oldest = null, t = Infinity;
+        keys.forEach(function (k) { if (mkWall.liveNotes[k].dieAt < t) { t = mkWall.liveNotes[k].dieAt; oldest = k; } });
+        if (oldest) fadeWallNote(oldest);
+    }
+    spawnWallNote(it);
+    mkWall.nextSpawnAt = Date.now() + 1400;
+}
+
+// Scheduleri 1 s välein: vanhat haalistuvat, uusia tippuu epäsäännöllisesti
 function tickWallBoard() {
     if (!mkWall.open) return;
-    var logs = mkWall.logs.slice().sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
+    var feed = document.getElementById('wall-feed');
+    if (!feed) return;
+    var now = Date.now();
+    for (var k in mkWall.liveNotes) {
+        if (mkWall.liveNotes[k].dieAt && now > mkWall.liveNotes[k].dieAt) fadeWallNote(k);
+    }
     var dims = wallBoardCapacity();
-    var facts = mkWallFacts();
-    var jokes = mkWallJokes();
-    if (logs.length > dims.cap) {
-        mkWall.boardOffset = (mkWall.boardOffset + 1) % logs.length;
-    } else if ((facts.length || jokes.length) && dims.cap > logs.length) {
-        if (facts.length) mkWall.factOffset = (mkWall.factOffset + 1) % facts.length;
-        if (jokes.length) mkWall.jokeOffset = (mkWall.jokeOffset + 1) % jokes.length;
-    } else return;
-    renderWallNotes(logs);
-    updateWallSpotlight();
+    var liveN = Object.keys(mkWall.liveNotes).length;
+    if (liveN < dims.cap && mkWall.pool.length && now >= (mkWall.nextSpawnAt || 0)) {
+        for (var t = 0; t < mkWall.pool.length; t++) {
+            var it = mkWall.pool[mkWall.poolIdx % mkWall.pool.length];
+            mkWall.poolIdx++;
+            if (!mkWall.liveNotes[it.key]) { spawnWallNote(it); break; }
+        }
+        mkWall.nextSpawnAt = now + 1400 + Math.random() * 3200;
+    }
 }
 
 // Hidas ping-pong-skrollaus kun laatat eivät mahdu ruudulle (TV:llä ei scrollata)
@@ -1203,6 +1249,13 @@ function closeWall() {
     mkWall.boardShown = {};
     mkWall.factOffset = 0;
     mkWall.jokeOffset = 0;
+    mkWall.pool = [];
+    mkWall.liveNotes = {};
+    mkWall.poolIdx = 0;
+    mkWall.nextSpawnAt = 0;
+    mkWall.zTop = 0;
+    var feedEl = document.getElementById('wall-feed');
+    if (feedEl) feedEl.innerHTML = '';
     var amb = document.getElementById('wall-ambient');
     if (amb) amb.innerHTML = '';
     var cd = document.getElementById('wall-countdown');
