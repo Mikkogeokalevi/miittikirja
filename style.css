@@ -3598,3 +3598,100 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
 .wall-light .wall-end-next { background: rgba(27,42,71,0.04); border-color: var(--w-accent-deep); box-shadow: none; }
 .wall-light .wall-end-next-when { color: #1b2a47; }
 .wall-light .wall-end-next-name { color: rgba(27,42,71,0.8); }
+
+/* ===== VIERAIDEN EMOJI-REAKTIOT ===== */
+/* Vierasnäkymän reaktio-rivi (tilastojen kärjessä) */
+.vv-react-row {
+    margin: 10px 0 4px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #fff8e1, #fff3f0);
+    border: 1px dashed #d8b48a;
+    text-align: center;
+}
+.vv-react-title {
+    font-size: 0.85em;
+    font-weight: bold;
+    color: #8B4513;
+    margin-bottom: 8px;
+}
+.vv-react-btns {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.vv-react-btn {
+    font-size: 1.5em;
+    line-height: 1;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 2px solid rgba(139, 69, 19, 0.25);
+    background: #fff;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.vv-react-btn:active { transform: scale(0.9); }
+.vv-react-btn.on {
+    border-color: #d2691e;
+    background: #ffe9d6;
+    box-shadow: 0 0 0 3px rgba(210, 105, 30, 0.25);
+}
+.vv-react-pop { animation: vvReactPop 0.45s ease; }
+@keyframes vvReactPop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.45) rotate(-8deg); }
+    100% { transform: scale(1); }
+}
+
+/* Seinän reaktiolaskuri + kelluvat emojit */
+#wall-reacts {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    gap: 10px;
+    z-index: 3;
+    pointer-events: none;
+}
+.wall-react-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    padding: 4px 14px;
+    font-size: 1.25em;
+    backdrop-filter: blur(4px);
+}
+.wall-react-chip b { color: #ffd76a; font-variant-numeric: tabular-nums; }
+.wall-light .wall-react-chip {
+    background: rgba(255, 255, 255, 0.75);
+    border-color: rgba(27, 42, 71, 0.25);
+}
+.wall-light .wall-react-chip b { color: #1b2a47; }
+#wall-react-fx {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 3;
+}
+.wall-react-float {
+    position: absolute;
+    bottom: 96px;
+    animation: wallReactRise 4s linear forwards;
+    will-change: transform, opacity;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+}
+@keyframes wallReactRise {
+    0% { transform: translateY(0) scale(0.5) rotate(0deg); opacity: 0; }
+    10% { opacity: 1; transform: translateY(-6vh) scale(1.15) rotate(-6deg); }
+    60% { opacity: 0.9; }
+    100% { transform: translateY(-70vh) translateX(var(--sway, 0px)) scale(0.9) rotate(8deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .wall-react-float { animation-duration: 1.5s; }
+}

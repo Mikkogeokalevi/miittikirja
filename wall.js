@@ -12,6 +12,8 @@ var mkWall = {
     logs: [],
     event: null,
     eventRef: null,
+    reactRef: null,
+    reactions: null,
     seriesEvents: [],
     vuoro: 0,
     lastTotal: null,
@@ -459,6 +461,53 @@ function applyWallSpot(l) {
     }
 }
 
+// Reaktio-emojit: configista, fallback jos config vanha
+function mkWallReactionEmojis() {
+    return (typeof MK_Config !== 'undefined' && MK_Config.WALL_REACTIONS)
+        ? MK_Config.WALL_REACTIONS
+        : { heart: '❤️', thumbs: '👍', laugh: '😄', fire: '🔥', cheers: '🍻' };
+}
+
+// Reaktiolaskuri seinän alalaitaan — näyttää vain emojit joita on annettu
+function renderWallReacts() {
+    var el = document.getElementById('wall-reacts');
+    if (!el) return;
+    el.innerHTML = '';
+    var EMO = mkWallReactionEmojis();
+    var any = false;
+    Object.keys(EMO).forEach(function (k) {
+        var n = (mkWall.reactions || {})[k] || 0;
+        if (n <= 0) return;
+        any = true;
+        var c = document.createElement('span');
+        c.className = 'wall-react-chip';
+        var e = document.createElement('span');
+        e.innerText = EMO[k];
+        var b = document.createElement('b');
+        b.innerText = n;
+        c.appendChild(e);
+        c.appendChild(b);
+        el.appendChild(c);
+    });
+    el.style.display = any ? 'flex' : 'none';
+}
+
+// Kelluva emoji — nousee alalaidasta ja haalistuu (kuten sydämet live-lähetyksissä)
+function spawnWallReactFloat(emoji) {
+    if (!mkWall.open) return;
+    var fx = document.getElementById('wall-react-fx');
+    if (!fx || fx.children.length > 30) return;
+    var s = document.createElement('span');
+    s.className = 'wall-react-float';
+    s.innerText = emoji || '❤️';
+    s.style.left = (8 + Math.random() * 84) + '%';
+    s.style.fontSize = (26 + Math.random() * 26) + 'px';
+    s.style.setProperty('--sway', (Math.random() * 120 - 60) + 'px');
+    s.style.animationDuration = (3.2 + Math.random() * 1.6) + 's';
+    s.addEventListener('animationend', function () { if (s.parentNode) s.parentNode.removeChild(s); });
+    fx.appendChild(s);
+}
+
 // Lapuille deterministinen kierto/väri — avaimen hash pitää paikat vakaina
 function mkWallNoteHash(key) {
     var s = String(key || 'x');
@@ -665,6 +714,24 @@ function openWall() {
                 || JSON.stringify(v.wallCats || {}) !== JSON.stringify(prev.wallCats || {})) {
                 buildWallPool(mkWall.logs.slice().sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); }));
             }
+        });
+
+        // Vieraiden emoji-reaktiot — laskuri seinälle + kelluvat emojit
+        mkWall.reactRef = db.ref('miitit/' + uid + '/reactions/' + evId);
+        mkWall.reactRef.on('value', function (snap) {
+            if (!mkWall.open) return;
+            var prev = mkWall.reactions;
+            var cur = snap.val() || {};
+            mkWall.reactions = cur;
+            renderWallReacts();
+            if (prev === null) return; // ensimmäinen luku — ei kellutuksia
+            var EMO = mkWallReactionEmojis();
+            Object.keys(cur).forEach(function (k) {
+                var diff = (cur[k] || 0) - (prev[k] || 0);
+                for (var i = 0; i < Math.min(diff, 4); i++) {
+                    setTimeout(spawnWallReactFloat, i * 300 + Math.random() * 250, EMO[k] || '❤️');
+                }
+            });
         });
 
         // Vieraiden kokonaiskäyntimäärät ("N. miitti" karuselliin) — kertahaku
@@ -1373,6 +1440,12 @@ function closeWall() {
     mkWall.logRefs.forEach(function (r) { try { r.off(); } catch (e) {} });
     mkWall.logRefs = [];
     if (mkWall.eventRef) { try { mkWall.eventRef.off(); } catch (e) {} mkWall.eventRef = null; }
+    if (mkWall.reactRef) { try { mkWall.reactRef.off(); } catch (e) {} mkWall.reactRef = null; }
+    mkWall.reactions = null;
+    var rr = document.getElementById('wall-reacts');
+    if (rr) { rr.innerHTML = ''; rr.style.display = 'none'; }
+    var rfx = document.getElementById('wall-react-fx');
+    if (rfx) rfx.innerHTML = '';
     mkWall.counts = {};
     mkWall.logs = [];
     mkWall.lastTotal = null;

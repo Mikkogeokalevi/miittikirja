@@ -137,6 +137,15 @@ const MK_Config = {
 		"Taitaa kätköilijä tietää, että olis kiven takana purkkia tarjolla.",
     ],
 
+    // Vieraiden reaktio-emojit seinälle (avaimet tallentuvat kantaan — älä vaihda)
+    WALL_REACTIONS: {
+        heart: "❤️",
+        thumbs: "👍",
+        laugh: "😄",
+        fire: "🔥",
+        cheers: "🍻"
+    },
+
     // Sovelluksen versio (näytetään kirjautumissivulla)
-    VERSION: "7.70.2"
+    VERSION: "7.71.0"
 };

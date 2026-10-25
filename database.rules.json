@@ -67,6 +67,14 @@
             }
           }
         },
+        "reactions": {
+          ".read": true,
+          "$eventId": {
+            "$emoji": {
+              ".write": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999 && ((!data.exists() && newData.val() <= 1) || (data.exists() && newData.val() >= data.val() - 1 && newData.val() <= data.val() + 1))"
+            }
+          }
+        },
         "externalEvents": {
           ".read": "$uid === auth.uid",
           ".write": "$uid === auth.uid"

@@ -87,6 +87,7 @@ const visitorTranslations = {
         saveCardDone: "✅ Kuva tallennettu!",
         saveCardFail: "Tallennus epäonnistui",
         saveCardHint: "Pidä painallus kuvan päällä ja valitse Tallenna kuva",
+        reactionsPrompt: "Miltä miitti tuntui? Lähetä reaktio ison näytön seinälle!",
         logTextTemplate: "Attended \"{0}\" ({1}). Kiitos miitistä! Kirjauduttu myös sähköiseen vieraskirjaan miittipaikalla.",
         passportTitle: "Kävijäpassi",
         passportStamps: "{0}/{1} leimaa",
@@ -182,6 +183,7 @@ const visitorTranslations = {
         saveCardDone: "✅ Image saved!",
         saveCardFail: "Save failed",
         saveCardHint: "Long-press the image to save it",
+        reactionsPrompt: "How was the meet? Send a reaction to the big screen!",
         logTextTemplate: "Attended \"{0}\" ({1}). Thanks for the event! Also signed the digital guestbook on-site.",
         passportTitle: "Visitor Passport",
         passportStamps: "{0}/{1} stamps",
@@ -277,6 +279,7 @@ const visitorTranslations = {
         saveCardDone: "✅ Bilden sparad!",
         saveCardFail: "Sparandet misslyckades",
         saveCardHint: "Håll kvar på bilden och välj Spara bild",
+        reactionsPrompt: "Hur var träffen? Skicka en reaktion till storbilden!",
         logTextTemplate: "Attended \"{0}\" ({1}). Tack för eventet! Loggade även i den digitala gästboken på plats.",
         passportTitle: "Besökspass",
         passportStamps: "{0}/{1} stämplar",
@@ -372,6 +375,7 @@ const visitorTranslations = {
         saveCardDone: "✅ Pilt salvestatud!",
         saveCardFail: "Salvestus ebaõnnestus",
         saveCardHint: "Hoia pilti pikalt all ja vali Salvesta pilt",
+        reactionsPrompt: "Kuidas kohtumine meeldis? Saada reaktsioon suurele ekraanile!",
         logTextTemplate: "Attended \"{0}\" ({1}). Aitäh ürituse eest! Kirjutasin ka kohapeal digitaalsesse külalisteraamatut.",
         passportTitle: "Külastuspass",
         passportStamps: "{0}/{1} tempelt",
@@ -2513,6 +2517,60 @@ function showVisitorModalWithLang(nick, history, stats) {
         <div class="visitor-souvenir-brand">${t.souvenirBrand || 'Mikkokalevin Miittikirja'}</div>
     `;
     badgeEl.insertAdjacentElement('afterend', souvenirCard);
+
+    // --- REAKTIOT SEINÄLLE: lisätään viimeisenä badgeEl:n perään -> ylimmäksi ---
+    const oldReact = document.getElementById('vv-react-row');
+    if (oldReact) oldReact.remove();
+    const reactEvId = window.currentEventId;
+    const reactHost = window.currentVisitorTargetUid
+        || (typeof MK_Config !== 'undefined' && MK_Config.HOST_UID);
+    if (reactEvId && reactHost && typeof firebase !== 'undefined') {
+        const REACTS = (typeof MK_Config !== 'undefined' && MK_Config.WALL_REACTIONS)
+            ? MK_Config.WALL_REACTIONS
+            : { heart: '❤️', thumbs: '👍', laugh: '😄', fire: '🔥', cheers: '🍻' };
+        const reactRow = document.createElement('div');
+        reactRow.id = 'vv-react-row';
+        reactRow.className = 'vv-react-row';
+        const reactTitle = document.createElement('div');
+        reactTitle.className = 'vv-react-title';
+        reactTitle.innerText = t.reactionsPrompt || 'Miltä miitti tuntui? Lähetä reaktio seinälle!';
+        reactRow.appendChild(reactTitle);
+        const btnWrap = document.createElement('div');
+        btnWrap.className = 'vv-react-btns';
+        Object.keys(REACTS).forEach(function (rKey) {
+            const storeKey = 'mk_react_' + reactEvId + '_' + rKey;
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'vv-react-btn';
+            b.innerText = REACTS[rKey];
+            const applyState = function () {
+                let on = false;
+                try { on = localStorage.getItem(storeKey) === '1'; } catch (e) {}
+                b.classList.toggle('on', on);
+            };
+            applyState();
+            b.onclick = function () {
+                let on = false;
+                try { on = localStorage.getItem(storeKey) === '1'; } catch (e) {}
+                const ref = firebase.database().ref('miitit/' + reactHost + '/reactions/' + reactEvId + '/' + rKey);
+                ref.transaction(function (cur) {
+                    var v = (typeof cur === 'number' ? cur : 0) + (on ? -1 : 1);
+                    return v < 0 ? 0 : v;
+                }).then(function () {
+                    try { localStorage.setItem(storeKey, on ? '0' : '1'); } catch (e) {}
+                    applyState();
+                    if (!on) {
+                        b.classList.remove('vv-react-pop');
+                        void b.offsetWidth;
+                        b.classList.add('vv-react-pop');
+                    }
+                }).catch(function () {});
+            };
+            btnWrap.appendChild(b);
+        });
+        reactRow.appendChild(btnWrap);
+        badgeEl.insertAdjacentElement('afterend', reactRow);
+    }
 
     // --- KÄVIJÄPASSIT: kaikki sarjat joissa vieras on leimoja (muistokortin alle) ---
     // Nykyisen miitin sarja näkyy auki; muut passit avattavan lohkon taakse.
