@@ -661,7 +661,8 @@ function openWall() {
             var prev = mkWall.event || {};
             mkWall.event = v;
             if (v.wallNote !== prev.wallNote || v.wallPhotoUrls !== prev.wallPhotoUrls
-                || JSON.stringify(v.wallPhotos || []) !== JSON.stringify(prev.wallPhotos || [])) {
+                || JSON.stringify(v.wallPhotos || []) !== JSON.stringify(prev.wallPhotos || [])
+                || JSON.stringify(v.wallCats || {}) !== JSON.stringify(prev.wallCats || {})) {
                 buildWallPool(mkWall.logs.slice().sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); }));
             }
         });
@@ -945,7 +946,12 @@ function wallBoardCapacity() {
 // Pool: kirjautujat + täyttölaput (fakta/höpö). Elävät laput säilyvät.
 function buildWallPool(logs) {
     var dims = wallBoardCapacity();
-    var facts = mkWallFacts(), jokes = mkWallJokes(), quotes = mkWallQuotes();
+    // Järjestäjä voi valita miittikohtaisesti näkyvät kategoriat
+    var cats = (mkWall.event || {}).wallCats || {};
+    var catOn = function (k) { return cats[k] !== false; };
+    var facts = catOn('fact') ? mkWallFacts() : [];
+    var jokes = catOn('joke') ? mkWallJokes() : [];
+    var quotes = catOn('quote') ? mkWallQuotes() : [];
     var pool = [];
     if (!logs.length) pool.push({ type: 'empty', key: 'empty' });
     logs.forEach(function (l) { pool.push({ type: 'log', l: l, key: l.key }); });
@@ -981,6 +987,7 @@ function mkWallPinTexts() {
 // Polaroid-kuvalaput: URL-linkit (URL | kuvateksti) + laitteelta ladatut — max 6
 function mkWallPhotos() {
     var ev = mkWall.event || {};
+    if (ev.wallCats && ev.wallCats.photo === false) return [];
     var out = [];
     (ev.wallPhotoUrls || '').split('\n').forEach(function (line) {
         var t = (line || '').trim();

@@ -2615,13 +2615,6 @@ body.theme-light .form-error { color: #B22222; }
     padding: 4px 8px;
     align-self: center;
 }
-.wall-feed-title {
-    font-size: 0.85em;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.6);
-    margin-bottom: 10px;
-}
 .wall-feed-item {
     padding: 7px 0;
     border-bottom: 1px solid rgba(255,255,255,0.08);

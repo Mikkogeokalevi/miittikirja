@@ -533,6 +533,17 @@
                 <button id="btn-add-wall-photo" class="btn btn-small btn-gray" style="width:100%; margin-top:6px;">📱 Lisää kuva laitteelta — pienennetään automaattisesti</button>
             </div>
 
+            <div style="margin-bottom:10px; border:1px dashed #b8a8d8; border-radius:8px; padding:10px; background:#f8f5ff;">
+                <label style="font-size:0.85em; font-weight:bold; color:#5b3fa0; display:block; margin-bottom:6px;">🗂️ Näytettävät laput seinällä</label>
+                <div style="display:flex; flex-wrap:wrap; gap:4px 14px;">
+                    <label style="display:flex; align-items:center; gap:6px; font-size:0.9em; cursor:pointer; min-height:32px;"><input type="checkbox" id="gb-cat-fact" style="width:18px; height:18px;"> TIESITKÖ-faktat</label>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:0.9em; cursor:pointer; min-height:32px;"><input type="checkbox" id="gb-cat-joke" style="width:18px; height:18px;"> HÖPÖ HÖPÖ</label>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:0.9em; cursor:pointer; min-height:32px;"><input type="checkbox" id="gb-cat-quote" style="width:18px; height:18px;"> Kätköilijän viisaudet</label>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:0.9em; cursor:pointer; min-height:32px;"><input type="checkbox" id="gb-cat-photo" style="width:18px; height:18px;"> 📷 Kuvalaput</label>
+                </div>
+                <small style="color:var(--text-muted); font-size:0.75em;">Muutos tallentuu ja näkyy seinällä heti.</small>
+            </div>
+
             <div class="details-box" style="margin-bottom:10px;">
                 <div class="details-header" onclick="toggleDetails('gb-messages-content')"><span>✉️ Erikoisviestit vieraille</span><span>▼</span></div>
                 <div id="gb-messages-content" class="details-content" style="display:none; padding:10px;">
@@ -614,7 +625,6 @@
                     <div id="wall-dots"></div>
                 </div>
                 <div class="wall-feed-box">
-                    <div class="wall-feed-title">Kirjautuneet</div>
                     <div id="wall-feed"></div>
                 </div>
             </div>

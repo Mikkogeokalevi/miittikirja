@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.69.3";
+const APP_VERSION = "7.70.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1464,6 +1464,13 @@ window.openGuestbook = function(eventKey) {
         const phEl = document.getElementById('gb-wall-photos');
         if (phEl && document.activeElement !== phEl) phEl.value = evt.wallPhotoUrls || '';
         renderGbPhotoThumbs(evt);
+
+        // Seinän lappukategoriat (oletus: kaikki näkyvissä)
+        const cats = evt.wallCats || {};
+        ['fact', 'joke', 'quote', 'photo'].forEach(k => {
+            const cb = document.getElementById('gb-cat-' + k);
+            if (cb) cb.checked = (cats[k] !== false);
+        });
         const pmEl = document.getElementById('gb-presign-message');
         if (pmEl && document.activeElement !== pmEl) pmEl.value = evt.preSignMessage || '';
         const smEl = document.getElementById('gb-special-message');
@@ -1944,6 +1951,22 @@ if (btnAddWallPhoto && gbPhotoFile) {
         }
     };
 }
+
+// --- Seinän lappukategoriat: rasti = näkyy, tallentuu heti ---
+['fact', 'joke', 'quote', 'photo'].forEach(function (k) {
+    const cb = document.getElementById('gb-cat-' + k);
+    if (!cb) return;
+    cb.onchange = function () {
+        if (!currentUser || !currentEventId) return;
+        const cats = {};
+        ['fact', 'joke', 'quote', 'photo'].forEach(kk => {
+            const e = document.getElementById('gb-cat-' + kk);
+            cats[kk] = e ? e.checked : true;
+        });
+        db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({ wallCats: cats })
+            .then(() => showToast('🗂️ Lappukategoriat tallennettu!'));
+    };
+});
 
 window.toggleArchive = async function(key, status) {
     const ok = await customConfirm(status ? "Arkistoi miitti" : "Palauta miitti", "Haluatko varmasti muuttaa miitin tilaa?");
