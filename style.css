@@ -3189,3 +3189,29 @@ body.theme-light .form-error { color: #B22222; }
 .wall-light #wall-qr-zoom-btn:hover { background: rgba(27,42,71,0.16); }
 .wall-light #wall-qr-zoom { background: rgba(240,244,250,0.94); }
 .wall-light .wall-qr-zoom-hint { color: rgba(27,42,71,0.6); }
+
+/* ============ LITE-TILA: kevennetty VIERASNÄKYMÄ hitaille/vanhalle laitteille ============
+   device.js asettaa html.mk-lite kun laite on heikko (muisti<=2GB, <=2 ydintä,
+   save-data, 2g-verkko, prefers-reduced-motion tai hyvin vanha selain).
+   Koskee vain vierasnäkymää — QR, lomake ja tallennus toimivat aina täysin. */
+html.mk-lite .confetti-particle,
+html.mk-lite .matrix-char,
+html.mk-lite .firework-particle { display: none !important; }
+
+/* Animaatiot ja siirtymät minimiin vierasnäkymässä */
+html.mk-lite #visitor-view *,
+html.mk-lite #visitor-view *::before,
+html.mk-lite #visitor-view *::after {
+    animation-duration: 0.01s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.05s !important;
+}
+
+/* Raskaat kerrokset ja varjot kevyemmiksi */
+html.mk-lite #visitor-view { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+html.mk-lite #visitor-view .card,
+html.mk-lite #visitor-view .visitor-souvenir-card { box-shadow: 0 2px 6px rgba(0,0,0,0.10); }
+html.mk-lite #visitor-view .visitor-souvenir-card::before { display: none; }
+html.mk-lite #visitor-view .visitor-rankup,
+html.mk-lite #user-profile-modal .visitor-rankup,
+html.mk-lite .visitor-badge-chip { animation: none !important; }

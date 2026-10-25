@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.56.1";
+const APP_VERSION = "7.57.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -2291,13 +2291,24 @@ document.addEventListener('click', function(e) {
 });
 
 const openStats = () => {
-    if(adminView) adminView.style.display = 'none'; 
+    if(adminView) adminView.style.display = 'none';
     if(userView) userView.style.display = 'none';
     const statsView = document.getElementById('stats-view');
     if(statsView) statsView.style.display = 'block';
-    if (typeof initStats === 'function') initStats();
     const noteEl = document.getElementById('stats-net-import-status-note');
     if (noteEl) noteEl.innerText = '';
+    // stats.js ladataan laiskasti — QR-vieras ei koskaan maksa sen lataamista
+    if (typeof initStats === 'function') { initStats(); return; }
+    if (typeof mkLoadScript === 'function') {
+        if (typeof loadingOverlay !== 'undefined' && loadingOverlay) loadingOverlay.style.display = 'flex';
+        mkLoadScript('stats.js').then(() => {
+            if (typeof loadingOverlay !== 'undefined' && loadingOverlay) loadingOverlay.style.display = 'none';
+            if (typeof initStats === 'function') initStats();
+        }).catch(() => {
+            if (typeof loadingOverlay !== 'undefined' && loadingOverlay) loadingOverlay.style.display = 'none';
+            alert('Tilastojen lataus epäonnistui — tarkista yhteys ja yritä uudelleen.');
+        });
+    }
 };
 
 const btnStats = document.getElementById('btn-show-stats');
@@ -2305,6 +2316,22 @@ if(btnStats) btnStats.onclick = openStats;
 
 const btnStatsUser = document.getElementById('btn-show-stats-user');
 if(btnStatsUser) btnStatsUser.onclick = openStats;
+
+// Miittiseinä ladataan laiskasti — QR-vieras ei koskaan lataa wall.js:ää
+const btnOpenWall = document.getElementById('btn-open-wall');
+if (btnOpenWall) btnOpenWall.onclick = () => {
+    if (typeof openWall === 'function') { openWall(); return; }
+    if (typeof mkLoadScript === 'function') {
+        if (typeof loadingOverlay !== 'undefined' && loadingOverlay) loadingOverlay.style.display = 'flex';
+        mkLoadScript('wall.js').then(() => {
+            if (typeof loadingOverlay !== 'undefined' && loadingOverlay) loadingOverlay.style.display = 'none';
+            if (typeof openWall === 'function') openWall();
+        }).catch(() => {
+            if (typeof loadingOverlay !== 'undefined' && loadingOverlay) loadingOverlay.style.display = 'none';
+            alert('Seinän lataus epäonnistui — tarkista yhteys ja yritä uudelleen.');
+        });
+    }
+};
 
 const btnFindToday = document.getElementById('btn-find-today');
 if(btnFindToday) {
@@ -2348,7 +2375,8 @@ window.toggleDetails = function(id) {
 // 13. CONFETTI EFFECT (CSS GPU Optimized)
 // ==========================================
 window.triggerConfetti = function(amount, durationSec, type = 'normal') {
-    // Luodaan hiutaleita "amount" kappaletta, mutta ei kaikkia kerralla, 
+    if (window.MK_LITE) return; // Lite-tila: ei efektejä
+    // Luodaan hiutaleita "amount" kappaletta, mutta ei kaikkia kerralla,
     // vaan ripotellaan niitä durationSec-ajan kuluessa.
     const interval = (durationSec * 1000) / amount;
     
@@ -2362,6 +2390,7 @@ window.triggerConfetti = function(amount, durationSec, type = 'normal') {
 
 // Uusi funktio erikoistehosteille
 window.triggerSpecialEffect = function(effectName, amount = 100, duration = 2) {
+    if (window.MK_LITE) return; // Lite-tila: ei efektejä
     switch(effectName) {
         case 'matrix':
             triggerMatrixRain(amount, duration);

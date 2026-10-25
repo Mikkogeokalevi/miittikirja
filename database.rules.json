@@ -1,0 +1,71 @@
+{
+  // ============================================================
+  // MK Miittikirja — Firebase Realtime Database -suositussäännöt
+  //
+  // TARKISTA ENNEN KÄYTTÖÖN: vertaa Firebase-konsolisi nykyisiin
+  // sääntöihin (Realtime Database → Säännöt). Nämä vastaavat
+  // sovelluksen todellista käyttöä:
+  //
+  //   LUKU: julkinen — vieras- ja seinänäkymät luovat ilman
+  //         kirjautumista (miitit/{uid}/events ja /logs)
+  //   KIRJOITUS:
+  //     - events, externalEvents: vain isäntä (auth.uid === uid)
+  //     - logs: vieras saa LUODA uuden kirjauksen (push),
+  //             mutta ei ylikirjoittaa/poistaa toisen kirjausta
+  //     - logs/{logId}/message + messageUpdatedAt: vieras saa
+  //             päivittää oman kirjauksensa viestin jälkikäteen
+  //             ("muokkaa viestiä" -toiminto duplikaattitilanteessa)
+  //
+  //   TUNNETTU RAJOITUS: vieras ei ole kirjautunut, joten
+  //   message-päivitys on teknisesti avoin kaikille logId:tä
+  //   tunteville. Viestin päivitys on matalariskinen ominaisuus;
+  //   muut kentät (nimi, aikaleima) eivät ole vieraan muokattavissa.
+  // ============================================================
+  "rules": {
+    "miitit": {
+      "$uid": {
+        ".read": true,
+
+        "events": {
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "externalEvents": {
+          ".write": "auth != null && auth.uid === $uid"
+        },
+
+        "logs": {
+          "$eventId": {
+            "$logId": {
+              // Isäntä hallitsee kaikkea; vieras saa vain LUODA uuden kirjauksen
+              ".write": "(auth != null && auth.uid === $uid) || !data.exists()",
+              ".validate": "newData.hasChildren(['nickname', 'timestamp'])",
+
+              "nickname": {
+                ".validate": "newData.isString() && newData.val().length <= 40"
+              },
+              "from": {
+                ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 80)"
+              },
+              "timestamp": {
+                ".validate": "!newData.exists() || newData.isNumber()"
+              },
+
+              // Vieras saa päivittää vain viestin + sen aikaleiman olemassa olevaan
+              "message": {
+                ".write": true,
+                ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 500)"
+              },
+              "messageUpdatedAt": {
+                ".write": true,
+                ".validate": "!newData.exists() || newData.isNumber()"
+              },
+
+              // Tuntemattomat lisäkentät sallitaan (tulevaisuuden laajennukset)
+              "$other": { ".validate": true }
+            }
+          }
+        }
+      }
+    }
+  }
+}

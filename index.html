@@ -23,6 +23,7 @@
 
     <!-- Chart.js ja Leaflet ladataan laiskasti vasta kun Tilastot/Kartta-tab avataan
          (katso mkLoadScript inline-skriptissä) — QR-vieras ei lataa niitä lainkaan -->
+    <script src="device.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -752,8 +753,8 @@
     <script src="visitor.js"></script>
     
     <script src="app.js"></script>
-    <script src="wall.js"></script>
-    <script src="stats.js"></script>
+    <!-- wall.js ja stats.js ladataan laiskasti vasta kun admin avaa seinän/tilastot
+         — QR-vieras ei koskaan lataa noin 170KB admin-koodia -->
     
     <script>
         // --- LAZY-LOAD: raskaat kirjastot (Chart.js, Leaflet) ladataan vasta kun tarvitaan ---
