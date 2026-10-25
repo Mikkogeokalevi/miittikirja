@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.72.0";
+const APP_VERSION = "7.72.1";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1824,6 +1824,16 @@ if (btnSaveWallNote) {
         const val = document.getElementById('gb-wall-note').value.trim();
         db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({ wallNote: val })
             .then(() => showToast('📌 Seinälappu tallennettu!'));
+    };
+}
+
+const btnResetReactions = document.getElementById('btn-reset-reactions');
+if (btnResetReactions) {
+    btnResetReactions.onclick = function() {
+        if (!currentUser || !currentEventId) return;
+        if (!confirm('Nollataan kaikki tämän miitin emoji-reaktiot (❤️👍😄🔥🍻) seinältä?')) return;
+        db.ref('miitit/' + currentUser.uid + '/reactions/' + currentEventId).remove()
+            .then(() => showToast('🧹 Reaktiot nollattu'));
     };
 }
 
