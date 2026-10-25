@@ -3215,3 +3215,65 @@ html.mk-lite #visitor-view .visitor-souvenir-card::before { display: none; }
 html.mk-lite #visitor-view .visitor-rankup,
 html.mk-lite #user-profile-modal .visitor-rankup,
 html.mk-lite .visitor-badge-chip { animation: none !important; }
+
+/* ============ VIERASNÄKYMÄ: verkkotilan banneri ============ */
+.vv-net-banner {
+    padding: 10px 14px;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 0.9em;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+.vv-net-offline { background: #fdecea; color: #b71c1c; border: 1px solid #e0a9a9; }
+.vv-net-weak { background: #fff8e1; color: #8d6e00; border: 1px solid #e8d58a; }
+
+/* ============ VIERASNÄKYMÄ: kävijäpassi (sarjan leimat) ============ */
+.visitor-passport {
+    margin: 12px 0;
+    padding: 12px;
+    border-radius: 12px;
+    background: var(--vv-card-bg, #ffffff);
+    border: 1px solid var(--vv-card-border, #d5e2f2);
+    text-align: center;
+}
+.visitor-passport-title {
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--vv-heading-color, #1b3a5c);
+}
+.visitor-passport-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    gap: 6px;
+}
+.vp-stamp {
+    border: 1.5px dashed var(--vv-card-border, #c9d6e8);
+    border-radius: 8px;
+    padding: 6px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--vv-muted-color, #7a8aa0);
+    font-size: 0.8em;
+}
+.vp-stamp-done {
+    border-style: solid;
+    border-color: var(--vv-theme-btn-active-bg, #2e64aa);
+    background: linear-gradient(160deg, var(--vv-post-bg-start, #eef6ff), #ffffff);
+    color: var(--vv-heading-color, #1b3a5c);
+    font-weight: 700;
+}
+.vp-stamp-no { font-size: 1.15em; }
+.visitor-passport-count { margin-top: 8px; font-weight: 700; }
+
+/* ============ ADMIN: sarjamodaalin menneet miitit ============ */
+.series-past-group { margin-top: 12px; border-top: 1px dashed var(--border-color); }
+.series-past-group summary {
+    cursor: pointer;
+    padding: 10px 4px;
+    font-weight: 600;
+    color: var(--text-muted);
+    user-select: none;
+}
+.series-past-group summary:hover { color: var(--text-color); }

@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.57.0";
+const APP_VERSION = "7.58.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1658,7 +1658,8 @@ function renderSeriesEventList(seriesName) {
     const box = document.getElementById('series-event-list');
     if (!box) return;
     box.innerHTML = '';
-    (window.__seriesAllEvents || []).forEach(e => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const makeRow = (e) => {
         const lbl = document.createElement('label');
         lbl.className = 'series-row';
         const cb = document.createElement('input');
@@ -1672,8 +1673,21 @@ function renderSeriesEventList(seriesName) {
         s.innerText = txt;
         lbl.appendChild(cb);
         lbl.appendChild(s);
-        box.appendChild(lbl);
-    });
+        return lbl;
+    };
+    const evs = window.__seriesAllEvents || [];
+    const upcoming = evs.filter(e => (e.date || '') >= todayStr);
+    const past = evs.filter(e => (e.date || '') < todayStr);
+    upcoming.forEach(e => box.appendChild(makeRow(e)));
+    if (past.length) {
+        const det = document.createElement('details');
+        det.className = 'series-past-group';
+        const sum = document.createElement('summary');
+        sum.innerText = '📁 Menneet miitit (' + past.length + ') — napauta avataksesi';
+        det.appendChild(sum);
+        past.forEach(e => det.appendChild(makeRow(e)));
+        box.appendChild(det);
+    }
 }
 
 const btnSaveSeries = document.getElementById('btn-save-series');

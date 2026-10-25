@@ -86,7 +86,12 @@ const visitorTranslations = {
         saveCardDone: "✅ Kuva tallennettu!",
         saveCardFail: "Tallennus epäonnistui",
         saveCardHint: "Pidä painallus kuvan päällä ja valitse Tallenna kuva",
-        logTextTemplate: "Attended \"{0}\" ({1}). Kiitos miitistä! Kirjauduttu myös sähköiseen vieraskirjaan miittipaikalla."
+        logTextTemplate: "Attended \"{0}\" ({1}). Kiitos miitistä! Kirjauduttu myös sähköiseen vieraskirjaan miittipaikalla.",
+        passportTitle: "Kävijäpassi",
+        passportStamps: "{0}/{1} leimaa",
+        yearAttendance: "Olet käynyt {0} % tämän vuoden miiteistä ({1}/{2})",
+        offlineBanner: "📡 Ei verkkoyhteyttä — kirjaukset tallentuvat jonoon ja lähetetään kun yhteys palaa.",
+        weakBanner: "🐌 Heikko verkkoyhteys — kirjaukset voivat kestää hetken."
     },
     en: {
         title: "Mikkokalevi's Digital Guestbook",
@@ -170,7 +175,12 @@ const visitorTranslations = {
         saveCardDone: "✅ Image saved!",
         saveCardFail: "Save failed",
         saveCardHint: "Long-press the image to save it",
-        logTextTemplate: "Attended \"{0}\" ({1}). Thanks for the event! Also signed the digital guestbook on-site."
+        logTextTemplate: "Attended \"{0}\" ({1}). Thanks for the event! Also signed the digital guestbook on-site.",
+        passportTitle: "Visitor Passport",
+        passportStamps: "{0}/{1} stamps",
+        yearAttendance: "You've attended {0}% of this year's meetups ({1}/{2})",
+        offlineBanner: "📡 No connection — entries are queued and sent when back online.",
+        weakBanner: "🐌 Slow connection — entries may take a moment."
     },
     sv: {
         title: "Mikkokalevis Digitala Gästbok",
@@ -254,7 +264,12 @@ const visitorTranslations = {
         saveCardDone: "✅ Bilden sparad!",
         saveCardFail: "Sparandet misslyckades",
         saveCardHint: "Håll kvar på bilden och välj Spara bild",
-        logTextTemplate: "Attended \"{0}\" ({1}). Tack för eventet! Loggade även i den digitala gästboken på plats."
+        logTextTemplate: "Attended \"{0}\" ({1}). Tack för eventet! Loggade även i den digitala gästboken på plats.",
+        passportTitle: "Besökspass",
+        passportStamps: "{0}/{1} stämplar",
+        yearAttendance: "Du har varit på {0} % av årets träffar ({1}/{2})",
+        offlineBanner: "📡 Ingen uppkoppling — loggar köas och skickas när nätet är tillbaka.",
+        weakBanner: "🐌 Svag uppkoppling — loggar kan ta en stund."
     },
     et: {
         title: "Mikkokalevi digitaalne külalisteraamat",
@@ -338,7 +353,12 @@ const visitorTranslations = {
         saveCardDone: "✅ Pilt salvestatud!",
         saveCardFail: "Salvestus ebaõnnestus",
         saveCardHint: "Hoia pilti pikalt all ja vali Salvesta pilt",
-        logTextTemplate: "Attended \"{0}\" ({1}). Aitäh ürituse eest! Kirjutasin ka kohapeal digitaalsesse külalisteraamatut."
+        logTextTemplate: "Attended \"{0}\" ({1}). Aitäh ürituse eest! Kirjutasin ka kohapeal digitaalsesse külalisteraamatut.",
+        passportTitle: "Külastuspass",
+        passportStamps: "{0}/{1} tempelt",
+        yearAttendance: "Oled käinud {0}% selle aasta miitidest ({1}/{2})",
+        offlineBanner: "📡 Ühendust pole — kirjed lähevad järjekorda ja saadetakse hiljem.",
+        weakBanner: "🐌 Nõrk ühendus — kirjed võivad võtta aega."
     }
 };
 
@@ -1169,7 +1189,35 @@ window.setVisitorLanguage = function(lang) {
         const expiredEl = document.getElementById('vv-expired');
         if (expiredEl) expiredEl.innerText = `${t.expiredTitle}\n${t.expiredBody}`;
     }
+
+    updateVisitorNetBanner();
 };
+
+// Yhteystilan banneri: offline = jono-info, heikko verkko = varoitus
+function updateVisitorNetBanner() {
+    const el = document.getElementById('vv-net-banner');
+    if (!el) return;
+    const t = visitorTranslations[currentLang] || visitorTranslations.fi;
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
+    if (navigator.onLine === false) {
+        el.innerText = t.offlineBanner || 'Ei verkkoyhteyttä';
+        el.className = 'vv-net-banner vv-net-offline';
+        el.style.display = 'block';
+    } else if (conn.saveData === true || /2g/.test(conn.effectiveType || '')) {
+        el.innerText = t.weakBanner || 'Heikko verkkoyhteys';
+        el.className = 'vv-net-banner vv-net-weak';
+        el.style.display = 'block';
+    } else {
+        el.style.display = 'none';
+    }
+}
+window.addEventListener('online', updateVisitorNetBanner);
+window.addEventListener('offline', updateVisitorNetBanner);
+try {
+    const _netConn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (_netConn && typeof _netConn.addEventListener === 'function') _netConn.addEventListener('change', updateVisitorNetBanner);
+} catch (e) { /* ei tuettu */ }
+document.addEventListener('DOMContentLoaded', updateVisitorNetBanner);
 
 // Pääfunktio: Kirjauksen käsittely
 window.handleVisitorSign = async function() {
@@ -1961,6 +2009,31 @@ async function computeVisitorStats(targetHost, eventId, nick, virtualLog, preloa
             stats.greeting = `Tervetuloa ${nick}!`;
         }
 
+        // --- Kävijäpassi: sarjan leimat ---
+        try {
+            const curEvt = eventsMap[eventId];
+            if (curEvt && curEvt.series) {
+                const seriesEvents = allHostEvents.filter(e => (e.series || '') === curEvt.series);
+                const visitedKeys = new Set((userHistory || []).map(h => h.key));
+                stats.passport = {
+                    name: curEvt.series,
+                    total: seriesEvents.length,
+                    visited: seriesEvents.filter(e => visitedKeys.has(e.key)).length,
+                    stamps: seriesEvents.map(e => ({ date: e.date, visited: visitedKeys.has(e.key) }))
+                };
+            }
+        } catch (e) { /* passi ei kriittinen */ }
+
+        // --- Vuoden osallistumisprosentti ---
+        try {
+            const thisYear = todayStr.slice(0, 4);
+            const yearMiitit = miittiEvents.filter(e => (e.date || '').slice(0, 4) === thisYear && (e.date || '') <= todayStr);
+            if (yearMiitit.length > 0) {
+                const attended = yearMiitit.filter(e => (userHistory || []).some(h => h.key === e.key)).length;
+                stats.yearAttendance = { attended: attended, total: yearMiitit.length, pct: Math.round(attended / yearMiitit.length * 100) };
+            }
+        } catch (e) { /* ei kriittinen */ }
+
     } catch (statsErr) {
         console.warn("Stats error:", statsErr);
         userHistory = null;
@@ -2375,6 +2448,29 @@ function showVisitorModalWithLang(nick, history, stats) {
     `;
     badgeEl.insertAdjacentElement('afterend', souvenirCard);
 
+    // --- KÄVIJÄPASSI: sarjan leimat muistokortin alle ---
+    const oldPassport = document.getElementById('up-passport');
+    if (oldPassport) oldPassport.remove();
+    if (stats.passport && stats.passport.total > 1) {
+        const pp = stats.passport;
+        const passportEl = document.createElement('div');
+        passportEl.id = 'up-passport';
+        passportEl.className = 'visitor-passport';
+        const cells = pp.stamps.map((s, i) => {
+            const d = s.date ? s.date.slice(8, 10) + '.' + s.date.slice(5, 7) + '.' : '';
+            return '<div class="vp-stamp' + (s.visited ? ' vp-stamp-done' : '') + '">'
+                + '<span class="vp-stamp-no">' + (i + 1) + '</span>'
+                + '<small>' + d + '</small></div>';
+        }).join('');
+        passportEl.innerHTML = '<div class="visitor-passport-title">📖 ' + visitorEscapeHtml(t.passportTitle || 'Kävijäpassi')
+            + ' · ' + visitorEscapeHtml(pp.name) + '</div>'
+            + '<div class="visitor-passport-grid">' + cells + '</div>'
+            + '<div class="visitor-passport-count">'
+            + (t.passportStamps || '{0}/{1} leimaa').replace('{0}', pp.visited).replace('{1}', pp.total)
+            + '</div>';
+        souvenirCard.insertAdjacentElement('afterend', passportEl);
+    }
+
     // Muistokortin ja lokitekstin kopiointi-/tallennuskonteksti
     window.currentVisitorStatsCopy = { eventName: evtName, eventDate: evtDateText };
     window.currentSouvenirData = {
@@ -2410,6 +2506,17 @@ function showVisitorModalWithLang(nick, history, stats) {
                 : "";
             infoBox.innerHTML = stats.streakText + streakInfo;
             listEl.appendChild(infoBox);
+        }
+
+        // Vuoden osallistumisprosentti
+        if (stats.yearAttendance && stats.yearAttendance.total > 0) {
+            const yaBox = document.createElement('div');
+            yaBox.style.cssText = 'text-align:center; font-size:0.9em; color:var(--vv-muted-color); margin-bottom:10px;';
+            yaBox.innerText = '🔥 ' + (t.yearAttendance || 'Olet käynyt {0} % tämän vuoden miiteistä ({1}/{2})')
+                .replace('{0}', stats.yearAttendance.pct)
+                .replace('{1}', stats.yearAttendance.attended)
+                .replace('{2}', stats.yearAttendance.total);
+            listEl.appendChild(yaBox);
         }
 
         const displayHistory = [...history].reverse();
