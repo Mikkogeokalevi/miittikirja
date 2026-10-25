@@ -3326,3 +3326,83 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
 }
 .wall-qr-short-big { font-size: 1.05em; margin-top: 14px; }
 .wall-light .wall-qr-short { color: rgba(27,42,71,0.6); }
+
+/* ============ SEINÄ: ambient-valopallot (elävyys) ============ */
+#wall-ambient {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+.wall-ambient-dot {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--w-accent2) 0%, transparent 70%);
+    opacity: 0.10;
+    filter: blur(3px);
+    animation: wallAmbientFloat 30s ease-in-out infinite alternate;
+}
+.wall-light .wall-ambient-dot {
+    background: radial-gradient(circle, var(--w-accent-deep) 0%, transparent 70%);
+    opacity: 0.08;
+}
+@keyframes wallAmbientFloat {
+    from { transform: translate(0, 0); }
+    to   { transform: translate(6vw, -9vh); }
+}
+
+/* ============ SEINÄ: iso keskitetty aikalaskuri sekunneilla ============ */
+#wall-countdown { text-align: center; margin: 4px 0; }
+.wall-cd-label {
+    letter-spacing: 4px;
+    font-weight: 700;
+    font-size: 1em;
+    color: var(--w-accent2);
+    opacity: 0.9;
+}
+.wall-cd-time {
+    font-family: 'Courier New', monospace;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(2.6em, 7vw, 5em);
+    color: var(--w-accent);
+    text-shadow: 0 0 28px var(--w-accent-deep);
+    line-height: 1.05;
+}
+.wall-cd-running .wall-cd-time {
+    color: var(--w-accent2);
+    animation: wallCdBreath 4s ease-in-out infinite;
+}
+@keyframes wallCdBreath {
+    0%, 100% { text-shadow: 0 0 18px var(--w-accent2-deep); }
+    50%      { text-shadow: 0 0 34px var(--w-accent2); }
+}
+.wall-light .wall-cd-label { color: var(--w-accent2-deep); }
+.wall-light .wall-cd-time { color: var(--w-accent-deep); text-shadow: none; }
+.wall-light .wall-cd-running .wall-cd-time { color: var(--w-accent2-deep); animation: none; }
+
+/* ============ SEINÄ: vieraskaruselli ============ */
+.wall-spot-card {
+    text-align: center;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border-radius: 14px;
+    border: 1px solid var(--w-accent-deep);
+    background: rgba(255,255,255,0.04);
+    opacity: 0;
+    transform: translateY(8px);
+}
+.wall-spot-anim { animation: wallSpotIn 0.6s ease-out forwards; }
+@keyframes wallSpotIn { to { opacity: 1; transform: none; } }
+.wall-spot-label {
+    font-size: 0.62em;
+    letter-spacing: 3px;
+    color: var(--w-accent2);
+    font-weight: 700;
+}
+.wall-spot-name { font-size: 1.6em; font-weight: 800; color: #ffffff; }
+.wall-spot-sub { font-size: 0.85em; color: rgba(255,255,255,0.7); }
+.wall-light .wall-spot-card { background: rgba(27,42,71,0.05); border-color: rgba(27,42,71,0.2); }
+.wall-light .wall-spot-name { color: #1b2a47; }
+.wall-light .wall-spot-sub { color: rgba(27,42,71,0.75); }

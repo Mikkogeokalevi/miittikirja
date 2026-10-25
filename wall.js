@@ -34,7 +34,11 @@ var mkWall = {
     ordLabel: '',
     nextEvent: null,
     maskVisible: null,
-    fxCode: null
+    fxCode: null,
+    countdownTimer: null,
+    spotTimer: null,
+    spotIdx: 0,
+    nickCounts: {}
 };
 
 function mkWallSortKey(e) {
@@ -301,6 +305,94 @@ function wallWelcome(l) {
     el.classList.add('show');
 }
 
+// Iso keskitetty aikalaskuri sekunneilla — ennen alkuun, käynnissä loppuun
+function mkWallHMS(ms) {
+    var s = Math.max(0, Math.floor(ms / 1000));
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+    return (h > 0 ? h + ':' : '') + ('0' + m).slice(-2) + ':' + ('0' + ss).slice(-2);
+}
+function updateWallCountdown() {
+    var el = document.getElementById('wall-countdown');
+    if (!el || !mkWall.open) return;
+    var t = mkWall.eventTimes || {};
+    var now = new Date();
+    var label = null, left = 0, cls = '';
+    if (t.start && now < t.start) {
+        label = 'MIITTI ALKAA'; left = t.start - now; cls = 'wall-cd-before';
+    } else if (t.start && t.end && now >= t.start && now < t.end) {
+        label = 'MIITTI LOPPUU'; left = t.end - now; cls = 'wall-cd-running';
+    }
+    if (label === null) { el.innerHTML = ''; el.className = ''; return; }
+    el.innerHTML = '<div class="wall-cd-label">' + label + '</div><div class="wall-cd-time">' + mkWallHMS(left) + '</div>';
+    el.className = 'wall-countdown-active ' + cls;
+}
+
+// Vieraskaruselli — pyörittää paikalla olevia kävijöitä isolla kortilla
+function updateWallSpotlight() {
+    var el = document.getElementById('wall-spotlight');
+    if (!el || !mkWall.open) return;
+    var curKey = (mkWall.event || {}).key;
+    var attendees = mkWall.logs.filter(function (l) { return l.eventKey === curKey; });
+    attendees.sort(function (a, b) { return (a.timestamp || 0) - (b.timestamp || 0); });
+    if (!attendees.length) { el.innerHTML = ''; return; }
+    if (mkWall.spotIdx < 0 || mkWall.spotIdx >= attendees.length) mkWall.spotIdx = 0;
+    var l = attendees[mkWall.spotIdx];
+    var nick = (l.nickname || 'Vieras').trim();
+    var norm = nick.toLowerCase();
+    var sub = [];
+    if (l.from) sub.push(l.from);
+    var total = (mkWall.nickCounts || {})[norm] || 0;
+    if (total > 1) sub.push(total + '. miitti!');
+    if (mkWall.seriesEvents.length > 1) {
+        var evs = {};
+        mkWall.logs.forEach(function (x) {
+            if ((x.nickname || '').trim().toLowerCase() === norm) evs[x.eventKey] = 1;
+        });
+        var n = Object.keys(evs).length;
+        if (n > 1) sub.push(n + '. vuoro sarjalla');
+    }
+    el.innerHTML = '';
+    var card = document.createElement('div');
+    card.className = 'wall-spot-card';
+    var lbl = document.createElement('div');
+    lbl.className = 'wall-spot-label';
+    lbl.innerText = 'NYT PAIKALLA';
+    var nm = document.createElement('div');
+    nm.className = 'wall-spot-name';
+    nm.innerText = nick;
+    card.appendChild(lbl);
+    card.appendChild(nm);
+    if (sub.length) {
+        var sb = document.createElement('div');
+        sb.className = 'wall-spot-sub';
+        sb.innerText = sub.join('  ·  ');
+        card.appendChild(sb);
+    }
+    el.appendChild(card);
+    void card.offsetWidth;
+    card.classList.add('wall-spot-anim');
+}
+
+// Ambient: hitaasti ajelehtivat valopallot — pitää seinän "elävänä"
+function mkWallAmbient() {
+    var box = document.getElementById('wall-ambient');
+    if (!box) return;
+    box.innerHTML = '';
+    var n = window.innerWidth < 700 ? 8 : 14;
+    for (var i = 0; i < n; i++) {
+        var d = document.createElement('div');
+        d.className = 'wall-ambient-dot';
+        var sz = 6 + Math.random() * 16;
+        d.style.width = sz + 'px';
+        d.style.height = sz + 'px';
+        d.style.left = (Math.random() * 100) + '%';
+        d.style.top = (Math.random() * 100) + '%';
+        d.style.animationDuration = (16 + Math.random() * 28) + 's';
+        d.style.animationDelay = (-Math.random() * 40) + 's';
+        box.appendChild(d);
+    }
+}
+
 // QR näkyy vasta kun miitti alkaa — tai jos käyttäjä on avannut manuaalisesti
 function updateWallQrMask() {
     var mask = document.getElementById('wall-qr-mask');
@@ -466,6 +558,31 @@ function openWall() {
 
         renderWallFrame();
         seriesEvents.forEach(function (e) { attachWallLogListener(e); });
+
+        // Vieraiden kokonaiskäyntimäärät ("N. miitti" karuselliin) — kertahaku
+        db.ref('miitit/' + uid + '/logs').once('value').then(function (snap) {
+            var byNick = {};
+            snap.forEach(function (evt) {
+                evt.forEach(function (lg) {
+                    var v = lg.val() || {};
+                    var n = (v.nickname || '').trim().toLowerCase();
+                    if (n) { if (!byNick[n]) byNick[n] = {}; byNick[n][evt.key] = 1; }
+                });
+            });
+            var totals = {};
+            Object.keys(byNick).forEach(function (n) { totals[n] = Object.keys(byNick[n]).length; });
+            mkWall.nickCounts = totals;
+            updateWallSpotlight();
+        }).catch(function () {});
+
+        // Elävyys: ambient-valopallot + iso aikalaskuri (sekunneilla) + karuselli
+        mkWallAmbient();
+        updateWallCountdown();
+        if (mkWall.countdownTimer) clearInterval(mkWall.countdownTimer);
+        mkWall.countdownTimer = setInterval(updateWallCountdown, 1000);
+        if (mkWall.spotTimer) clearInterval(mkWall.spotTimer);
+        mkWall.spotTimer = setInterval(function () { mkWall.spotIdx++; updateWallSpotlight(); }, 12000);
+        updateWallSpotlight();
     }).catch(function (err) {
         var feed = document.getElementById('wall-feed');
         if (feed) feed.innerHTML = '<div class="wall-feed-empty">Latausvirhe: ' + err.message + '</div>';
@@ -899,6 +1016,16 @@ function closeWall() {
     if (fxEl) fxEl.innerHTML = '';
     if (mkWall.liveTimer) { clearInterval(mkWall.liveTimer); mkWall.liveTimer = null; }
     if (mkWall.tickerTimer) { clearInterval(mkWall.tickerTimer); mkWall.tickerTimer = null; }
+    if (mkWall.countdownTimer) { clearInterval(mkWall.countdownTimer); mkWall.countdownTimer = null; }
+    if (mkWall.spotTimer) { clearInterval(mkWall.spotTimer); mkWall.spotTimer = null; }
+    mkWall.spotIdx = 0;
+    mkWall.nickCounts = {};
+    var amb = document.getElementById('wall-ambient');
+    if (amb) amb.innerHTML = '';
+    var cd = document.getElementById('wall-countdown');
+    if (cd) { cd.innerHTML = ''; cd.className = ''; }
+    var spl = document.getElementById('wall-spotlight');
+    if (spl) spl.innerHTML = '';
     var view = document.getElementById('wall-view');
     if (view) view.style.display = 'none';
     if (mkWall.wakeLock && mkWall.wakeLock.release) {
