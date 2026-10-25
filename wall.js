@@ -592,6 +592,13 @@ function renderWallFrame() {
             colorLight: '#ffffff',
             correctLevel: QRCode.CorrectLevel.H
         });
+        // Lyhytlinkki QR:n alle — varmistus jos kamera ei lue koodia
+        var shortCode = String(mkWall.event.key).slice(-8);
+        var shortUrl = window.location.host + window.location.pathname.replace(/index\.html$/, '') + '?ev=' + shortCode;
+        var shortEl = document.getElementById('wall-qr-short');
+        if (shortEl) shortEl.innerText = shortUrl;
+        var zoomShort = document.getElementById('wall-qr-zoom-short');
+        if (zoomShort) zoomShort.innerText = shortUrl;
         // 🔍-nappi: iso QR koko ruudulle (luotu laiskasti vasta avattaessa)
         var zb = document.getElementById('wall-qr-zoom-btn');
         if (zb) zb.onclick = function () {
@@ -650,6 +657,7 @@ function renderWallData() {
         void el.offsetWidth; // pakota animaation uudelleenkäynnistys
         el.classList.add('wall-pulse');
         wallConfetti();
+        mkWallPlayDing();
         var newest = null;
         mkWall.logs.forEach(function (l) {
             if (!newest || (l.timestamp || 0) > (newest.timestamp || 0)) newest = l;
@@ -905,6 +913,46 @@ function closeWall() {
 // Kytkennät
 var wallBtn = document.getElementById('btn-open-wall');
 if (wallBtn) wallBtn.onclick = openWall;
+
+// Äänimerkki uudesta kirjautujasta — pehmeä ding-dong (Web Audio, ei tiedostoa)
+function mkWallPlayDing() {
+    if (!mkWall.soundOn) return;
+    try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (!mkWall.ac) mkWall.ac = new AC();
+        var ac = mkWall.ac;
+        if (ac.state === 'suspended') ac.resume();
+        var t0 = ac.currentTime;
+        [880, 660].forEach(function (f, i) {
+            var o = ac.createOscillator();
+            var g = ac.createGain();
+            o.type = 'sine';
+            o.frequency.value = f;
+            var st = t0 + i * 0.18;
+            g.gain.setValueAtTime(0.0001, st);
+            g.gain.exponentialRampToValueAtTime(0.25, st + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, st + 0.35);
+            o.connect(g);
+            g.connect(ac.destination);
+            o.start(st);
+            o.stop(st + 0.4);
+        });
+    } catch (e) {}
+}
+
+// Äänimerkki-toggle seinän kulmassa (muistetaan localStoragessa)
+try { mkWall.soundOn = (localStorage.getItem('mk_wall_sound') === '1'); } catch (e) {}
+var wallSoundBtn = document.getElementById('wall-sound');
+if (wallSoundBtn) {
+    wallSoundBtn.innerText = mkWall.soundOn ? '🔊' : '🔇';
+    wallSoundBtn.onclick = function () {
+        mkWall.soundOn = !mkWall.soundOn;
+        try { localStorage.setItem('mk_wall_sound', mkWall.soundOn ? '1' : '0'); } catch (e) {}
+        wallSoundBtn.innerText = mkWall.soundOn ? '🔊' : '🔇';
+        if (mkWall.soundOn) mkWallPlayDing(); // testisoitto — myös aktivoi AudioContextin napautuksesta
+    };
+}
 
 // Vaalea/tumma teema seinälle (muistetaan localStoragessa)
 var wallThemeBtn = document.getElementById('wall-theme');

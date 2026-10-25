@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.61.0";
+const APP_VERSION = "7.62.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -327,6 +327,35 @@ window.addEventListener('load', function() {
         if(loginView) loginView.style.display = 'none';
         if(adminView) adminView.style.display = 'none';
         openVisitorGuestbook(targetUid, eventId.trim());
+    } else {
+        // Lyhytlinkki seinältä: ?ev=XXXXXXXX → miitin avaimen loppuosa
+        const shortEv = (urlParams.get('ev') || '').trim();
+        if (shortEv) {
+            if(visitorView) visitorView.style.display = 'block';
+            if(loginView) loginView.style.display = 'none';
+            if(adminView) adminView.style.display = 'none';
+            const vvName = document.getElementById('vv-event-name');
+            if (vvName) vvName.innerText = 'Etsitään miittiä...';
+            db.ref('miitit/' + targetUid + '/events').once('value').then(snap => {
+                const matches = [];
+                snap.forEach(c => {
+                    if (c.key && c.key.slice(-shortEv.length) === shortEv) {
+                        const v = c.val() || {}; v.key = c.key; matches.push(v);
+                    }
+                });
+                if (!matches.length) {
+                    if (vvName) vvName.innerText = 'Miittiä ei löytynyt — tarkista lyhytosoite.';
+                    return;
+                }
+                // Jos osumia useampi, valitse lähin tuleva (tai viimeisin)
+                matches.sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
+                const today = new Date().toISOString().slice(0, 10);
+                const pick = matches.find(m => (m.date || '') >= today) || matches[matches.length - 1];
+                openVisitorGuestbook(targetUid, pick.key);
+            }).catch(() => {
+                if (vvName) vvName.innerText = 'Virhe — tarkista verkkoyhteys ja yritä uudelleen.';
+            });
+        }
     }
 });
 

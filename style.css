@@ -3312,3 +3312,17 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
 .vv-details .visitor-badge-collection { padding: 10px; }
 .visitor-passport-details .visitor-passport { border: none; }
 #up-history-intro:empty { display: none; }
+
+/* ============ SEINÄ: QR lyhytlinkki (kameran varmistus) ============ */
+.wall-qr-short {
+    margin-top: 6px;
+    font-size: 0.75em;
+    color: rgba(255,255,255,0.55);
+    font-family: monospace;
+    letter-spacing: 0.5px;
+    text-align: center;
+    word-break: break-all;
+    user-select: text;
+}
+.wall-qr-short-big { font-size: 1.05em; margin-top: 14px; }
+.wall-light .wall-qr-short { color: rgba(27,42,71,0.6); }
