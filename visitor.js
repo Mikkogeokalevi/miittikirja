@@ -93,7 +93,10 @@ const visitorTranslations = {
         offlineBanner: "📡 Ei verkkoyhteyttä — kirjaukset tallentuvat jonoon ja lähetetään kun yhteys palaa.",
         weakBanner: "🐌 Heikko verkkoyhteys — kirjaukset voivat kestää hetken.",
         seriesPromoTitle: "Tulossa sarja!",
-        seriesPromoLine: "{0} miittiä · alkaa {1}"
+        seriesPromoLine: "{0} miittiä · alkaa {1}",
+        historyTitle: "Käyntihistoria",
+        passportsTitle: "Kävijäpassit",
+        otherPassportsTitle: "Muut kävijäpassit"
     },
     en: {
         title: "Mikkokalevi's Digital Guestbook",
@@ -184,7 +187,10 @@ const visitorTranslations = {
         offlineBanner: "📡 No connection — entries are queued and sent when back online.",
         weakBanner: "🐌 Slow connection — entries may take a moment.",
         seriesPromoTitle: "Series coming!",
-        seriesPromoLine: "{0} meetups · starts {1}"
+        seriesPromoLine: "{0} meetups · starts {1}",
+        historyTitle: "Visit history",
+        passportsTitle: "Visitor Passports",
+        otherPassportsTitle: "Other Passports"
     },
     sv: {
         title: "Mikkokalevis Digitala Gästbok",
@@ -275,7 +281,10 @@ const visitorTranslations = {
         offlineBanner: "📡 Ingen uppkoppling — loggar köas och skickas när nätet är tillbaka.",
         weakBanner: "🐌 Svag uppkoppling — loggar kan ta en stund.",
         seriesPromoTitle: "Serie på gång!",
-        seriesPromoLine: "{0} träffar · börjar {1}"
+        seriesPromoLine: "{0} träffar · börjar {1}",
+        historyTitle: "Besökshistorik",
+        passportsTitle: "Besökspass",
+        otherPassportsTitle: "Andra pass"
     },
     et: {
         title: "Mikkokalevi digitaalne külalisteraamat",
@@ -366,7 +375,10 @@ const visitorTranslations = {
         offlineBanner: "📡 Ühendust pole — kirjed lähevad järjekorda ja saadetakse hiljem.",
         weakBanner: "🐌 Nõrk ühendus — kirjed võivad võtta aega.",
         seriesPromoTitle: "Seeria tulekul!",
-        seriesPromoLine: "{0} miitti · algab {1}"
+        seriesPromoLine: "{0} miitti · algab {1}",
+        historyTitle: "Külastuste ajalugu",
+        passportsTitle: "Külastuspassid",
+        otherPassportsTitle: "Muud passid"
     }
 };
 
@@ -2038,6 +2050,7 @@ async function computeVisitorStats(targetHost, eventId, nick, virtualLog, preloa
                         name: name,
                         total: evts.length,
                         visited: visitedCount,
+                        isCurrent: (name === curSeries),
                         stamps: evts.map(e => ({ date: e.date, visited: visitedKeys.has(e.key) }))
                     });
                 }
@@ -2330,11 +2343,14 @@ function showVisitorModalWithLang(nick, history, stats) {
     const badgeTotal = stats.badgeTotal || earnedCount;
     const missingBadges = Array.isArray(stats.missingBadges) ? stats.missingBadges : [];
     const badgeChip = (b, locked) => `<span class="visitor-badge-chip${locked ? ' locked' : ''}" data-badge-key="${b.key}" data-earned="${b.earnedDate || ''}" title="${badgeDescs[b.key] || ''}" onclick="showBadgeInfo(this)">${b.icon} ${badgeNames[b.key] || b.key}</span>`;
+    // Badge-kokoelma avattavan lohkon sisään — uudet badget näkyvät silti juhla-alueella
     const badgesHtml = (earnedCount > 0 || missingBadges.length > 0)
-        ? `<div class="visitor-summary-title" style="margin-top:12px;">${t.badgeCollectionTitle || '🏅 Saavutukset'} ${earnedCount}/${badgeTotal}</div>
-           <div class="visitor-badge-collection">${stats.badges.map(b => badgeChip(b, false)).join('')}</div>
-           ${missingBadges.length > 0 ? `<div class="visitor-badge-missing-title">${t.badgeMissingTitle || 'Vielä saamatta'}:</div><div class="visitor-badge-collection">${missingBadges.map(b => badgeChip(b, true)).join('')}</div>` : ''}
-           <div id="visitor-badge-info" class="visitor-badge-info" style="display:none;"></div>`
+        ? `<details class="vv-details" id="vv-badges-details" ${earnedCount <= 10 ? 'open' : ''} style="margin-top:12px;">
+             <summary>${t.badgeCollectionTitle || '🏅 Saavutukset'} ${earnedCount}/${badgeTotal}</summary>
+             <div class="visitor-badge-collection">${stats.badges.map(b => badgeChip(b, false)).join('')}</div>
+             ${missingBadges.length > 0 ? `<div class="visitor-badge-missing-title">${t.badgeMissingTitle || 'Vielä saamatta'}:</div><div class="visitor-badge-collection">${missingBadges.map(b => badgeChip(b, true)).join('')}</div>` : ''}
+             <div id="visitor-badge-info" class="visitor-badge-info" style="display:none;"></div>
+           </details>`
         : '';
 
     // Seuraava saavutus -vihje (ensimmäinen puuttuva badge katalogista)
@@ -2494,10 +2510,10 @@ function showVisitorModalWithLang(nick, history, stats) {
     badgeEl.insertAdjacentElement('afterend', souvenirCard);
 
     // --- KÄVIJÄPASSIT: kaikki sarjat joissa vieras on leimoja (muistokortin alle) ---
-    document.querySelectorAll('.visitor-passport').forEach(el => el.remove());
+    // Nykyisen miitin sarja näkyy auki; muut passit avattavan lohkon taakse.
+    document.querySelectorAll('.visitor-passport, .visitor-passport-details').forEach(el => el.remove());
     if (stats.passports && stats.passports.length) {
-        let anchor = souvenirCard;
-        stats.passports.forEach((pp, idx) => {
+        const buildPassportEl = (pp) => {
             const passportEl = document.createElement('div');
             passportEl.className = 'visitor-passport';
             const cells = pp.stamps.map((s, i) => {
@@ -2513,9 +2529,33 @@ function showVisitorModalWithLang(nick, history, stats) {
                 + (pp.visited === pp.total ? '🏅 ' : '')
                 + (t.passportStamps || '{0}/{1} leimaa').replace('{0}', pp.visited).replace('{1}', pp.total)
                 + '</div>';
-            anchor.insertAdjacentElement('afterend', passportEl);
-            anchor = passportEl;
+            return passportEl;
+        };
+        let anchor = souvenirCard;
+        const curPps = stats.passports.filter(p => p.isCurrent);
+        const otherPps = stats.passports.filter(p => !p.isCurrent);
+        curPps.forEach(pp => {
+            const el = buildPassportEl(pp);
+            anchor.insertAdjacentElement('afterend', el);
+            anchor = el;
         });
+        if (otherPps.length === 1 && curPps.length === 0) {
+            const el = buildPassportEl(otherPps[0]);
+            anchor.insertAdjacentElement('afterend', el);
+            anchor = el;
+        } else if (otherPps.length > 0) {
+            const det = document.createElement('details');
+            det.className = 'vv-details visitor-passport-details';
+            const sum = document.createElement('summary');
+            sum.innerText = '📖 ' + (curPps.length
+                ? (t.otherPassportsTitle || 'Muut kävijäpassit')
+                : (t.passportsTitle || 'Kävijäpassit'))
+                + ' (' + otherPps.length + ')';
+            det.appendChild(sum);
+            otherPps.forEach(pp => det.appendChild(buildPassportEl(pp)));
+            anchor.insertAdjacentElement('afterend', det);
+            anchor = det;
+        }
     }
 
     // Muistokortin ja lokitekstin kopiointi-/tallennuskonteksti
@@ -2529,17 +2569,26 @@ function showVisitorModalWithLang(nick, history, stats) {
         sub: souvenirSubText
     };
 
-    // 4. HISTORIALISTAN PÄIVITYS
+    // 4. HISTORIALISTAN PÄIVITYS — putki/% näkyvät aina, pitkä lista avattavassa lohkossa
     const listEl = document.getElementById('up-history-list');
+    const introEl = document.getElementById('up-history-intro');
+    const histDetails = document.getElementById('up-history-details');
+    const histSummary = document.getElementById('up-history-summary');
     listEl.innerHTML = "";
+    if (introEl) introEl.innerHTML = "";
 
     if (history === null) {
-        listEl.innerHTML = `<div style="text-align:center; padding:20px;">${t.savedMsg}</div>`;
+        if (histDetails) histDetails.style.display = 'none';
+        if (introEl) introEl.innerHTML = `<div style="text-align:center; padding:20px;">${t.savedMsg}</div>`;
     } else if (stats.isFirstTime) {
-        listEl.innerHTML = `<div style="text-align:center; padding:20px;"><div style="font-size:3em;">🎉</div><p><strong>${t.welcomeTitle}</strong></p></div>`;
+        if (histDetails) histDetails.style.display = 'none';
+        if (introEl) introEl.innerHTML = `<div style="text-align:center; padding:20px;"><div style="font-size:3em;">🎉</div><p><strong>${t.welcomeTitle}</strong></p></div>`;
     } else {
         const last = history[history.length - 1];
+        if (histDetails) histDetails.style.display = 'block';
+        if (histSummary) histSummary.innerText = '🧾 ' + (t.historyTitle || 'Käyntihistoria') + ' (' + history.length + ')';
 
+        const infoTarget = introEl || listEl;
         if (stats.streakText) {
             const infoBox = document.createElement('div');
             infoBox.style.background = "var(--highlight-bg)";
@@ -2552,7 +2601,7 @@ function showVisitorModalWithLang(nick, history, stats) {
                 ? `<div style="margin-top:6px; font-size:0.9em; color:var(--vv-muted-color);">${t.streakInfo.replace('{0}', stats.streakCount).replace('{1}', stats.streakStartLabel)}</div>`
                 : "";
             infoBox.innerHTML = stats.streakText + streakInfo;
-            listEl.appendChild(infoBox);
+            infoTarget.appendChild(infoBox);
         }
 
         // Vuoden osallistumisprosentti
@@ -2563,7 +2612,7 @@ function showVisitorModalWithLang(nick, history, stats) {
                 .replace('{0}', stats.yearAttendance.pct)
                 .replace('{1}', stats.yearAttendance.attended)
                 .replace('{2}', stats.yearAttendance.total);
-            listEl.appendChild(yaBox);
+            infoTarget.appendChild(yaBox);
         }
 
         const displayHistory = [...history].reverse();

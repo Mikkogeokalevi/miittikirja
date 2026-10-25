@@ -3289,3 +3289,26 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
     color: #4a3575;
 }
 .visitor-series-promo span { font-size: 0.95em; }
+
+/* ============ Avattavat lohkot (vierasnäkymän siistintä) ============ */
+.vv-details {
+    margin: 10px 0;
+    border: 1px solid var(--vv-card-border, #d5e2f2);
+    border-radius: 10px;
+    background: var(--vv-card-bg, #ffffff);
+    overflow: hidden;
+}
+.vv-details > summary {
+    cursor: pointer;
+    padding: 10px 14px;
+    font-weight: 700;
+    color: var(--vv-heading-color, #1b3a5c);
+    user-select: none;
+    list-style-position: inside;
+}
+.vv-details > summary:hover { background: rgba(0,0,0,0.03); }
+.vv-details[open] > summary { border-bottom: 1px solid var(--vv-card-border, #d5e2f2); }
+.vv-details > .scroll-box,
+.vv-details .visitor-badge-collection { padding: 10px; }
+.visitor-passport-details .visitor-passport { border: none; }
+#up-history-intro:empty { display: none; }

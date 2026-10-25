@@ -734,8 +734,11 @@
         <div class="modal-content">
             <h3 id="up-nickname" style="border-bottom:2px solid var(--primary-color); padding-bottom:10px; margin-bottom:15px;"></h3>
             
-            <h4>Historia</h4>
-            <div id="up-history-list" class="scroll-box" style="max-height: 250px;"></div>
+            <div id="up-history-intro"></div>
+            <details id="up-history-details" class="vv-details">
+                <summary id="up-history-summary">🧾 Historia</summary>
+                <div id="up-history-list" class="scroll-box" style="max-height: 250px;"></div>
+            </details>
             
             <div id="visitor-action-buttons">
                 <button onclick="document.getElementById('user-profile-modal').style.display='none'" class="btn btn-red" style="margin-top:15px;">Sulje</button>
