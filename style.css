@@ -2745,7 +2745,16 @@ body.theme-light .form-error { color: #B22222; }
     word-break: break-word;
 }
 .wall-note-sub { font-size: 0.72em; opacity: 0.72; margin-top: 5px; }
-.wall-note-msg { font-size: 0.78em; font-style: italic; margin-top: 5px; line-height: 1.25; }
+.wall-note-msg {
+    font-size: 0.78em;
+    font-style: italic;
+    margin-top: 5px;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
 .wall-note-extra { margin-top: 6px; font-size: 0.75em; font-weight: 700; color: #7a4d00; }
 .wall-note-new { animation: wallNoteSlap 0.7s ease-out; }
 @keyframes wallNoteSlap {

@@ -10,6 +10,7 @@ const visitorTranslations = {
         nickPlaceholder: "Nimimerkkisi (kuten Geocaching.com)",
         fromPlaceholder: "Mistä tulet? (Paikkakunta)",
         msgPlaceholder: "Terveiset Mikkokaleville",
+        msgWallHint: "(näkyy miittiseinällä miitin ajan)",
         btnSign: "TALLENNA KÄYNTI ✅",
         reminder: "⚠️ Muista logata käyntisi myös virallisesti Geocaching.comiin!",
         alertNick: "Kirjoita nimimerkkisi!",
@@ -104,6 +105,7 @@ const visitorTranslations = {
         nickPlaceholder: "Your Nickname (Geocaching.com)",
         fromPlaceholder: "Where are you from?",
         msgPlaceholder: "Greetings to Mikkokalevi",
+        msgWallHint: "(visible on the meetup wall during the meet)",
         btnSign: "SIGN LOGBOOK ✅",
         reminder: "⚠️ Remember to log your visit officially on Geocaching.com!",
         alertNick: "Please enter your nickname!",
@@ -198,6 +200,7 @@ const visitorTranslations = {
         nickPlaceholder: "Ditt Användarnamn (Geocaching.com)",
         fromPlaceholder: "Var kommer du ifrån?",
         msgPlaceholder: "Hälsningar till Mikkokalevi",
+        msgWallHint: "(syns på träffens anslagstavla under träffen)",
         btnSign: "SIGNERA LOGGBOKEN ✅",
         reminder: "⚠️ Kom ihåg att logga ditt besök officiellt på Geocaching.com!",
         alertNick: "Ange ditt användarnamn!",
@@ -292,6 +295,7 @@ const visitorTranslations = {
         nickPlaceholder: "Sinu kasutajanimi (Geocaching.com)",
         fromPlaceholder: "Kust sa tuled? (Linn/asula)",
         msgPlaceholder: "Tervitused Mikkokalevile",
+        msgWallHint: "(nähtav kohtumise teatetahvlil kohtumise ajal)",
         btnSign: "SALVESTA KÜLASTUS ✅",
         reminder: "⚠️ Ära unusta oma külastust ka Geocaching.com‑is logida!",
         alertNick: "Palun sisesta oma kasutajanimi!",
@@ -1183,6 +1187,7 @@ window.setVisitorLanguage = function(lang) {
     setAttr('vv-nickname', 'placeholder', t.nickPlaceholder);
     setAttr('vv-from', 'placeholder', t.fromPlaceholder);
     setAttr('vv-message', 'placeholder', t.msgPlaceholder);
+    setTxt('vv-msg-hint', t.msgWallHint);
 
     ['btn-lang-fi', 'btn-lang-en', 'btn-lang-sv', 'btn-lang-et'].forEach(id => {
         const el = document.getElementById(id);
