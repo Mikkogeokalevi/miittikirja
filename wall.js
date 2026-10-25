@@ -38,6 +38,7 @@ var mkWall = {
     countdownTimer: null,
     spotTimer: null,
     spotIdx: 0,
+    spotKey: null,
     nickCounts: {}
 };
 
@@ -355,50 +356,58 @@ function updateWallCountdown() {
     el.className = 'wall-countdown-active ' + cls;
 }
 
-// Vieraskaruselli — pyörittää paikalla olevia kävijöitä isolla kortilla
+// Vieraskaruselli — 12 s välein yksi taulun lappu nostautuu esille
 function updateWallSpotlight() {
-    var el = document.getElementById('wall-spotlight');
-    if (!el || !mkWall.open) return;
+    if (!mkWall.open) return;
     var curKey = (mkWall.event || {}).key;
     var attendees = mkWall.logs.filter(function (l) { return l.eventKey === curKey; });
     attendees.sort(function (a, b) { return (a.timestamp || 0) - (b.timestamp || 0); });
-    if (!attendees.length) { el.innerHTML = ''; return; }
+    if (!attendees.length) { mkWall.spotKey = null; applyWallSpot(null); return; }
     if (mkWall.spotIdx < 0 || mkWall.spotIdx >= attendees.length) mkWall.spotIdx = 0;
     var l = attendees[mkWall.spotIdx];
-    var nick = (l.nickname || 'Vieras').trim();
-    var norm = nick.toLowerCase();
-    var sub = [];
-    if (l.from) sub.push(l.from);
-    var total = (mkWall.nickCounts || {})[norm] || 0;
-    if (total > 1) sub.push(total + '. miitti!');
-    if (mkWall.seriesEvents.length > 1) {
-        var evs = {};
-        mkWall.logs.forEach(function (x) {
-            if ((x.nickname || '').trim().toLowerCase() === norm) evs[x.eventKey] = 1;
-        });
-        var n = Object.keys(evs).length;
-        if (n > 1) sub.push(n + '. vuoro sarjalla');
+    mkWall.spotKey = l.key;
+    applyWallSpot(l);
+}
+
+// Korostaa spotKeyn lapun taululla + täyttää sen lisärivin
+function applyWallSpot(l) {
+    var feed = document.getElementById('wall-feed');
+    if (!feed) return;
+    var extra = '';
+    if (l) {
+        var norm = (l.nickname || '').trim().toLowerCase();
+        var bits = [];
+        if (l.from) bits.push(l.from);
+        var total = (mkWall.nickCounts || {})[norm] || 0;
+        if (total > 1) bits.push(total + '. miitti!');
+        if (mkWall.seriesEvents.length > 1) {
+            var evs = {};
+            mkWall.logs.forEach(function (x) {
+                if ((x.nickname || '').trim().toLowerCase() === norm) evs[x.eventKey] = 1;
+            });
+            var n = Object.keys(evs).length;
+            if (n > 1) bits.push(n + '. vuoro sarjalla');
+        }
+        extra = bits.join('  ·  ');
     }
-    el.innerHTML = '';
-    var card = document.createElement('div');
-    card.className = 'wall-spot-card';
-    var lbl = document.createElement('div');
-    lbl.className = 'wall-spot-label';
-    lbl.innerText = 'NYT PAIKALLA';
-    var nm = document.createElement('div');
-    nm.className = 'wall-spot-name';
-    nm.innerText = nick;
-    card.appendChild(lbl);
-    card.appendChild(nm);
-    if (sub.length) {
-        var sb = document.createElement('div');
-        sb.className = 'wall-spot-sub';
-        sb.innerText = sub.join('  ·  ');
-        card.appendChild(sb);
+    var kids = feed.children;
+    for (var i = 0; i < kids.length; i++) {
+        var on = l && kids[i].getAttribute('data-k') === mkWall.spotKey;
+        kids[i].classList.toggle('wall-note-spot', !!on);
+        var ex = kids[i].querySelector('.wall-note-extra');
+        if (ex) {
+            if (on && extra) { ex.innerText = extra; ex.style.display = 'block'; }
+            else ex.style.display = 'none';
+        }
     }
-    el.appendChild(card);
-    void card.offsetWidth;
-    card.classList.add('wall-spot-anim');
+}
+
+// Lapuille deterministinen kierto/väri — avaimen hash pitää paikat vakaina
+function mkWallNoteHash(key) {
+    var s = String(key || 'x');
+    var h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
 }
 
 // Ambient: hitaasti ajelehtivat valopallot — pitää seinän "elävänä"
@@ -737,13 +746,6 @@ function renderWallFrame() {
             colorLight: '#ffffff',
             correctLevel: QRCode.CorrectLevel.H
         });
-        // Lyhytlinkki QR:n alle — varmistus jos kamera ei lue koodia
-        var shortCode = String(mkWall.event.key).slice(-8);
-        var shortUrl = window.location.host + window.location.pathname.replace(/index\.html$/, '') + '?ev=' + shortCode;
-        var shortEl = document.getElementById('wall-qr-short');
-        if (shortEl) shortEl.innerText = shortUrl;
-        var zoomShort = document.getElementById('wall-qr-zoom-short');
-        if (zoomShort) zoomShort.innerText = shortUrl;
         // 🔍-nappi: iso QR koko ruudulle (luotu laiskasti vasta avattaessa)
         var zb = document.getElementById('wall-qr-zoom-btn');
         if (zb) zb.onclick = function () {
@@ -840,15 +842,41 @@ function renderWallData() {
         updateWallEnd();
         return;
     }
-    var colors = ['#64ffda', '#ffd9a0', '#ff7b9c', '#7fff9f', '#a0c4ff', '#ffc6ff', '#fdffb6', '#9bf6ff'];
+    // Ilmoitustaulu: jokainen kirjautuja = postit-lappu, lätkäisty lomittain
+    var palette = ['#fff9a3', '#ffd0dc', '#cde7ff', '#d5f5c0', '#ffe0b3', '#e8d7ff'];
     logs.forEach(function (l, idx) {
-        var chip = document.createElement('span');
-        chip.className = 'wall-chip' + (idx === 0 ? ' wall-new' : '');
-        chip.style.background = colors[idx % colors.length];
-        chip.innerText = l.nickname || '?';
+        var h = mkWallNoteHash(l.key || (l.nickname || '') + idx);
+        var note = document.createElement('div');
+        note.className = 'wall-note' + (idx === 0 ? ' wall-note-new' : '');
+        note.setAttribute('data-k', l.key || '');
+        note.style.setProperty('--rot', ((h % 11) - 5) + 'deg');
+        note.style.background = 'linear-gradient(180deg, #ffffff88 0%, ' + palette[h % palette.length] + ' 18%, ' + palette[h % palette.length] + ' 100%)';
+        note.style.marginTop = ((h % 13) - 6) + 'px';
+        var nm = document.createElement('div');
+        nm.className = 'wall-note-name';
+        nm.innerText = l.nickname || '?';
+        note.appendChild(nm);
+        var sbits = [];
+        if (l.from) sbits.push(l.from);
         var t = l.timestamp ? new Date(l.timestamp) : null;
-        chip.title = (l.from ? l.from + ' · ' : '') + (t ? ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) : '') + (l.message ? '\n"' + l.message + '"' : '');
-        feed.appendChild(chip);
+        if (t) sbits.push(('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2));
+        if (sbits.length) {
+            var sb = document.createElement('div');
+            sb.className = 'wall-note-sub';
+            sb.innerText = sbits.join(' · ');
+            note.appendChild(sb);
+        }
+        if (l.message) {
+            var mg = document.createElement('div');
+            mg.className = 'wall-note-msg';
+            mg.innerText = '"' + l.message + '"';
+            note.appendChild(mg);
+        }
+        var ex = document.createElement('div');
+        ex.className = 'wall-note-extra';
+        ex.style.display = 'none';
+        note.appendChild(ex);
+        feed.appendChild(note);
     });
     // Ylivuoto: tiiviimpi asettelu + hidas edestakainen automaattiskrollaus
     var box = feed.parentNode;
@@ -857,6 +885,8 @@ function renderWallData() {
     // Uusi kirjautuja näkyy palkissa heti (kohta 1 = uusin kirjautuja)
     mkWall.tickerIdx = -1;
     updateWallTicker(true);
+    // Karusellin korostus takaisin paikalleen (feed renderöitiin uusiksi)
+    updateWallSpotlight();
     // Loppunäytön tilastot tuoreena heti kun kuuntelija palauttaa dataa
     updateWallEnd();
 }
@@ -1047,13 +1077,12 @@ function closeWall() {
     if (mkWall.countdownTimer) { clearInterval(mkWall.countdownTimer); mkWall.countdownTimer = null; }
     if (mkWall.spotTimer) { clearInterval(mkWall.spotTimer); mkWall.spotTimer = null; }
     mkWall.spotIdx = 0;
+    mkWall.spotKey = null;
     mkWall.nickCounts = {};
     var amb = document.getElementById('wall-ambient');
     if (amb) amb.innerHTML = '';
     var cd = document.getElementById('wall-countdown');
     if (cd) { cd.innerHTML = ''; cd.className = ''; }
-    var spl = document.getElementById('wall-spotlight');
-    if (spl) spl.innerHTML = '';
     var view = document.getElementById('wall-view');
     if (view) view.style.display = 'none';
     if (mkWall.wakeLock && mkWall.wakeLock.release) {
