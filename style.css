@@ -3695,3 +3695,56 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
 @media (prefers-reduced-motion: reduce) {
     .wall-react-float { animation-duration: 1.5s; }
 }
+
+/* ===== SÄÄTAUSTA: PILVET JA AURINKO ===== */
+.wall-cloud {
+    position: absolute;
+    left: -30vw;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.11);
+    filter: blur(22px);
+    opacity: 0.65;
+    animation: wallCloudDrift linear infinite;
+    will-change: transform;
+}
+.wall-cloud-night { opacity: 0.4; }
+.wall-light .wall-cloud { background: rgba(60, 80, 120, 0.12); }
+@keyframes wallCloudDrift {
+    from { transform: translateX(0); }
+    to { transform: translateX(160vw); }
+}
+.wall-sun {
+    position: absolute;
+    top: -14%;
+    right: 5%;
+    width: 45vmin;
+    height: 45vmin;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 214, 120, 0.30), rgba(255, 214, 120, 0.10) 45%, transparent 70%);
+    animation: wallSunPulse 10s ease-in-out infinite;
+    will-change: opacity, transform;
+}
+@keyframes wallSunPulse {
+    0%, 100% { opacity: 0.75; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .wall-cloud { animation-duration: 200s; }
+    .wall-sun { animation: none; }
+}
+
+/* Kelluva emoji myös vieraan näytöllä napautettaessa */
+.vv-react-float {
+    position: absolute;
+    bottom: 100%;
+    font-size: 1.6em;
+    pointer-events: none;
+    animation: vvReactRise 1.2s ease-out forwards;
+    z-index: 10;
+}
+.vv-react-btns { position: relative; }
+@keyframes vvReactRise {
+    0% { transform: translateY(0) scale(0.6); opacity: 0; }
+    20% { opacity: 1; transform: translateY(-16px) scale(1.1); }
+    100% { transform: translateY(-70px) scale(1); opacity: 0; }
+}

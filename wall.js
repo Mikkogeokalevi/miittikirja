@@ -580,18 +580,21 @@ function wallQrReveal() {
     }
 }
 
-// Sää-efektit: lumi / sade / tähdet / sumu — renderöidään vain kun koodi muuttuu
-function renderWallFx(code) {
+// Sää-efektit: lumi / sade / sumu / pilvet / tähdet / aurinko — renderöidään vain kun koodi muuttuu
+function renderWallFx(code, isDay) {
     var fx = document.getElementById('wall-fx');
-    if (!fx || mkWall.fxCode === code) return;
-    mkWall.fxCode = code;
+    var fxKey = String(code) + '_' + String(isDay);
+    if (!fx || mkWall.fxCode === fxKey) return;
+    mkWall.fxCode = fxKey;
     fx.innerHTML = '';
     if (code === null || code === undefined) return;
     var i, el;
     var isSnow = (code >= 71 && code <= 77) || code === 79 || code === 85 || code === 86;
     var isRain = (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95;
     var isFog = code === 45 || code === 48;
-    var isClear = code <= 3;
+    var isCloudy = (code === 2 || code === 3);
+    var isClear = code <= 1;
+    var night = (isDay === 0) || (isDay === undefined && (new Date().getHours() < 7 || new Date().getHours() >= 20));
     if (isSnow) {
         for (i = 0; i < 36; i++) {
             el = document.createElement('span');
@@ -619,18 +622,44 @@ function renderWallFx(code) {
             el.className = 'wall-fog wall-fog-' + i;
             fx.appendChild(el);
         }
-    } else if (isClear) {
-        for (i = 0; i < 32; i++) {
-            el = document.createElement('span');
-            el.className = 'wall-star';
-            el.style.left = (Math.random() * 100) + '%';
-            el.style.top = (Math.random() * 65) + '%';
-            el.style.animationDuration = (1.5 + Math.random() * 3) + 's';
-            el.style.animationDelay = (Math.random() * 3) + 's';
-            var sz = (1.5 + Math.random() * 2.5);
-            el.style.width = sz + 'px';
-            el.style.height = sz + 'px';
+    } else {
+        // Tähdet: selkeä yö (ja puolipilvisellä yöllä muutama pilven välistä)
+        if ((isClear && night) || (code === 2 && night)) {
+            var starN = isClear ? 32 : 14;
+            for (i = 0; i < starN; i++) {
+                el = document.createElement('span');
+                el.className = 'wall-star';
+                el.style.left = (Math.random() * 100) + '%';
+                el.style.top = (Math.random() * 65) + '%';
+                el.style.animationDuration = (1.5 + Math.random() * 3) + 's';
+                el.style.animationDelay = (Math.random() * 3) + 's';
+                var sz = (1.5 + Math.random() * 2.5);
+                el.style.width = sz + 'px';
+                el.style.height = sz + 'px';
+                fx.appendChild(el);
+            }
+        }
+        // Aurinko: selkeä päivä — pehmeä lämmin hehku yläkulmassa
+        if (isClear && !night) {
+            el = document.createElement('div');
+            el.className = 'wall-sun';
             fx.appendChild(el);
+        }
+        // Pilvet: puolipilvi (2) / pilvinen (3) — pehmeät hahmot ajelehtivat hitaasti
+        if (isCloudy) {
+            var cloudN = code === 3 ? 7 : 4;
+            for (i = 0; i < cloudN; i++) {
+                el = document.createElement('div');
+                el.className = 'wall-cloud' + (night ? ' wall-cloud-night' : '');
+                var w = 160 + Math.random() * 260;
+                el.style.width = w + 'px';
+                el.style.height = (w * (0.28 + Math.random() * 0.12)) + 'px';
+                el.style.top = (Math.random() * 70) + '%';
+                el.style.animationDuration = (55 + Math.random() * 70) + 's';
+                el.style.animationDelay = (-Math.random() * 100) + 's';
+                if (code === 3) el.style.opacity = '0.9';
+                fx.appendChild(el);
+            }
         }
     }
 }
@@ -638,11 +667,11 @@ function renderWallFx(code) {
 function fetchWallWeather(ev) {
     var ll = mkWallParseCoords(ev.coords);
     if (!ll) return;
-    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + ll[0].toFixed(5) + '&longitude=' + ll[1].toFixed(5) + '&current=temperature_2m,weather_code&timezone=auto';
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + ll[0].toFixed(5) + '&longitude=' + ll[1].toFixed(5) + '&current=temperature_2m,weather_code,is_day&timezone=auto';
     fetch(url).then(function (r) { return r.json(); }).then(function (j) {
         if (!mkWall.open || !j || !j.current) return;
         mkWall.weather = { temp: Math.round(j.current.temperature_2m), icon: mkWmoIcon(j.current.weather_code) };
-        renderWallFx(j.current.weather_code);
+        renderWallFx(j.current.weather_code, j.current.is_day);
         updateWallLive();
     }).catch(function () {});
 }
@@ -866,6 +895,8 @@ function renderWallFrame() {
     if (mkWall.liveTimer) clearInterval(mkWall.liveTimer);
     mkWall.liveTimer = setInterval(updateWallLive, 15000);
     fetchWallWeather(ev);
+    if (mkWall.wxTimer) clearInterval(mkWall.wxTimer);
+    mkWall.wxTimer = setInterval(function () { if (mkWall.event) fetchWallWeather(mkWall.event); }, 15 * 60 * 1000);
     updateWallQrMask();
 
     // Uutispalkki: oma ajoitus — pitkät tekstit scrollataan ensin loppuun
@@ -1471,6 +1502,7 @@ function closeWall() {
     var fxEl = document.getElementById('wall-fx');
     if (fxEl) fxEl.innerHTML = '';
     if (mkWall.liveTimer) { clearInterval(mkWall.liveTimer); mkWall.liveTimer = null; }
+    if (mkWall.wxTimer) { clearInterval(mkWall.wxTimer); mkWall.wxTimer = null; }
     if (mkWall.tickerTimer) { clearInterval(mkWall.tickerTimer); mkWall.tickerTimer = null; }
     if (mkWall.countdownTimer) { clearInterval(mkWall.countdownTimer); mkWall.countdownTimer = null; }
     if (mkWall.spotTimer) { clearInterval(mkWall.spotTimer); mkWall.spotTimer = null; }

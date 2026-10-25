@@ -87,7 +87,7 @@ const visitorTranslations = {
         saveCardDone: "✅ Kuva tallennettu!",
         saveCardFail: "Tallennus epäonnistui",
         saveCardHint: "Pidä painallus kuvan päällä ja valitse Tallenna kuva",
-        reactionsPrompt: "Miltä miitti tuntui? Lähetä reaktio ison näytön seinälle!",
+        reactionsPrompt: "Miltä miitti tuntui? Naputtele emojeja — ne kelluvat ison näytön seinälle!",
         logTextTemplate: "Attended \"{0}\" ({1}). Kiitos miitistä! Kirjauduttu myös sähköiseen vieraskirjaan miittipaikalla.",
         passportTitle: "Kävijäpassi",
         passportStamps: "{0}/{1} leimaa",
@@ -183,7 +183,7 @@ const visitorTranslations = {
         saveCardDone: "✅ Image saved!",
         saveCardFail: "Save failed",
         saveCardHint: "Long-press the image to save it",
-        reactionsPrompt: "How was the meet? Send a reaction to the big screen!",
+        reactionsPrompt: "How was the meet? Tap the emojis — they float onto the big screen!",
         logTextTemplate: "Attended \"{0}\" ({1}). Thanks for the event! Also signed the digital guestbook on-site.",
         passportTitle: "Visitor Passport",
         passportStamps: "{0}/{1} stamps",
@@ -279,7 +279,7 @@ const visitorTranslations = {
         saveCardDone: "✅ Bilden sparad!",
         saveCardFail: "Sparandet misslyckades",
         saveCardHint: "Håll kvar på bilden och välj Spara bild",
-        reactionsPrompt: "Hur var träffen? Skicka en reaktion till storbilden!",
+        reactionsPrompt: "Hur var träffen? Tryck på emojierna — de svävar upp på storbilden!",
         logTextTemplate: "Attended \"{0}\" ({1}). Tack för eventet! Loggade även i den digitala gästboken på plats.",
         passportTitle: "Besökspass",
         passportStamps: "{0}/{1} stämplar",
@@ -375,7 +375,7 @@ const visitorTranslations = {
         saveCardDone: "✅ Pilt salvestatud!",
         saveCardFail: "Salvestus ebaõnnestus",
         saveCardHint: "Hoia pilti pikalt all ja vali Salvesta pilt",
-        reactionsPrompt: "Kuidas kohtumine meeldis? Saada reaktsioon suurele ekraanile!",
+        reactionsPrompt: "Kuidas kohtumine meeldis? Koputa emojisid — need hõljuvad suurele ekraanile!",
         logTextTemplate: "Attended \"{0}\" ({1}). Aitäh ürituse eest! Kirjutasin ka kohapeal digitaalsesse külalisteraamatut.",
         passportTitle: "Külastuspass",
         passportStamps: "{0}/{1} tempelt",
@@ -2538,33 +2538,25 @@ function showVisitorModalWithLang(nick, history, stats) {
         const btnWrap = document.createElement('div');
         btnWrap.className = 'vv-react-btns';
         Object.keys(REACTS).forEach(function (rKey) {
-            const storeKey = 'mk_react_' + reactEvId + '_' + rKey;
             const b = document.createElement('button');
             b.type = 'button';
             b.className = 'vv-react-btn';
             b.innerText = REACTS[rKey];
-            const applyState = function () {
-                let on = false;
-                try { on = localStorage.getItem(storeKey) === '1'; } catch (e) {}
-                b.classList.toggle('on', on);
-            };
-            applyState();
             b.onclick = function () {
-                let on = false;
-                try { on = localStorage.getItem(storeKey) === '1'; } catch (e) {}
                 const ref = firebase.database().ref('miitit/' + reactHost + '/reactions/' + reactEvId + '/' + rKey);
                 ref.transaction(function (cur) {
-                    var v = (typeof cur === 'number' ? cur : 0) + (on ? -1 : 1);
-                    return v < 0 ? 0 : v;
-                }).then(function () {
-                    try { localStorage.setItem(storeKey, on ? '0' : '1'); } catch (e) {}
-                    applyState();
-                    if (!on) {
-                        b.classList.remove('vv-react-pop');
-                        void b.offsetWidth;
-                        b.classList.add('vv-react-pop');
-                    }
+                    return (typeof cur === 'number' ? cur : 0) + 1;
                 }).catch(function () {});
+                b.classList.remove('vv-react-pop');
+                void b.offsetWidth;
+                b.classList.add('vv-react-pop');
+                // Pieni kelluva emoji myös vieraan näytölle — sama fiilis kuin seinällä
+                const fl = document.createElement('span');
+                fl.className = 'vv-react-float';
+                fl.innerText = REACTS[rKey];
+                fl.style.left = (20 + Math.random() * 60) + '%';
+                b.parentNode.appendChild(fl);
+                setTimeout(function () { if (fl.parentNode) fl.parentNode.removeChild(fl); }, 1300);
             };
             btnWrap.appendChild(b);
         });
