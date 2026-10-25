@@ -51,7 +51,8 @@ var mkWall = {
     liveNotes: {},
     poolIdx: 0,
     nextSpawnAt: 0,
-    zTop: 0
+    zTop: 0,
+    zoomedEl: null,
 };
 
 function mkWallSortKey(e) {
@@ -1016,6 +1017,7 @@ function updateWallPin(pinTexts) {
 function makeWallNoteEl(it) {
     var note = document.createElement('div');
     note.className = 'wall-note wall-note-new';
+    note.addEventListener('click', function () { toggleWallNoteZoom(note); });
     if (it.type === 'fact') note.className += ' wall-note-fact';
     if (it.type === 'joke') note.className += ' wall-note-joke';
     if (it.type === 'quote') note.className += ' wall-note-quote';
@@ -1134,8 +1136,28 @@ function fadeWallNote(key) {
     var rec = mkWall.liveNotes[key];
     if (!rec) return;
     delete mkWall.liveNotes[key];
+    if (mkWall.zoomedEl === rec.el) mkWall.zoomedEl = null;
     rec.el.classList.add('wall-note-out');
     setTimeout(function () { if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el); }, 950);
+}
+
+// Napauta lappua -> suurenee luettavaksi; uusi napautus/toinen lappu palauttaa
+function toggleWallNoteZoom(el) {
+    if (mkWall.zoomedEl === el) { unzoomWallNote(); return; }
+    unzoomWallNote();
+    mkWall.zoomedEl = el;
+    el.classList.add('wall-note-zoomed');
+    el.style.zIndex = '9998';
+}
+
+function unzoomWallNote() {
+    var el = mkWall.zoomedEl;
+    if (!el) return;
+    mkWall.zoomedEl = null;
+    el.classList.remove('wall-note-zoomed');
+    var key = el.getAttribute('data-k');
+    var rec = mkWall.liveNotes[key];
+    el.style.zIndex = el.classList.contains('wall-note-spot') ? '9999' : (rec ? String(rec.z || 1) : '');
 }
 
 // Uusi kirjautuminen taululle heti — tarvittaessa vanhin väistää
@@ -1386,6 +1408,7 @@ function closeWall() {
     mkWall.poolIdx = 0;
     mkWall.nextSpawnAt = 0;
     mkWall.zTop = 0;
+    mkWall.zoomedEl = null;
     var feedEl = document.getElementById('wall-feed');
     if (feedEl) feedEl.innerHTML = '';
     var amb = document.getElementById('wall-ambient');

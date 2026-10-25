@@ -2744,6 +2744,16 @@ body.theme-light .form-error { color: #B22222; }
     transform: rotate(var(--rot, 0deg)) translateY(26px) scale(0.85) !important;
     pointer-events: none;
 }
+.wall-note { cursor: pointer; }
+/* Napautettu lappu suurenee luettavaksi */
+.wall-note-zoomed {
+    animation: none !important;
+    transform: rotate(0deg) scale(1.9) !important;
+    box-shadow: 0 14px 44px rgba(0,0,0,0.6);
+}
+.wall-note-zoomed .wall-note-msg { -webkit-line-clamp: 8; }
+.wall-note-zoomed .wall-note-img { height: 200px; }
+.wall-note-zoomed .wall-note-fact-text { font-size: 0.9em; }
 .wall-note::before {
     content: '';
     position: absolute;
