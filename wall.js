@@ -46,6 +46,7 @@ var mkWall = {
     boardShown: {},
     factOffset: 0,
     jokeOffset: 0,
+    quoteOffset: 0,
     pool: [],
     liveNotes: {},
     poolIdx: 0,
@@ -335,11 +336,18 @@ function mkWallJokes() {
     return (j && j.length) ? j : [];
 }
 
+// Kätköilijän viisaudet -laput (lista config.js:ssä: WALL_QUOTES)
+function mkWallQuotes() {
+    var q = (typeof MK_Config !== 'undefined' && MK_Config.WALL_QUOTES) ? MK_Config.WALL_QUOTES : null;
+    return (q && q.length) ? q : [];
+}
+
 // Lappujen otsikkotekstit (muokattavissa config.js:ssä)
 function mkWallLabel(type) {
     var c = (typeof MK_Config !== 'undefined') ? MK_Config : {};
     if (type === 'fact') return c.WALL_FACT_LABEL || 'TIESITKÖ?';
     if (type === 'joke') return c.WALL_JOKE_LABEL || 'HÖPÖ HÖPÖ';
+    if (type === 'quote') return c.WALL_QUOTE_LABEL || 'KÄTKÖILIJÄN VIISAUS';
     if (type === 'pin') return c.WALL_PIN_LABEL || '📌 ISÄNNÄLTÄ';
     return '';
 }
@@ -936,13 +944,18 @@ function wallBoardCapacity() {
 // Pool: kirjautujat + täyttölaput (fakta/höpö). Elävät laput säilyvät.
 function buildWallPool(logs) {
     var dims = wallBoardCapacity();
-    var facts = mkWallFacts(), jokes = mkWallJokes();
+    var facts = mkWallFacts(), jokes = mkWallJokes(), quotes = mkWallQuotes();
     var pool = [];
     if (!logs.length) pool.push({ type: 'empty', key: 'empty' });
     logs.forEach(function (l) { pool.push({ type: 'log', l: l, key: l.key }); });
+    // Täyttölaput kiertävät: fakta – höpö – fakta – viisaus
+    var cycle = ['fact', 'joke', 'fact', 'quote'];
     for (var i = 0; i < dims.cap; i++) {
-        if (jokes.length && (!facts.length || i % 3 === 2)) pool.push({ type: 'joke', key: 'j' + i });
-        else if (facts.length) pool.push({ type: 'fact', key: 'f' + i });
+        var kind = cycle[i % 4];
+        if (kind === 'joke' && !jokes.length) kind = 'fact';
+        if (kind === 'quote' && !quotes.length) kind = 'fact';
+        if (kind === 'fact' && !facts.length) kind = jokes.length ? 'joke' : (quotes.length ? 'quote' : null);
+        if (kind) pool.push({ type: kind, key: kind.charAt(0) + i });
     }
     // Kiinteät 📌-laput isännältä — yksi rivi = yksi lappu (max 4), ei kierrä eikä haalistu
     var pinTexts = mkWallPinTexts();
@@ -1005,13 +1018,14 @@ function makeWallNoteEl(it) {
     note.className = 'wall-note wall-note-new';
     if (it.type === 'fact') note.className += ' wall-note-fact';
     if (it.type === 'joke') note.className += ' wall-note-joke';
+    if (it.type === 'quote') note.className += ' wall-note-quote';
     if (it.type === 'pin') note.className += ' wall-note-pin';
     if (it.type === 'photo') note.className += ' wall-note-photo';
     if (it.type === 'empty') note.className += ' wall-note-empty';
     note.setAttribute('data-k', it.key);
     note.style.setProperty('--rot', (Math.round(Math.random() * 12) - 6) + 'deg');
     var palette = ['#fff9a3', '#ffd0dc', '#cde7ff', '#d5f5c0', '#ffe0b3', '#e8d7ff'];
-    var colr = it.type === 'fact' ? '#dcecff' : (it.type === 'joke' ? '#ffe3ef' : (it.type === 'empty' ? '#eeeeee' : (it.type === 'pin' ? '#ffe9a8' : (it.type === 'photo' ? '#ffffff' : palette[Math.floor(Math.random() * palette.length)]))));
+    var colr = it.type === 'fact' ? '#dcecff' : (it.type === 'joke' ? '#ffe3ef' : (it.type === 'empty' ? '#eeeeee' : (it.type === 'pin' ? '#ffe9a8' : (it.type === 'photo' ? '#ffffff' : (it.type === 'quote' ? '#e6ffdd' : palette[Math.floor(Math.random() * palette.length)])))));
     note.style.background = 'linear-gradient(180deg, #ffffff88 0%, ' + colr + ' 18%, ' + colr + ' 100%)';
     if (it.type === 'log') {
         var l = it.l;
@@ -1061,20 +1075,16 @@ function makeWallNoteEl(it) {
             cp.innerText = it.cap;
             note.appendChild(cp);
         }
-    } else if (it.type === 'fact' || it.type === 'joke') {
-        var list = it.type === 'fact' ? mkWallFacts() : mkWallJokes();
+    } else if (it.type === 'fact' || it.type === 'joke' || it.type === 'quote') {
+        var list = it.type === 'fact' ? mkWallFacts() : (it.type === 'joke' ? mkWallJokes() : mkWallQuotes());
+        var offKey = it.type === 'fact' ? 'factOffset' : (it.type === 'joke' ? 'jokeOffset' : 'quoteOffset');
         var lbl = document.createElement('div');
         lbl.className = 'wall-note-label';
         lbl.innerText = mkWallLabel(it.type);
         var tx = document.createElement('div');
         tx.className = 'wall-note-fact-text';
-        if (it.type === 'fact') {
-            tx.innerText = list[mkWall.factOffset % list.length] || '';
-            mkWall.factOffset = (mkWall.factOffset + 1) % list.length;
-        } else {
-            tx.innerText = list[mkWall.jokeOffset % list.length] || '';
-            mkWall.jokeOffset = (mkWall.jokeOffset + 1) % list.length;
-        }
+        tx.innerText = list[mkWall[offKey] % list.length] || '';
+        mkWall[offKey] = (mkWall[offKey] + 1) % list.length;
         note.appendChild(lbl);
         note.appendChild(tx);
     } else {
@@ -1370,6 +1380,7 @@ function closeWall() {
     mkWall.boardShown = {};
     mkWall.factOffset = 0;
     mkWall.jokeOffset = 0;
+    mkWall.quoteOffset = 0;
     mkWall.pool = [];
     mkWall.liveNotes = {};
     mkWall.poolIdx = 0;

@@ -40,6 +40,7 @@ const MK_Config = {
     // joke = höpölaput, pin = isännän kiinteät laput)
     WALL_FACT_LABEL: "Faktaako",
     WALL_JOKE_LABEL: "HÖPÖ HÖPÖ",
+    WALL_QUOTE_LABEL: "KÄTKÖILIJÄN VIISAUS",
     WALL_PIN_LABEL: "📌 ISÄNNÄLTÄ",
 
     // Ilmoitustaulun "TIESITKÖ?"-faktalaput — täyttävät tyhjät paikat ja
@@ -93,6 +94,45 @@ const MK_Config = {
         "Taulun ylläpitäjä ei vastaa kadonneista kynistä.",
     ],
 
+    // Kätköilijän viisaudet — kuuluisia lauseita ja lööppejä. Lisää / muokkaa vapaasti.
+    WALL_QUOTES: [
+        "\"Mä vaan käyn nopeasti yhdellä kätköllä.\" — Kolme tuntia myöhemmin…",
+        "\"Se on ihan tossa.\" — 800 metriä, suota ja kaatuneita puita.",
+        "\"Helppo löytö.\" — 45 minuuttia myöhemmin: DNF.",
+        "\"Ei oteta enää yhtään.\" — Avaa kartan.",
+        "\"Viimeinen vielä.\" — Kuuluisa viimeinen sana.",
+        "\"Parkkeerataan tähän hetkeksi.\" — Auto jää siihen yöksi.",
+        "\"En mä näitä pisteitä laske.\" — Tarkistaa tilastot kolme kertaa päivässä.",
+        "\"Mä en FTF:ää jahtaa.\" — Ajaa 120 kilometriä julkaisun jälkeen.",
+        "\"Tää on varmasti mikrokätkö.\" — Kaivaa puoli metsää.",
+        "\"Koordinaatit on oikein.\" — Kävelee ympyrää GPS kädessä.",
+        "Tuukko FTF:lle? – En, tuun!",
+        "Etsikää nanoa, etsikää nanoa!",
+        "Geokätköily on.",
+        "Onks purkkia näkyny?",
+        "Ei paha, logiikka vaan hukassa.",
+        "Kyllä lähtee FTF-jahti!",
+        "Se nyt vaan on tyhmää jättää purkki hakematta.",
+        "Olisit katsonut vihjeen tarkemmin.",
+        "Kahta en vaihda: GPS:ää ja geokätköilyä.",
+        "Niin hyvä kätkö, ettei suosikkipisteet riitä.",
+        "Connecting geokätköilijät.",
+        "Mutsis on DNF!",
+        "Nyt maistuis FTF Tonight!",
+        "Etsi yks, etsi kaks – kohta on sata kasassa!",
+        "FTF-nälkä kuin kätköilijällä!",
+        "Geokätköily on laiffii!",
+        "Ei se DNF:llä parane, kokeile uudestaan!",
+        "Aina kannattaa kirjata loki!",
+        "Miksei sitä yhtä purkkia vielä hakisi?",
+        "Koordinaateista purkille!",
+        "Kaikki peliin, magneetti esiin ja purkki etsintään!",
+        "Löytämisen riemua – geokätköilyn riemua!",
+        "Ei kysyvä traililta eksy.",
+        "Kerran multiin, aina multiin!",
+        "Pienestä purkista se on kiinni!",
+    ],
+
     // Sovelluksen versio (näytetään kirjautumissivulla)
-    VERSION: "7.68.2"
+    VERSION: "7.69.0"
 };
