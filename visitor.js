@@ -2017,18 +2017,40 @@ async function computeVisitorStats(targetHost, eventId, nick, virtualLog, preloa
             stats.greeting = `Tervetuloa ${nick}!`;
         }
 
-        // --- Kävijäpassi: sarjan leimat ---
+        // --- Kävijäpassit: KAIKKI sarjat joissa vieras on käynyt vähintään kerran ---
         try {
+            const visitedKeys = new Set((userHistory || []).map(h => h.key));
+            const seriesGroups = {};
+            allHostEvents.forEach(e => {
+                if (e.series) {
+                    if (!seriesGroups[e.series]) seriesGroups[e.series] = [];
+                    seriesGroups[e.series].push(e);
+                }
+            });
             const curEvt = eventsMap[eventId];
-            if (curEvt && curEvt.series) {
-                const seriesEvents = allHostEvents.filter(e => (e.series || '') === curEvt.series);
-                const visitedKeys = new Set((userHistory || []).map(h => h.key));
-                stats.passport = {
-                    name: curEvt.series,
-                    total: seriesEvents.length,
-                    visited: seriesEvents.filter(e => visitedKeys.has(e.key)).length,
-                    stamps: seriesEvents.map(e => ({ date: e.date, visited: visitedKeys.has(e.key) }))
-                };
+            const curSeries = (curEvt && curEvt.series) ? curEvt.series : '';
+            const passports = [];
+            Object.keys(seriesGroups).forEach(name => {
+                const evts = seriesGroups[name];
+                const visitedCount = evts.filter(e => visitedKeys.has(e.key)).length;
+                if (visitedCount > 0) {
+                    passports.push({
+                        name: name,
+                        total: evts.length,
+                        visited: visitedCount,
+                        stamps: evts.map(e => ({ date: e.date, visited: visitedKeys.has(e.key) }))
+                    });
+                }
+            });
+            if (passports.length) {
+                // Nykyisen miitin sarja ensin, sitten leimamäärän mukaan
+                passports.sort((a, b) => {
+                    const aCur = (a.name === curSeries) ? 1 : 0;
+                    const bCur = (b.name === curSeries) ? 1 : 0;
+                    if (aCur !== bCur) return bCur - aCur;
+                    return b.visited - a.visited;
+                });
+                stats.passports = passports;
             }
         } catch (e) { /* passi ei kriittinen */ }
 
@@ -2471,27 +2493,29 @@ function showVisitorModalWithLang(nick, history, stats) {
     `;
     badgeEl.insertAdjacentElement('afterend', souvenirCard);
 
-    // --- KÄVIJÄPASSI: sarjan leimat muistokortin alle ---
-    const oldPassport = document.getElementById('up-passport');
-    if (oldPassport) oldPassport.remove();
-    if (stats.passport && stats.passport.total > 1) {
-        const pp = stats.passport;
-        const passportEl = document.createElement('div');
-        passportEl.id = 'up-passport';
-        passportEl.className = 'visitor-passport';
-        const cells = pp.stamps.map((s, i) => {
-            const d = s.date ? s.date.slice(8, 10) + '.' + s.date.slice(5, 7) + '.' : '';
-            return '<div class="vp-stamp' + (s.visited ? ' vp-stamp-done' : '') + '">'
-                + '<span class="vp-stamp-no">' + (i + 1) + '</span>'
-                + '<small>' + d + '</small></div>';
-        }).join('');
-        passportEl.innerHTML = '<div class="visitor-passport-title">📖 ' + visitorEscapeHtml(t.passportTitle || 'Kävijäpassi')
-            + ' · ' + visitorEscapeHtml(pp.name) + '</div>'
-            + '<div class="visitor-passport-grid">' + cells + '</div>'
-            + '<div class="visitor-passport-count">'
-            + (t.passportStamps || '{0}/{1} leimaa').replace('{0}', pp.visited).replace('{1}', pp.total)
-            + '</div>';
-        souvenirCard.insertAdjacentElement('afterend', passportEl);
+    // --- KÄVIJÄPASSIT: kaikki sarjat joissa vieras on leimoja (muistokortin alle) ---
+    document.querySelectorAll('.visitor-passport').forEach(el => el.remove());
+    if (stats.passports && stats.passports.length) {
+        let anchor = souvenirCard;
+        stats.passports.forEach((pp, idx) => {
+            const passportEl = document.createElement('div');
+            passportEl.className = 'visitor-passport';
+            const cells = pp.stamps.map((s, i) => {
+                const d = s.date ? s.date.slice(8, 10) + '.' + s.date.slice(5, 7) + '.' : '';
+                return '<div class="vp-stamp' + (s.visited ? ' vp-stamp-done' : '') + '">'
+                    + '<span class="vp-stamp-no">' + (i + 1) + '</span>'
+                    + '<small>' + d + '</small></div>';
+            }).join('');
+            passportEl.innerHTML = '<div class="visitor-passport-title">📖 ' + visitorEscapeHtml(t.passportTitle || 'Kävijäpassi')
+                + ' · ' + visitorEscapeHtml(pp.name) + '</div>'
+                + '<div class="visitor-passport-grid">' + cells + '</div>'
+                + '<div class="visitor-passport-count">'
+                + (pp.visited === pp.total ? '🏅 ' : '')
+                + (t.passportStamps || '{0}/{1} leimaa').replace('{0}', pp.visited).replace('{1}', pp.total)
+                + '</div>';
+            anchor.insertAdjacentElement('afterend', passportEl);
+            anchor = passportEl;
+        });
     }
 
     // Muistokortin ja lokitekstin kopiointi-/tallennuskonteksti
