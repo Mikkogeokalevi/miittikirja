@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.66.1";
+const APP_VERSION = "7.67.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1449,7 +1449,23 @@ window.openGuestbook = function(eventKey) {
         
         const notice = document.getElementById('archived-notice');
         if(notice) notice.style.display = currentEventArchived ? 'block' : 'none';
-        
+
+        // Arkistointinappi miitti-näkymässä
+        const archBtn = document.getElementById('btn-gb-archive');
+        if (archBtn) {
+            archBtn.innerText = currentEventArchived ? '♻️ Palauta miitti' : '📦 Arkistoi miitti';
+            archBtn.className = 'btn btn-small ' + (currentEventArchived ? 'btn-blue' : 'btn-red');
+            archBtn.style.cssText = 'margin-bottom:10px; width:100%;';
+        }
+
+        // Kiinteä seinälappu + erikoisviestit — älä yliaja jos käyttäjä kirjoittaa parhaillaan
+        const wnEl = document.getElementById('gb-wall-note');
+        if (wnEl && document.activeElement !== wnEl) wnEl.value = evt.wallNote || '';
+        const pmEl = document.getElementById('gb-presign-message');
+        if (pmEl && document.activeElement !== pmEl) pmEl.value = evt.preSignMessage || '';
+        const smEl = document.getElementById('gb-special-message');
+        if (smEl && document.activeElement !== smEl) smEl.value = evt.specialMessage || '';
+
         // Aktivoi nimiehdotukset admin-kirjaukseen
         if(currentUser) setupAutocomplete('log-nickname', 'log-autocomplete', currentUser.uid);
     });
@@ -1638,8 +1654,6 @@ window.openEditModal = function(key) {
         document.getElementById('edit-type').value = e.type || "miitti";
         document.getElementById('edit-coords').value = e.coords || "";
         document.getElementById('edit-loc').value = e.location || "";
-        document.getElementById('edit-presign-message').value = e.preSignMessage || "";
-        document.getElementById('edit-special-message').value = e.specialMessage || "";
         document.getElementById('edit-desc').value = e.descriptionHtml || "";
         document.getElementById('edit-series').value = e.series || "";
         document.getElementById('edit-theme-color').value = e.themeColor || "";
@@ -1761,8 +1775,6 @@ if (btnSaveEdit) {
             time: document.getElementById('edit-time').value,
             coords: document.getElementById('edit-coords').value,
             location: document.getElementById('edit-loc').value,
-            preSignMessage: document.getElementById('edit-presign-message').value,
-            specialMessage: document.getElementById('edit-special-message').value,
             descriptionHtml: document.getElementById('edit-desc').value,
             series: document.getElementById('edit-series').value.trim(),
             themeColor: document.getElementById('edit-theme-color').value.trim()
@@ -1770,6 +1782,36 @@ if (btnSaveEdit) {
         db.ref('miitit/' + currentUser.uid + '/events/' + key).update(updateData).then(() => { 
             if(editModal) editModal.style.display = "none"; 
         });
+    };
+}
+
+// --- Miitti-näkymän pikakentät: seinälappu, erikoisviestit, arkistointi ---
+const btnSaveWallNote = document.getElementById('btn-save-wall-note');
+if (btnSaveWallNote) {
+    btnSaveWallNote.onclick = function() {
+        if (!currentUser || !currentEventId) return;
+        const val = document.getElementById('gb-wall-note').value.trim();
+        db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({ wallNote: val })
+            .then(() => showToast('📌 Seinälappu tallennettu!'));
+    };
+}
+
+const btnSaveGbMessages = document.getElementById('btn-save-gb-messages');
+if (btnSaveGbMessages) {
+    btnSaveGbMessages.onclick = function() {
+        if (!currentUser || !currentEventId) return;
+        db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({
+            preSignMessage: document.getElementById('gb-presign-message').value,
+            specialMessage: document.getElementById('gb-special-message').value
+        }).then(() => showToast('✉️ Erikoisviestit tallennettu!'));
+    };
+}
+
+const btnGbArchive = document.getElementById('btn-gb-archive');
+if (btnGbArchive) {
+    btnGbArchive.onclick = function() {
+        if (!currentUser || !currentEventId) return;
+        toggleArchive(currentEventId, !currentEventArchived);
     };
 }
 

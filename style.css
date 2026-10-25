@@ -2785,6 +2785,8 @@ body.theme-light .form-error { color: #B22222; }
 .wall-note-fact-text { font-size: 0.8em; line-height: 1.3; }
 .wall-note-empty .wall-note-fact-text { font-style: italic; color: rgba(35,35,71,0.6); }
 .wall-note-joke .wall-note-label { color: #c0397a; }
+.wall-note-pin .wall-note-label { color: #8B4513; }
+.wall-note-pin { box-shadow: 0 4px 14px rgba(139,69,19,0.5); border: 1px solid rgba(139,69,19,0.35); }
 .wall-note-new { animation: wallNoteSlap 0.7s ease-out; }
 @keyframes wallNoteSlap {
     0% { transform: translateY(-70px) rotate(calc(var(--rot, 0deg) - 15deg)) scale(1.3); opacity: 0; }

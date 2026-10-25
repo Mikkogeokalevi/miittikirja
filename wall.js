@@ -11,6 +11,7 @@ var mkWall = {
     counts: {},
     logs: [],
     event: null,
+    eventRef: null,
     seriesEvents: [],
     vuoro: 0,
     lastTotal: null,
@@ -623,6 +624,18 @@ function openWall() {
         renderWallFrame();
         seriesEvents.forEach(function (e) { attachWallLogListener(e); });
 
+        // Live-kuuntelija miittitiedoille — kiinteän seinälapun muutokset näkyvät heti
+        mkWall.eventRef = db.ref('miitit/' + uid + '/events/' + evId);
+        mkWall.eventRef.on('value', function (snap) {
+            if (!mkWall.open) return;
+            var v = snap.val() || {}; v.key = evId;
+            var prevNote = (mkWall.event || {}).wallNote;
+            mkWall.event = v;
+            if (v.wallNote !== prevNote) {
+                buildWallPool(mkWall.logs.slice().sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); }));
+            }
+        });
+
         // Vieraiden kokonaiskäyntimäärät ("N. miitti" karuselliin) — kertahaku
         db.ref('miitit/' + uid + '/logs').once('value').then(function (snap) {
             var byNick = {};
@@ -910,10 +923,24 @@ function buildWallPool(logs) {
         if (jokes.length && (!facts.length || i % 3 === 2)) pool.push({ type: 'joke', key: 'j' + i });
         else if (facts.length) pool.push({ type: 'fact', key: 'f' + i });
     }
+    // Kiinteä 📌-lappu isännältä — ei kierrä eikä haalistu koskaan
+    var pinText = ((mkWall.event || {}).wallNote || '').trim();
+    if (pinText) pool.push({ type: 'pin', key: 'wallpin' });
     mkWall.pool = pool;
     var ok = {};
     pool.forEach(function (p) { ok[p.key] = 1; });
     for (var k in mkWall.liveNotes) if (!ok[k]) fadeWallNote(k);
+    updateWallPin(pinText);
+}
+
+// Kiinteä lappu: lätkäistään heti, teksti päivittyy lennossa, ei poistu koskaan
+function updateWallPin(pinText) {
+    if (pinText === undefined) pinText = ((mkWall.event || {}).wallNote || '').trim();
+    var rec = mkWall.liveNotes['wallpin'];
+    if (!pinText) { if (rec) fadeWallNote('wallpin'); return; }
+    if (!rec) { spawnWallNote({ type: 'pin', key: 'wallpin' }); return; }
+    var tx = rec.el.querySelector('.wall-note-fact-text');
+    if (tx && tx.innerText !== pinText) tx.innerText = pinText;
 }
 
 function makeWallNoteEl(it) {
@@ -921,11 +948,12 @@ function makeWallNoteEl(it) {
     note.className = 'wall-note wall-note-new';
     if (it.type === 'fact') note.className += ' wall-note-fact';
     if (it.type === 'joke') note.className += ' wall-note-joke';
+    if (it.type === 'pin') note.className += ' wall-note-pin';
     if (it.type === 'empty') note.className += ' wall-note-empty';
     note.setAttribute('data-k', it.key);
     note.style.setProperty('--rot', (Math.round(Math.random() * 12) - 6) + 'deg');
     var palette = ['#fff9a3', '#ffd0dc', '#cde7ff', '#d5f5c0', '#ffe0b3', '#e8d7ff'];
-    var colr = it.type === 'fact' ? '#dcecff' : (it.type === 'joke' ? '#ffe3ef' : (it.type === 'empty' ? '#eeeeee' : palette[Math.floor(Math.random() * palette.length)]));
+    var colr = it.type === 'fact' ? '#dcecff' : (it.type === 'joke' ? '#ffe3ef' : (it.type === 'empty' ? '#eeeeee' : (it.type === 'pin' ? '#ffe9a8' : palette[Math.floor(Math.random() * palette.length)])));
     note.style.background = 'linear-gradient(180deg, #ffffff88 0%, ' + colr + ' 18%, ' + colr + ' 100%)';
     if (it.type === 'log') {
         var l = it.l;
@@ -953,6 +981,15 @@ function makeWallNoteEl(it) {
         ex.className = 'wall-note-extra';
         ex.style.display = 'none';
         note.appendChild(ex);
+    } else if (it.type === 'pin') {
+        var plbl = document.createElement('div');
+        plbl.className = 'wall-note-label';
+        plbl.innerText = '📌 ISÄNNÄLTÄ';
+        var ptx = document.createElement('div');
+        ptx.className = 'wall-note-fact-text';
+        ptx.innerText = ((mkWall.event || {}).wallNote || '').trim();
+        note.appendChild(plbl);
+        note.appendChild(ptx);
     } else if (it.type === 'fact' || it.type === 'joke') {
         var list = it.type === 'fact' ? mkWallFacts() : mkWallJokes();
         var lbl = document.createElement('div');
@@ -1007,7 +1044,9 @@ function spawnWallNote(it) {
     el.style.top = Math.round(pos.y) + 'px';
     el.style.zIndex = String(++mkWall.zTop);
     feed.appendChild(el);
-    mkWall.liveNotes[it.key] = { el: el, x: pos.x, y: pos.y, z: mkWall.zTop, dieAt: Date.now() + 18000 + Math.random() * 26000 };
+    // Kiinteä lappu ei koskaan haalistu eikä väisty — muut elävät 18-44 s
+    var dieAt = it.type === 'pin' ? Infinity : Date.now() + 18000 + Math.random() * 26000;
+    mkWall.liveNotes[it.key] = { el: el, x: pos.x, y: pos.y, z: mkWall.zTop, dieAt: dieAt };
 }
 
 function fadeWallNote(key) {
@@ -1213,6 +1252,7 @@ function closeWall() {
     mkWall.open = false;
     mkWall.logRefs.forEach(function (r) { try { r.off(); } catch (e) {} });
     mkWall.logRefs = [];
+    if (mkWall.eventRef) { try { mkWall.eventRef.off(); } catch (e) {} mkWall.eventRef = null; }
     mkWall.counts = {};
     mkWall.logs = [];
     mkWall.lastTotal = null;

@@ -517,6 +517,25 @@
             <button onclick="openVisitorTest()" class="btn btn-small btn-purple" style="margin-bottom:10px; width:100%;">🧪 Testaa vieraskirjausta (ei tallenna)</button>
             <button onclick="openSeriesModal()" class="btn btn-small" style="margin-bottom:10px; width:100%; background:#1a1a2e; color:#fff;">🔗 Sarja-asetukset — yhdistä miitit sarjaksi</button>
             <input type="file" id="import-gpx-sync" accept=".gpx" style="display:none;">
+
+            <div style="margin-bottom:10px; border:1px dashed #d8b48a; border-radius:8px; padding:10px; background:#fffdf5;">
+                <label style="font-size:0.85em; font-weight:bold; color:#8B4513; display:block; margin-bottom:4px;">📌 Kiinteä lappu miittiseinälle — näkyy koko ajan, ei katoa kierrässä</label>
+                <textarea id="gb-wall-note" rows="2" placeholder="esim. 'Kahvia tarjolla!' tai 'Ryhmäkuva klo 18:45'"></textarea>
+                <button id="btn-save-wall-note" class="btn btn-small btn-green" style="width:100%; margin-top:4px;">💾 Tallenna seinälappu</button>
+            </div>
+
+            <div class="details-box" style="margin-bottom:10px;">
+                <div class="details-header" onclick="toggleDetails('gb-messages-content')"><span>✉️ Erikoisviestit vieraille</span><span>▼</span></div>
+                <div id="gb-messages-content" class="details-content" style="display:none; padding:10px;">
+                    <label style="font-size:0.85em; font-weight:bold;">Viesti kirjautumisikkunaan (ennen tallennusta)</label>
+                    <textarea id="gb-presign-message" rows="3"></textarea>
+                    <label style="font-size:0.85em; font-weight:bold;">Viesti kirjauksen jälkeen</label>
+                    <textarea id="gb-special-message" rows="3"></textarea>
+                    <button id="btn-save-gb-messages" class="btn btn-small btn-green" style="width:100%; margin-top:4px;">💾 Tallenna viestit</button>
+                </div>
+            </div>
+
+            <button id="btn-gb-archive" class="btn btn-small btn-red" style="margin-bottom:10px; width:100%;">📦 Arkistoi miitti</button>
         </div>
 
         <div id="box-attrs" class="details-box" style="display:none;">
@@ -658,8 +677,6 @@
             <label>Aika</label><input type="text" id="edit-time">
             <label>Koordinaatit</label><input type="text" id="edit-coords">
             <label>Paikka</label><input type="text" id="edit-loc">
-            <label>Erikoisviesti kirjautumisikkunaan (ennen tallennusta)</label><textarea id="edit-presign-message" rows="3"></textarea>
-            <label>Erikoisviesti kirjauksen jälkeen</label><textarea id="edit-special-message" rows="3"></textarea>
             <label>HTML Kuvaus</label><textarea id="edit-desc" rows="5"></textarea>
             <label>Sarja (valinnainen — sama nimi yhdistää miitit, esim. Kenttäharjoitus)</label><input type="text" id="edit-series">
             <label>Teemaväri (valinnainen — ohittaa kuvauksen värin seinällä)</label><input type="text" id="edit-theme-color" placeholder="#ff00ff">
