@@ -2802,6 +2802,17 @@ body.theme-light .form-error { color: #B22222; }
     border-radius: 2px;
     background: #d8dde5;
 }
+/* Polaroidin kuvateksti alareunassa */
+.wall-note-cap {
+    font-family: 'Comic Sans MS', 'Segoe Print', cursive;
+    font-size: 0.72em;
+    color: #444;
+    text-align: center;
+    margin-top: 4px;
+    line-height: 1.15;
+    max-height: 2.3em;
+    overflow: hidden;
+}
 .wall-note-new { animation: wallNoteSlap 0.7s ease-out; }
 @keyframes wallNoteSlap {
     0% { transform: translateY(-70px) rotate(calc(var(--rot, 0deg) - 15deg)) scale(1.3); opacity: 0; }

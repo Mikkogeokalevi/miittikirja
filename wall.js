@@ -949,7 +949,7 @@ function buildWallPool(logs) {
     for (var pi = 0; pi < pinTexts.length; pi++) pool.push({ type: 'pin', key: 'wallpin' + pi, text: pinTexts[pi] });
     // Polaroid-kuvalaput — kiertävät muiden mukana
     var photos = mkWallPhotos();
-    for (var ph = 0; ph < photos.length; ph++) pool.push({ type: 'photo', key: 'photo' + ph, src: photos[ph] });
+    for (var ph = 0; ph < photos.length; ph++) pool.push({ type: 'photo', key: 'photo' + ph, src: photos[ph].src, cap: photos[ph].cap });
     mkWall.pool = pool;
     var ok = {};
     pool.forEach(function (p) { ok[p.key] = 1; });
@@ -964,14 +964,26 @@ function mkWallPinTexts() {
         .slice(0, 4);
 }
 
-// Polaroid-kuvalaput: URL-linkit + laitteelta ladatut (data-URL) — max 6
+// Polaroid-kuvalaput: URL-linkit (URL | kuvateksti) + laitteelta ladatut — max 6
 function mkWallPhotos() {
     var ev = mkWall.event || {};
-    var urls = (ev.wallPhotoUrls || '').split('\n')
-        .map(function (s) { return s.trim(); })
-        .filter(function (s) { return /^https?:\/\//i.test(s); });
-    var ups = Array.isArray(ev.wallPhotos) ? ev.wallPhotos.filter(function (s) { return typeof s === 'string' && s.length > 10; }) : [];
-    return urls.concat(ups).slice(0, 6);
+    var out = [];
+    (ev.wallPhotoUrls || '').split('\n').forEach(function (line) {
+        var t = (line || '').trim();
+        if (!t) return;
+        var parts = t.split('|');
+        var src = (parts[0] || '').trim();
+        if (/^https?:\/\//i.test(src)) out.push({ src: src, cap: (parts[1] || '').trim() });
+    });
+    var ups = ev.wallPhotos;
+    // Firebase voi palauttaa taulukon objektina — normalisoidaan
+    var arr = Array.isArray(ups) ? ups
+        : (ups && typeof ups === 'object' ? Object.keys(ups).sort().map(function (k) { return ups[k]; }) : []);
+    arr.forEach(function (p) {
+        if (typeof p === 'string') { if (p.length > 10) out.push({ src: p, cap: '' }); }
+        else if (p && typeof p.src === 'string' && p.src.length > 10) out.push({ src: p.src, cap: p.cap || '' });
+    });
+    return out.slice(0, 6);
 }
 
 // Kiinteät laput: lätkäistään heti, tekstit päivittyvät lennossa, eivät poistu koskaan
@@ -1039,10 +1051,16 @@ function makeWallNoteEl(it) {
     } else if (it.type === 'photo') {
         var im = document.createElement('img');
         im.className = 'wall-note-img';
-        im.alt = '';
+        im.alt = it.cap || '';
         im.src = it.src;
         im.onerror = function () { fadeWallNote(it.key); };
         note.appendChild(im);
+        if (it.cap) {
+            var cp = document.createElement('div');
+            cp.className = 'wall-note-cap';
+            cp.innerText = it.cap;
+            note.appendChild(cp);
+        }
     } else if (it.type === 'fact' || it.type === 'joke') {
         var list = it.type === 'fact' ? mkWallFacts() : mkWallJokes();
         var lbl = document.createElement('div');

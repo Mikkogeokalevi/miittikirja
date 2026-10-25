@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.68.0";
+const APP_VERSION = "7.68.1";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1819,23 +1819,41 @@ if (btnGbArchive) {
 }
 
 // --- Seinän kuvalaput: URL-linkit + laitteelta ladatut (pakataan pieneksi) ---
+// Firebase voi palauttaa taulukon objektina — normalisoidaan aina
+function gbPhotoArray(evt) {
+    const raw = evt && evt.wallPhotos;
+    const arr = Array.isArray(raw) ? raw
+        : (raw && typeof raw === 'object' ? Object.keys(raw).sort().map(k => raw[k]) : []);
+    return arr.map(p => (typeof p === 'string') ? { src: p, cap: '' } : (p || { src: '', cap: '' }))
+        .filter(p => typeof p.src === 'string' && p.src.length > 10);
+}
+
 function renderGbPhotoThumbs(evt) {
     const box = document.getElementById('gb-wall-photos-list');
     if (!box) return;
-    const photos = Array.isArray(evt && evt.wallPhotos) ? evt.wallPhotos : [];
+    const photos = gbPhotoArray(evt);
     box.innerHTML = '';
-    photos.forEach((src, i) => {
+    photos.forEach((p, i) => {
         const w = document.createElement('div');
-        w.style.cssText = 'position:relative; width:64px; height:64px; flex:0 0 auto;';
+        w.style.cssText = 'position:relative; width:64px; flex:0 0 auto; text-align:center;';
         const im = document.createElement('img');
-        im.src = src;
-        im.style.cssText = 'width:100%; height:100%; object-fit:cover; border-radius:6px; border:1px solid #ccc;';
+        im.src = p.src;
+        im.title = 'Napauta muokataksesi kuvatekstiä';
+        im.style.cssText = 'width:64px; height:64px; object-fit:cover; border-radius:6px; border:1px solid #ccc; cursor:pointer; display:block;';
+        im.onclick = () => editGbPhotoCap(i);
+        w.appendChild(im);
+        if (p.cap) {
+            const c = document.createElement('div');
+            c.innerText = p.cap;
+            c.style.cssText = 'font-size:0.65em; color:var(--text-muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:64px;';
+            w.appendChild(c);
+        }
         const x = document.createElement('button');
         x.innerText = '✕';
         x.title = 'Poista kuva';
         x.style.cssText = 'position:absolute; top:-7px; right:-7px; width:22px; height:22px; border-radius:50%; border:none; background:#b71c1c; color:#fff; font-size:0.75em; cursor:pointer; padding:0; line-height:1;';
         x.onclick = () => removeGbPhoto(i);
-        w.appendChild(im); w.appendChild(x);
+        w.appendChild(x);
         box.appendChild(w);
     });
 }
@@ -1844,8 +1862,22 @@ window.removeGbPhoto = function(i) {
     if (!currentUser || !currentEventId) return;
     const ref = db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId);
     ref.once('value').then(s => {
-        const arr = Array.isArray((s.val() || {}).wallPhotos) ? (s.val().wallPhotos.slice()) : [];
+        const arr = gbPhotoArray(s.val() || {});
         arr.splice(i, 1);
+        return ref.update({ wallPhotos: arr });
+    });
+};
+
+// Pikkukuvan napautus -> kuvatekstin muokkaus
+window.editGbPhotoCap = function(i) {
+    if (!currentUser || !currentEventId) return;
+    const ref = db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId);
+    ref.once('value').then(s => {
+        const arr = gbPhotoArray(s.val() || {});
+        if (!arr[i]) return;
+        const cap = prompt('Kuvateksti (näkyy kuvan alla — voi jättää tyhjäksi):', arr[i].cap || '');
+        if (cap === null) return;
+        arr[i].cap = cap.trim();
         return ref.update({ wallPhotos: arr });
     });
 };
@@ -1890,13 +1922,23 @@ if (btnAddWallPhoto && gbPhotoFile) {
         gbPhotoFile.value = '';
         try {
             showToast('📷 Pakataan kuvia...');
-            const dataUrls = await Promise.all(files.map(f => compressImageToDataUrl(f, 900, 0.72)));
+            const items = [];
+            let failed = 0;
+            for (const f of files) {
+                try {
+                    const du = await compressImageToDataUrl(f, 900, 0.72);
+                    // Tyhjä tulos ("data:,") = purku/pakkaus epäonnistui hiljaa
+                    if (!du || du.length < 100) { failed++; continue; }
+                    const cap = prompt('Kuvateksti (näkyy kuvan alla — voi jättää tyhjäksi):', '') || '';
+                    items.push({ src: du, cap: cap.trim() });
+                } catch (e2) { failed++; }
+            }
+            if (!items.length) { showToast(failed ? 'Kuvan purku/pakkaus epäonnistui' : 'Ei lisättäviä kuvia', 'error'); return; }
             const ref = db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId);
             const snap = await ref.once('value');
-            const cur = Array.isArray((snap.val() || {}).wallPhotos) ? snap.val().wallPhotos.slice() : [];
-            const merged = cur.concat(dataUrls).slice(0, 6);
+            const merged = gbPhotoArray(snap.val() || {}).concat(items).slice(0, 6);
             await ref.update({ wallPhotos: merged });
-            showToast('📷 ' + dataUrls.length + ' kuvaa lisätty seinälle!');
+            showToast('📷 ' + items.length + ' kuvaa lisätty seinälle!' + (failed ? ' (' + failed + ' epäonnistui)' : ''));
         } catch (e) {
             showToast('Kuvan lisäys epäonnistui', 'error');
         }
