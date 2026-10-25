@@ -42,7 +42,8 @@ var mkWall = {
     nickCounts: {},
     boardTimer: null,
     boardOffset: 0,
-    boardShown: {}
+    boardShown: {},
+    factOffset: 0
 };
 
 function mkWallSortKey(e) {
@@ -302,6 +303,12 @@ function mkWallByeMessages() {
     var m = (typeof MK_Config !== 'undefined' && MK_Config.WALL_BYE_MESSAGES) ? MK_Config.WALL_BYE_MESSAGES : null;
     if (m && m.length) return m;
     return ['Kiitos että tulitte!'];
+}
+
+// Ilmoitustaulun TIESITKÖ-faktalaput (lista config.js:ssä: WALL_FACTS)
+function mkWallFacts() {
+    var f = (typeof MK_Config !== 'undefined' && MK_Config.WALL_FACTS) ? MK_Config.WALL_FACTS : null;
+    return (f && f.length) ? f : [];
 }
 
 function updateWallBye() {
@@ -843,14 +850,14 @@ function renderWallData() {
     // Kirjautuneiden laatat (seinä täyttyy — uusin ensin)
     var feed = document.getElementById('wall-feed');
     feed.innerHTML = '';
+    // Ilmoitustaulu: laput lätkitään ruudukkoon — ylivuodosta taulu kiertää itse,
+    // tyhjät paikat täyttävät TIESITKÖ-faktalaput
+    mkWall.boardOffset = 0;
+    renderWallNotes(logs);
     if (!logs.length) {
-        feed.innerHTML = '<div class="wall-feed-empty">Odotetaan ensimmäistä kirjautujaa…</div>';
         updateWallEnd();
         return;
     }
-    // Ilmoitustaulu: laput lätkitään ruudukkoon — ylivuodosta taulu kiertää itse
-    mkWall.boardOffset = 0;
-    renderWallNotes(logs);
     // Uusi kirjautuja näkyy palkissa heti (kohta 1 = uusin kirjautuja)
     mkWall.tickerIdx = -1;
     updateWallTicker(true);
@@ -871,13 +878,26 @@ function wallBoardCapacity() {
 }
 
 // Laput absoluuttisesti ruudukkoon päällekkäin — offset jakso kiertää ikkunaa.
+// Tyhjät paikat täytetään TIESITKÖ-faktalapuilla; tyhjälle taululle oma lappu.
 // Uudet laput "lätkäistään" paikalleen porrastetusti.
 function renderWallNotes(logs) {
     var feed = document.getElementById('wall-feed');
     if (!feed) return;
     var dims = wallBoardCapacity();
     var total = logs.length;
-    var n = Math.min(dims.cap, total);
+    var facts = mkWallFacts();
+    // Slot-jono: odotuslappu tyhjälle taululle, sitten kirjautujat, loput faktoja
+    var items = [];
+    if (!total) items.push({ type: 'empty' });
+    var nLogs = Math.min(dims.cap - items.length, total);
+    for (var i = 0; i < nLogs; i++) {
+        items.push({ type: 'log', l: logs[(mkWall.boardOffset + i) % total] });
+    }
+    while (items.length < dims.cap && facts.length) {
+        items.push({ type: 'fact', fi: mkWall.factOffset % facts.length });
+        mkWall.factOffset = (mkWall.factOffset + 1) % facts.length;
+    }
+    var n = items.length;
     if (!n) return;
     var W = feed.clientWidth || 600, H = feed.clientHeight || 400;
     var rowsUsed = Math.max(1, Math.min(dims.rows, Math.ceil(n / dims.cols)));
@@ -886,14 +906,17 @@ function renderWallNotes(logs) {
     var prev = mkWall.boardShown || {};
     var shown = {};
     feed.innerHTML = '';
-    for (var i = 0; i < n; i++) {
-        var l = logs[(mkWall.boardOffset + i) % total];
-        shown[l.key || i] = 1;
-        var h = mkWallNoteHash(l.key || (l.nickname || '') + i);
+    for (i = 0; i < n; i++) {
+        var it = items[i];
+        var key = it.type === 'log' ? it.l.key : (it.type === 'fact' ? 'f' + it.fi : 'empty');
+        shown[key] = 1;
+        var h = mkWallNoteHash(key + i);
         var note = document.createElement('div');
-        var isNew = !prev[l.key];
+        var isNew = !prev[key];
         note.className = 'wall-note' + (isNew ? ' wall-note-new' : '');
-        note.setAttribute('data-k', l.key || '');
+        if (it.type === 'fact') note.className += ' wall-note-fact';
+        if (it.type === 'empty') note.className += ' wall-note-empty';
+        note.setAttribute('data-k', key);
         note.style.setProperty('--rot', ((h % 11) - 5) + 'deg');
         var col = i % dims.cols, row = Math.floor(i / dims.cols);
         var jx = (h % 21) - 10, jy = ((h >> 4) % 17) - 8;
@@ -901,46 +924,66 @@ function renderWallNotes(logs) {
         note.style.top = Math.max(0, Math.round(row * ch + (ch - 104) / 2 + jy)) + 'px';
         note.style.zIndex = String(i + 1);
         if (isNew) note.style.animationDelay = (i * 0.08) + 's';
-        var colr = palette[h % palette.length];
+        var colr = it.type === 'fact' ? '#dcecff' : (it.type === 'empty' ? '#eeeeee' : palette[h % palette.length]);
         note.style.background = 'linear-gradient(180deg, #ffffff88 0%, ' + colr + ' 18%, ' + colr + ' 100%)';
-        var nm = document.createElement('div');
-        nm.className = 'wall-note-name';
-        nm.innerText = l.nickname || '?';
-        note.appendChild(nm);
-        var sbits = [];
-        if (l.from) sbits.push(l.from);
-        var t = l.timestamp ? new Date(l.timestamp) : null;
-        if (t) sbits.push(('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2));
-        if (sbits.length) {
-            var sb = document.createElement('div');
-            sb.className = 'wall-note-sub';
-            sb.innerText = sbits.join(' · ');
-            note.appendChild(sb);
+        if (it.type === 'log') {
+            var l = it.l;
+            var nm = document.createElement('div');
+            nm.className = 'wall-note-name';
+            nm.innerText = l.nickname || '?';
+            note.appendChild(nm);
+            var sbits = [];
+            if (l.from) sbits.push(l.from);
+            var t = l.timestamp ? new Date(l.timestamp) : null;
+            if (t) sbits.push(('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2));
+            if (sbits.length) {
+                var sb = document.createElement('div');
+                sb.className = 'wall-note-sub';
+                sb.innerText = sbits.join(' · ');
+                note.appendChild(sb);
+            }
+            if (l.message) {
+                var mg = document.createElement('div');
+                mg.className = 'wall-note-msg';
+                mg.innerText = '"' + l.message + '"';
+                note.appendChild(mg);
+            }
+            var ex = document.createElement('div');
+            ex.className = 'wall-note-extra';
+            ex.style.display = 'none';
+            note.appendChild(ex);
+        } else if (it.type === 'fact') {
+            var lbl = document.createElement('div');
+            lbl.className = 'wall-note-label';
+            lbl.innerText = 'TIESITKÖ?';
+            var tx = document.createElement('div');
+            tx.className = 'wall-note-fact-text';
+            tx.innerText = facts[it.fi];
+            note.appendChild(lbl);
+            note.appendChild(tx);
+        } else {
+            var em = document.createElement('div');
+            em.className = 'wall-note-fact-text';
+            em.innerText = 'Odotetaan ensimmäistä kirjautujaa…';
+            note.appendChild(em);
         }
-        if (l.message) {
-            var mg = document.createElement('div');
-            mg.className = 'wall-note-msg';
-            mg.innerText = '"' + l.message + '"';
-            note.appendChild(mg);
-        }
-        var ex = document.createElement('div');
-        ex.className = 'wall-note-extra';
-        ex.style.display = 'none';
-        note.appendChild(ex);
         feed.appendChild(note);
     }
     mkWall.boardShown = shown;
 }
 
-// Taulun kierto: jos lapuja on enemmän kuin mahtuu, siirrä ikkunaa eteenpäin —
-// vanhin katoaa ja uusi lätkäistään päälle. Taulu elää ilman uusia kirjauksia.
+// Taulun kierto: ylivuodosta ikkuna liikkuu (vanhin katoaa, uusi lätkäistään),
+// tyhjillä paikoilla faktalaput vaihtuvat. Taulu elää ilman uusia kirjauksia.
 function tickWallBoard() {
     if (!mkWall.open) return;
     var logs = mkWall.logs.slice().sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
-    if (!logs.length) return;
     var dims = wallBoardCapacity();
-    if (logs.length <= dims.cap) return;
-    mkWall.boardOffset = (mkWall.boardOffset + 1) % logs.length;
+    var facts = mkWallFacts();
+    if (logs.length > dims.cap) {
+        mkWall.boardOffset = (mkWall.boardOffset + 1) % logs.length;
+    } else if (facts.length && dims.cap > logs.length) {
+        mkWall.factOffset = (mkWall.factOffset + 1) % facts.length;
+    } else return;
     renderWallNotes(logs);
     updateWallSpotlight();
 }
@@ -1136,6 +1179,7 @@ function closeWall() {
     if (mkWall.boardTimer) { clearInterval(mkWall.boardTimer); mkWall.boardTimer = null; }
     mkWall.boardOffset = 0;
     mkWall.boardShown = {};
+    mkWall.factOffset = 0;
     var amb = document.getElementById('wall-ambient');
     if (amb) amb.innerHTML = '';
     var cd = document.getElementById('wall-countdown');
