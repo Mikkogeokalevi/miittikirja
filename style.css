@@ -2574,10 +2574,7 @@ body.theme-light .form-error { color: #B22222; }
 .wall-feed-box {
     width: 340px;
     max-width: 40vw;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 14px;
-    padding: 14px 18px;
+    padding: 4px 8px;
     align-self: center;
 }
 .wall-feed-title {
@@ -2605,11 +2602,19 @@ body.theme-light .form-error { color: #B22222; }
 }
 .wall-feed-empty { color: rgba(255,255,255,0.45); font-style: italic; padding: 12px 0; }
 
+/* QR + info-kulmat kelluvat seinän päällä — eivät vie pystytilaa taululta */
 .wall-corners {
+    position: absolute;
+    left: 24px;
+    right: 24px;
+    bottom: 96px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
+    pointer-events: none;
+    z-index: 60;
 }
+.wall-corners > * { pointer-events: auto; }
 .wall-corner-qr { text-align: center; }
 .wall-qr-box {
     background: #fff;
@@ -2634,11 +2639,11 @@ body.theme-light .form-error { color: #B22222; }
 
 /* Matalat ruudut (iPad vaakataso) — otsikkoalue tiiviimmäksi, taululle korkeutta */
 @media (max-height: 850px) {
-    .wall-inner { padding: 10px 20px; }
-    #wall-title { font-size: 1.7em; }
-    .wall-cd-time { font-size: clamp(1.9em, 4.5vw, 3.2em); }
-    #wall-live, #wall-next { font-size: 0.9em; }
-    .wall-corners { margin-top: 4px; }
+    .wall-inner { padding: 8px 20px; }
+    #wall-title { font-size: 1.45em; }
+    .wall-cd-time { font-size: clamp(1.6em, 4vw, 2.6em); }
+    #wall-live, #wall-next { font-size: 0.85em; }
+    .wall-corners { bottom: 88px; }
 }
 
 /* Keskitason ruudut (iPad vaakataso ym.) — taulu saa leijonanosan tilasta */
@@ -2708,11 +2713,6 @@ body.theme-light .form-error { color: #B22222; }
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border: 2px solid rgba(var(--w-accent-rgb), 0.35);
-    background:
-        repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 26px),
-        repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 26px),
-        rgba(255,255,255,0.05);
 }
 .wall-feed-box::-webkit-scrollbar { display: none; }
 /* ============ ILMOITUSTAULU: postit-laput ============ */
@@ -3220,7 +3220,7 @@ body.theme-light .form-error { color: #B22222; }
 .wall-light .wall-dot { border-color: rgba(27,42,71,0.3); color: rgba(27,42,71,0.55); }
 .wall-light .wall-dot.filled { background: var(--w-accent-deep); border-color: var(--w-accent-deep); color: #fff; }
 .wall-light .wall-dot.current { box-shadow: 0 0 0 3px var(--w-accent2-deep); }
-.wall-light .wall-feed-box { background: rgba(255,255,255,0.5); border-color: rgba(27,42,71,0.15); }
+.wall-light .wall-feed-box { background: transparent; border-color: transparent; }
 .wall-light .wall-feed-title { color: rgba(27,42,71,0.6); }
 .wall-light .wall-feed-empty { color: rgba(27,42,71,0.5); }
 .wall-light .wall-qr-text { color: var(--w-accent-deep); }
