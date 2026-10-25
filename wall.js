@@ -43,7 +43,8 @@ var mkWall = {
     boardTimer: null,
     boardOffset: 0,
     boardShown: {},
-    factOffset: 0
+    factOffset: 0,
+    jokeOffset: 0
 };
 
 function mkWallSortKey(e) {
@@ -309,6 +310,12 @@ function mkWallByeMessages() {
 function mkWallFacts() {
     var f = (typeof MK_Config !== 'undefined' && MK_Config.WALL_FACTS) ? MK_Config.WALL_FACTS : null;
     return (f && f.length) ? f : [];
+}
+
+// Ilmoitustaulun HÖPÖ HÖPÖ -laput (lista config.js:ssä: WALL_NONSENSE)
+function mkWallJokes() {
+    var j = (typeof MK_Config !== 'undefined' && MK_Config.WALL_NONSENSE) ? MK_Config.WALL_NONSENSE : null;
+    return (j && j.length) ? j : [];
 }
 
 function updateWallBye() {
@@ -893,9 +900,18 @@ function renderWallNotes(logs) {
     for (var i = 0; i < nLogs; i++) {
         items.push({ type: 'log', l: logs[(mkWall.boardOffset + i) % total] });
     }
-    while (items.length < dims.cap && facts.length) {
-        items.push({ type: 'fact', fi: mkWall.factOffset % facts.length });
-        mkWall.factOffset = (mkWall.factOffset + 1) % facts.length;
+    var jokes = mkWallJokes();
+    var fillers = 0;
+    while (items.length < dims.cap && (facts.length || jokes.length)) {
+        var useJoke = jokes.length && (!facts.length || fillers % 3 === 2);
+        if (useJoke) {
+            items.push({ type: 'joke', fi: mkWall.jokeOffset % jokes.length });
+            mkWall.jokeOffset = (mkWall.jokeOffset + 1) % jokes.length;
+        } else {
+            items.push({ type: 'fact', fi: mkWall.factOffset % facts.length });
+            mkWall.factOffset = (mkWall.factOffset + 1) % facts.length;
+        }
+        fillers++;
     }
     var n = items.length;
     if (!n) return;
@@ -908,13 +924,14 @@ function renderWallNotes(logs) {
     feed.innerHTML = '';
     for (i = 0; i < n; i++) {
         var it = items[i];
-        var key = it.type === 'log' ? it.l.key : (it.type === 'fact' ? 'f' + it.fi : 'empty');
+        var key = it.type === 'log' ? it.l.key : (it.type === 'fact' ? 'f' + it.fi : (it.type === 'joke' ? 'j' + it.fi : 'empty'));
         shown[key] = 1;
         var h = mkWallNoteHash(key + i);
         var note = document.createElement('div');
         var isNew = !prev[key];
         note.className = 'wall-note' + (isNew ? ' wall-note-new' : '');
         if (it.type === 'fact') note.className += ' wall-note-fact';
+        if (it.type === 'joke') note.className += ' wall-note-joke';
         if (it.type === 'empty') note.className += ' wall-note-empty';
         note.setAttribute('data-k', key);
         note.style.setProperty('--rot', ((h % 11) - 5) + 'deg');
@@ -924,7 +941,7 @@ function renderWallNotes(logs) {
         note.style.top = Math.max(0, Math.round(row * ch + (ch - 104) / 2 + jy)) + 'px';
         note.style.zIndex = String(i + 1);
         if (isNew) note.style.animationDelay = (i * 0.08) + 's';
-        var colr = it.type === 'fact' ? '#dcecff' : (it.type === 'empty' ? '#eeeeee' : palette[h % palette.length]);
+        var colr = it.type === 'fact' ? '#dcecff' : (it.type === 'joke' ? '#ffe3ef' : (it.type === 'empty' ? '#eeeeee' : palette[h % palette.length]));
         note.style.background = 'linear-gradient(180deg, #ffffff88 0%, ' + colr + ' 18%, ' + colr + ' 100%)';
         if (it.type === 'log') {
             var l = it.l;
@@ -952,13 +969,13 @@ function renderWallNotes(logs) {
             ex.className = 'wall-note-extra';
             ex.style.display = 'none';
             note.appendChild(ex);
-        } else if (it.type === 'fact') {
+        } else if (it.type === 'fact' || it.type === 'joke') {
             var lbl = document.createElement('div');
             lbl.className = 'wall-note-label';
-            lbl.innerText = 'TIESITKÖ?';
+            lbl.innerText = it.type === 'fact' ? 'TIESITKÖ?' : 'HÖPÖ HÖPÖ';
             var tx = document.createElement('div');
             tx.className = 'wall-note-fact-text';
-            tx.innerText = facts[it.fi];
+            tx.innerText = it.type === 'fact' ? facts[it.fi] : jokes[it.fi];
             note.appendChild(lbl);
             note.appendChild(tx);
         } else {
@@ -979,10 +996,12 @@ function tickWallBoard() {
     var logs = mkWall.logs.slice().sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
     var dims = wallBoardCapacity();
     var facts = mkWallFacts();
+    var jokes = mkWallJokes();
     if (logs.length > dims.cap) {
         mkWall.boardOffset = (mkWall.boardOffset + 1) % logs.length;
-    } else if (facts.length && dims.cap > logs.length) {
-        mkWall.factOffset = (mkWall.factOffset + 1) % facts.length;
+    } else if ((facts.length || jokes.length) && dims.cap > logs.length) {
+        if (facts.length) mkWall.factOffset = (mkWall.factOffset + 1) % facts.length;
+        if (jokes.length) mkWall.jokeOffset = (mkWall.jokeOffset + 1) % jokes.length;
     } else return;
     renderWallNotes(logs);
     updateWallSpotlight();
@@ -1180,6 +1199,7 @@ function closeWall() {
     mkWall.boardOffset = 0;
     mkWall.boardShown = {};
     mkWall.factOffset = 0;
+    mkWall.jokeOffset = 0;
     var amb = document.getElementById('wall-ambient');
     if (amb) amb.innerHTML = '';
     var cd = document.getElementById('wall-countdown');

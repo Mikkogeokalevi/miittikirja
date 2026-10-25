@@ -64,6 +64,29 @@ const MK_Config = {
         "Hyvä kätköpaikka kertoo paikasta jotain erityistä.",
     ],
 
+    // Ilmoitustaulun HÖPÖ HÖPÖ -laput — joka kolmas vapaae paikka.
+    // Täyttä höpöhöpöä — lisää / poista / muokkaa vapaasti.
+    WALL_NONSENSE: [
+        "Kätkö ei ole täällä — kätkö on toisella puolella.",
+        "GPS ilmoitti että olet perillä. GPS saattoi valehdella.",
+        "Varoitus: tämä miitti voi sisältää geokätköilijöitä.",
+        "Tämän lapun alle on kätketty DNF.",
+        "Koordinaatit tarkistettu kahdesti — ja silti väärin.",
+        "Täällä ei ole kätköä. Tai on. Tarkista vielä kerran.",
+        "Tämä lappu on FTF — ensimmäisenä taululle.",
+        "Jos löydät kätkön, älä kerro muggleille missä se oli.",
+        "Sateenvarjo ei ole D/T-väline, mutta auttaa silti.",
+        "Miitin paras välipiste on aina kahvipiste.",
+        "Vihje 'helppo paikka' tarkoittaa että etsit 45 min.",
+        "Kätköilijän supervoima: näkee lipaston 200 m päästä.",
+        "Tämä lappu on jo puolen souvenirin arvoinen.",
+        "Lokikirja on täynnä — uusi tilattu.",
+        "Huoltaja muistuttaa: älä syö mossia.",
+        "Päivän koordinaatit: N ukko° E pilvi'.",
+        "Kahvi kuluu — hakekaa lisää välipisteeltä 1.",
+        "Taulun ylläpitäjä ei vastaa kadonneista kynistä.",
+    ],
+
     // Sovelluksen versio (näytetään kirjautumissivulla)
-    VERSION: "7.65.1"
+    VERSION: "7.65.2"
 };
