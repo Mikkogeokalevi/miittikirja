@@ -1,70 +1,82 @@
 {
   // ============================================================
-  // MK Miittikirja — Firebase Realtime Database -suositussäännöt
+  // Firebase Realtime Database -säännöt (perhekalenteri-projekti)
   //
-  // TARKISTA ENNEN KÄYTTÖÖN: vertaa Firebase-konsolisi nykyisiin
-  // sääntöihin (Realtime Database → Säännöt). Nämä vastaavat
-  // sovelluksen todellista käyttöä:
+  // SISÄLTÄÄ KAIKEN: muut projektit (tapahtumat, tehtavalista,
+  // ajopaivakirja, users, refuelings, poi) + miittikirja (miitit).
   //
-  //   LUKU: julkinen — vieras- ja seinänäkymät luovat ilman
-  //         kirjautumista (miitit/{uid}/events ja /logs)
-  //   KIRJOITUS:
-  //     - events, externalEvents: vain isäntä (auth.uid === uid)
-  //     - logs: vieras saa LUODA uuden kirjauksen (push),
-  //             mutta ei ylikirjoittaa/poistaa toisen kirjausta
-  //     - logs/{logId}/message + messageUpdatedAt: vieras saa
-  //             päivittää oman kirjauksensa viestin jälkikäteen
-  //             ("muokkaa viestiä" -toiminto duplikaattitilanteessa)
-  //
-  //   TUNNETTU RAJOITUS: vieras ei ole kirjautunut, joten
-  //   message-päivitys on teknisesti avoin kaikille logId:tä
-  //   tunteville. Viestin päivitys on matalariskinen ominaisuus;
-  //   muut kentät (nimi, aikaleima) eivät ole vieraan muokattavissa.
+  // MIITTIKIRJA-MUUTOS vs vanhat säännöt:
+  //   logs/{logId}/message + messageUpdatedAt saivat oman
+  //   .write-säännön — vieras voi päivittää oman viestinsä
+  //   ("muokkaa viestiä" -toiminto). Muut kentät pysyvät
+  //   vain-luonti-tilassa kuten ennen.
   // ============================================================
   "rules": {
+    "tapahtumat": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "tehtavalista": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "ajopaivakirja": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+        ".indexOn": ["startTime"]
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "refuelings": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
     "miitit": {
       "$uid": {
-        ".read": true,
-
+        ".write": "$uid === auth.uid",
+        "calendar": {
+          ".read": "$uid === auth.uid",
+          ".write": "$uid === auth.uid"
+        },
         "events": {
-          ".write": "auth != null && auth.uid === $uid"
+          ".read": true,
+          ".indexOn": ["date"],
+          "$eventId": {}
         },
-        "externalEvents": {
-          ".write": "auth != null && auth.uid === $uid"
-        },
-
         "logs": {
+          ".read": true,
           "$eventId": {
             "$logId": {
-              // Isäntä hallitsee kaikkea; vieras saa vain LUODA uuden kirjauksen
-              ".write": "(auth != null && auth.uid === $uid) || !data.exists()",
-              ".validate": "newData.hasChildren(['nickname', 'timestamp'])",
-
-              "nickname": {
-                ".validate": "newData.isString() && newData.val().length <= 40"
-              },
-              "from": {
-                ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 80)"
-              },
-              "timestamp": {
-                ".validate": "!newData.exists() || newData.isNumber()"
-              },
-
-              // Vieras saa päivittää vain viestin + sen aikaleiman olemassa olevaan
+              ".write": "!data.exists() && newData.exists()",
               "message": {
-                ".write": true,
-                ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 500)"
+                ".write": "data.parent().exists() && newData.isString()",
+                ".validate": "newData.val().length <= 500"
               },
               "messageUpdatedAt": {
-                ".write": true,
-                ".validate": "!newData.exists() || newData.isNumber()"
-              },
-
-              // Tuntemattomat lisäkentät sallitaan (tulevaisuuden laajennukset)
-              "$other": { ".validate": true }
+                ".write": "data.parent().exists() && newData.isNumber()",
+                ".validate": true
+              }
             }
           }
+        },
+        "externalEvents": {
+          ".read": "$uid === auth.uid",
+          ".write": "$uid === auth.uid"
         }
+      }
+    },
+    "poi": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
       }
     }
   }
