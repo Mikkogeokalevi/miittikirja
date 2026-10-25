@@ -36,6 +36,12 @@ const MK_Config = {
         "Hyvä seura pitää pahan ilmankin loitolla!",
     ],
 
+    // Lappujen otsikkotekstit — muokkaa vapaasti (fact = faktalaput,
+    // joke = höpölaput, pin = isännän kiinteät laput)
+    WALL_FACT_LABEL: "TIESITKÖ?",
+    WALL_JOKE_LABEL: "HÖPÖ HÖPÖ",
+    WALL_PIN_LABEL: "📌 ISÄNNÄLTÄ",
+
     // Ilmoitustaulun "TIESITKÖ?"-faktalaput — täyttävät tyhjät paikat ja
     // vaihtuvat taulun kierron mukana. Lisää / poista / muokkaa vapaasti.
     WALL_FACTS: [
@@ -88,5 +94,5 @@ const MK_Config = {
     ],
 
     // Sovelluksen versio (näytetään kirjautumissivulla)
-    VERSION: "7.67.1"
+    VERSION: "7.67.2"
 };

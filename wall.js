@@ -324,6 +324,15 @@ function mkWallJokes() {
     return (j && j.length) ? j : [];
 }
 
+// Lappujen otsikkotekstit (muokattavissa config.js:ssä)
+function mkWallLabel(type) {
+    var c = (typeof MK_Config !== 'undefined') ? MK_Config : {};
+    if (type === 'fact') return c.WALL_FACT_LABEL || 'TIESITKÖ?';
+    if (type === 'joke') return c.WALL_JOKE_LABEL || 'HÖPÖ HÖPÖ';
+    if (type === 'pin') return c.WALL_PIN_LABEL || '📌 ISÄNNÄLTÄ';
+    return '';
+}
+
 function updateWallBye() {
     var el = document.getElementById('wall-end-bye');
     if (!el) return;
@@ -995,7 +1004,7 @@ function makeWallNoteEl(it) {
     } else if (it.type === 'pin') {
         var plbl = document.createElement('div');
         plbl.className = 'wall-note-label';
-        plbl.innerText = '📌 ISÄNNÄLTÄ';
+        plbl.innerText = mkWallLabel('pin');
         var ptx = document.createElement('div');
         ptx.className = 'wall-note-fact-text';
         ptx.innerText = it.text || ((mkWall.event || {}).wallNote || '').trim();
@@ -1005,7 +1014,7 @@ function makeWallNoteEl(it) {
         var list = it.type === 'fact' ? mkWallFacts() : mkWallJokes();
         var lbl = document.createElement('div');
         lbl.className = 'wall-note-label';
-        lbl.innerText = it.type === 'fact' ? 'TIESITKÖ?' : 'HÖPÖ HÖPÖ';
+        lbl.innerText = mkWallLabel(it.type);
         var tx = document.createElement('div');
         tx.className = 'wall-note-fact-text';
         if (it.type === 'fact') {
