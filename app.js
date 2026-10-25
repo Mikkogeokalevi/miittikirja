@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.70.0";
+const APP_VERSION = "7.70.1";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1460,7 +1460,10 @@ window.openGuestbook = function(eventKey) {
 
         // Kiinteä seinälappu + erikoisviestit — älä yliaja jos käyttäjä kirjoittaa parhaillaan
         const wnEl = document.getElementById('gb-wall-note');
-        if (wnEl && document.activeElement !== wnEl) wnEl.value = evt.wallNote || '';
+        if (wnEl && document.activeElement !== wnEl) {
+            wnEl.value = evt.wallNote || '';
+            updateWallNotePreview();
+        }
         const phEl = document.getElementById('gb-wall-photos');
         if (phEl && document.activeElement !== phEl) phEl.value = evt.wallPhotoUrls || '';
         renderGbPhotoThumbs(evt);
@@ -1796,6 +1799,24 @@ if (btnSaveEdit) {
 }
 
 // --- Miitti-näkymän pikakentät: seinälappu, erikoisviestit, arkistointi ---
+function updateWallNotePreview() {
+    const el = document.getElementById('gb-wall-note');
+    const pv = document.getElementById('gb-wall-note-preview');
+    if (!el || !pv) return;
+    const lines = el.value.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 4);
+    if (!lines.length) { pv.style.display = 'none'; pv.textContent = ''; return; }
+    pv.style.display = 'block';
+    pv.textContent = '';
+    lines.forEach((s, i) => {
+        const row = document.createElement('div');
+        row.textContent = '→ Lappu ' + (i + 1) + ': ' + (s.length > 40 ? s.slice(0, 40) + '…' : s);
+        pv.appendChild(row);
+    });
+}
+
+const wnInput = document.getElementById('gb-wall-note');
+if (wnInput) wnInput.addEventListener('input', updateWallNotePreview);
+
 const btnSaveWallNote = document.getElementById('btn-save-wall-note');
 if (btnSaveWallNote) {
     btnSaveWallNote.onclick = function() {

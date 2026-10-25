@@ -131,8 +131,12 @@ const MK_Config = {
         "Ei kysyvä traililta eksy.",
         "Kerran multiin, aina multiin!",
         "Pienestä purkista se on kiinni!",
+		"Kätköily: kallis tapa kävellä metsässä.",
+		"En ole eksyksissä, olen geokätköilemässä.",
+		"Joka kuuseen kurkottaa, se purkin löytää.",
+		"Taitaa kätköilijä tietää, että olis kiven takana purkkia tarjolla.",
     ],
 
     // Sovelluksen versio (näytetään kirjautumissivulla)
-    VERSION: "7.70.0"
+    VERSION: "7.70.1"
 };
