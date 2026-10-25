@@ -38,7 +38,7 @@ const MK_Config = {
 
     // Lappujen otsikkotekstit — muokkaa vapaasti (fact = faktalaput,
     // joke = höpölaput, pin = isännän kiinteät laput)
-    WALL_FACT_LABEL: "TIESITKÖ?",
+    WALL_FACT_LABEL: "Faktaako",
     WALL_JOKE_LABEL: "HÖPÖ HÖPÖ",
     WALL_PIN_LABEL: "📌 ISÄNNÄLTÄ",
 
