@@ -47,7 +47,6 @@ const MK_Config = {
         "Korkein kätkö sijaitsee kansainvälisellä avaruusasemalla ISS.",
         "Trackable-esineet ovat kulkeneet jo miljardeja kilometrejä.",
         "Vaikein kätkötaso 5/5 voi vaatia vaikka sukellusvarusteet.",
-        "'Mugglaus' = kätkön löytyminen leikkimiesten käsiin.",
         "'TFTC' = Thanks For The Cache — kiitos kätköstä.",
         "'DNF' = Did Not Find — löytämättä jäänyt yritys.",
         "'FTF' = First To Find — ensimmäisenä löytänyt.",
