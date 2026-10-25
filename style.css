@@ -2607,7 +2607,7 @@ body.theme-light .form-error { color: #B22222; }
     position: absolute;
     left: 24px;
     right: 24px;
-    bottom: 96px;
+    bottom: 112px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
@@ -2643,7 +2643,9 @@ body.theme-light .form-error { color: #B22222; }
     #wall-title { font-size: 1.45em; }
     .wall-cd-time { font-size: clamp(1.6em, 4vw, 2.6em); }
     #wall-live, #wall-next { font-size: 0.85em; }
-    .wall-corners { bottom: 88px; }
+    .wall-corners { bottom: 106px; }
+    /* Laskuri ylös — ei jää QR-kulman alle */
+    .wall-counter-box { align-self: flex-start; }
 }
 
 /* Keskitason ruudut (iPad vaakataso ym.) — taulu saa leijonanosan tilasta */
@@ -2725,6 +2727,8 @@ body.theme-light .form-error { color: #B22222; }
     position: absolute;
     width: 138px;
     min-height: 104px;
+    max-height: 170px;
+    overflow: hidden;
     margin: 0;
     padding: 24px 12px 12px;
     border-radius: 3px;

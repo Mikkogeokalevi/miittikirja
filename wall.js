@@ -881,6 +881,8 @@ function wallBoardCapacity() {
     var W = feed.clientWidth || 600, H = feed.clientHeight || 400;
     var cols = Math.max(1, Math.floor(W / 150));
     var rows = Math.max(1, Math.floor(H / 122));
+    // Matalalla ruudulla max 3 riviä — alimman rivin laput näkyvät kokonaan
+    if (H < 720 && rows > 3) rows = 3;
     return { cap: cols * rows, cols: cols, rows: rows };
 }
 
@@ -938,7 +940,8 @@ function renderWallNotes(logs) {
         var col = i % dims.cols, row = Math.floor(i / dims.cols);
         var jx = (h % 21) - 10, jy = ((h >> 4) % 17) - 8;
         note.style.left = Math.max(0, Math.round(col * cw + (cw - 140) / 2 + jx)) + 'px';
-        note.style.top = Math.max(0, Math.round(row * ch + (ch - 104) / 2 + jy)) + 'px';
+        var topY = Math.round(row * ch + (ch - 104) / 2 + jy);
+        note.style.top = Math.max(0, Math.min(topY, Math.max(0, H - 178))) + 'px';
         note.style.zIndex = String(i + 1);
         if (isNew) note.style.animationDelay = (i * 0.08) + 's';
         var colr = it.type === 'fact' ? '#dcecff' : (it.type === 'joke' ? '#ffe3ef' : (it.type === 'empty' ? '#eeeeee' : palette[h % palette.length]));
