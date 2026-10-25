@@ -2486,6 +2486,21 @@ body.theme-light .form-error { color: #B22222; }
 }
 #wall-close:hover { background: rgba(255,255,255,0.2); }
 
+#wall-sound {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 10;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.08);
+    font-size: 1.2em;
+    cursor: pointer;
+}
+#wall-sound:hover { background: rgba(255,255,255,0.2); }
+
 .wall-inner {
     display: flex;
     flex-direction: column;
@@ -3312,13 +3327,15 @@ body.theme-light .form-error { color: #B22222; }
 .wall-light .wall-qr-text { color: var(--w-accent-deep); }
 .wall-light .wall-corner-info { color: rgba(27,42,71,0.7); }
 .wall-light #wall-close,
-.wall-light #wall-theme {
+.wall-light #wall-theme,
+.wall-light #wall-sound {
     border-color: rgba(27,42,71,0.3);
     background: rgba(27,42,71,0.06);
     color: #1b2a47;
 }
 .wall-light #wall-close:hover,
-.wall-light #wall-theme:hover { background: rgba(27,42,71,0.14); }
+.wall-light #wall-theme:hover,
+.wall-light #wall-sound:hover { background: rgba(27,42,71,0.14); }
 .wall-light .wall-watermark { opacity: 0.08; }
 .wall-light .wall-welcome-name { color: #0d1b2a; text-shadow: 0 0 24px rgba(var(--w-accent-rgb),0.35); }
 .wall-light .wall-welcome-hi { color: var(--w-accent-deep); }
