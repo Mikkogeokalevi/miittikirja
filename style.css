@@ -2470,11 +2470,17 @@ body.theme-light .form-error { color: #B22222; }
     --w-accent2-deep: #b35c00;
 }
 
-#wall-close {
+/* Napit: oletuksena rivi oikeassa yläkulmassa, puhelimella laskurin alla */
+#wall-head-right { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+#wall-btns {
     position: absolute;
     top: 14px;
     right: 14px;
     z-index: 10;
+    display: flex;
+    gap: 12px;
+}
+#wall-close {
     width: 48px;
     height: 48px;
     border-radius: 50%;
@@ -2487,10 +2493,6 @@ body.theme-light .form-error { color: #B22222; }
 #wall-close:hover { background: rgba(255,255,255,0.2); }
 
 #wall-sound {
-    position: absolute;
-    top: 14px;
-    left: 14px;
-    z-index: 10;
     width: 48px;
     height: 48px;
     border-radius: 50%;
@@ -3133,10 +3135,6 @@ body.theme-light .form-error { color: #B22222; }
 
 /* Teema-nappi (vaalea/tumma) */
 #wall-theme {
-    position: absolute;
-    top: 14px;
-    right: 74px;
-    z-index: 10;
     width: 48px;
     height: 48px;
     border-radius: 50%;
@@ -3762,8 +3760,10 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
 /* ===== PUHELIN: kompakti miittiseinä ===== */
 /* Kapea ruutu TAI matala ruutu (puhelin vaakatasossa) — kaikki skaalautuu pieneksi */
 @media (max-width: 560px), (max-height: 520px) {
-    /* Ylätäyte nurkkanappien verran — mikään ei mene niiden alle */
-    .wall-inner { padding: 44px 8px 6px; }
+    .wall-inner { padding: 8px 8px 6px; }
+    /* Napit laskurin alle virtaavana rivinä — eivät vie omaa kulmakaistetta */
+    #wall-btns { position: static; margin-top: 6px; gap: 8px; }
+    #wall-head-right { align-items: flex-end; }
     /* Yläreuna aina kahteen sarakkeeseen: tiedot vasemmalle, laskuri oikealle */
     #wall-head { flex-direction: row; align-items: flex-start; gap: 8px; }
     #wall-head-left { flex: 1; align-items: flex-start; text-align: left; min-width: 0; }
@@ -3804,7 +3804,7 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
     .wall-end-sub, .wall-end-stats, .wall-end-names { font-size: 0.85em; }
     .wall-end-next-when { font-size: 1.1em; }
     /* Ääni/teema/sulje-napit hieman pienemmät */
-    #wall-sound, #wall-theme, #wall-close { width: 36px; height: 36px; font-size: 1em; }
+    #wall-sound, #wall-theme, #wall-close { width: 32px; height: 32px; font-size: 0.9em; }
 }
 /* Puhelin pystyssä: tickerin kat-rivi ja QR piilossa tiiviisti */
 @media (max-width: 560px) {
