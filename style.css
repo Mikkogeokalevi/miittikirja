@@ -3651,9 +3651,12 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
     left: 50%;
     transform: translateX(-50%);
     display: none;
-    gap: 10px;
+    gap: 8px;
     z-index: 3;
     pointer-events: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 82vw;
 }
 .wall-react-chip {
     display: inline-flex;

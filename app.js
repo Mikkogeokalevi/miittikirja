@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.72.2";
+const APP_VERSION = "7.72.3";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1831,7 +1831,7 @@ const btnResetReactions = document.getElementById('btn-reset-reactions');
 if (btnResetReactions) {
     btnResetReactions.onclick = function() {
         if (!currentUser || !currentEventId) return;
-        if (!confirm('Nollataan kaikki tämän miitin emoji-reaktiot (❤️👍😄🔥🍻) seinältä?')) return;
+        if (!confirm('Nollataan kaikki tämän miitin emoji-reaktiot seinältä?')) return;
         db.ref('miitit/' + currentUser.uid + '/reactions/' + currentEventId).remove()
             .then(() => showToast('🧹 Reaktiot nollattu'));
     };
