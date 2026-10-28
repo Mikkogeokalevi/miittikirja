@@ -148,9 +148,14 @@ const MK_Config = {
         clap: "👏",
         wow: "🤩",
         love: "🥰",
-        hundred: "💯"
+        hundred: "💯",
+        thumbsdown: "👎",
+        yikes: "😬",
+        bored: "🥱",
+        meh: "😕",
+        poop: "💩"
     },
 
     // Sovelluksen versio (näytetään kirjautumissivulla)
-    VERSION: "7.72.3"
+    VERSION: "7.72.4"
 };
