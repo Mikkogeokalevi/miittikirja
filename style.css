@@ -3762,7 +3762,8 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
 /* ===== PUHELIN: kompakti miittiseinä ===== */
 /* Kapea ruutu TAI matala ruutu (puhelin vaakatasossa) — kaikki skaalautuu pieneksi */
 @media (max-width: 560px), (max-height: 520px) {
-    .wall-inner { padding: 6px 8px; }
+    /* Ylätäyte nurkkanappien verran — mikään ei mene niiden alle */
+    .wall-inner { padding: 44px 8px 6px; }
     /* Yläreuna aina kahteen sarakkeeseen: tiedot vasemmalle, laskuri oikealle */
     #wall-head { flex-direction: row; align-items: flex-start; gap: 8px; }
     #wall-head-left { flex: 1; align-items: flex-start; text-align: left; min-width: 0; }
