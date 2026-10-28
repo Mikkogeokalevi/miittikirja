@@ -432,7 +432,7 @@ function applyWallSpot(l) {
     if (!feed) return;
     var extra = '';
     if (l) {
-        var norm = (l.nickname || '').trim().toLowerCase();
+        var norm = (l.nickname || '').trim().toLowerCase().replace(/\s+/g, ' ');
         var bits = [];
         if (l.from) bits.push(l.from);
         var total = (mkWall.nickCounts || {})[norm] || 0;
@@ -763,20 +763,29 @@ function openWall() {
             });
         });
 
-        // Vieraiden kokonaiskäyntimäärät ("N. miitti" karuselliin) — kertahaku
-        db.ref('miitit/' + uid + '/logs').once('value').then(function (snap) {
-            var byNick = {};
-            snap.forEach(function (evt) {
-                evt.forEach(function (lg) {
-                    var v = lg.val() || {};
-                    var n = (v.nickname || '').trim().toLowerCase();
-                    if (n) { if (!byNick[n]) byNick[n] = {}; byNick[n][evt.key] = 1; }
+        // Vieraiden kokonaiskäyntimäärät ("N. miitti" karuselliin) — indeksi, fallback täysskannaus
+        db.ref('miitit/' + uid + '/nicks').once('value').then(function (snap) {
+            if (snap.exists()) {
+                var totals = {};
+                snap.forEach(function (c) { var v = c.val() || {}; if (v.n) totals[c.key] = v.n; });
+                mkWall.nickCounts = totals;
+                updateWallSpotlight();
+                return;
+            }
+            return db.ref('miitit/' + uid + '/logs').once('value').then(function (snap) {
+                var byNick = {};
+                snap.forEach(function (evt) {
+                    evt.forEach(function (lg) {
+                        var v = lg.val() || {};
+                        var n = (v.nickname || '').trim().toLowerCase();
+                        if (n) { if (!byNick[n]) byNick[n] = {}; byNick[n][evt.key] = 1; }
+                    });
                 });
+                var totals = {};
+                Object.keys(byNick).forEach(function (n) { totals[n] = Object.keys(byNick[n]).length; });
+                mkWall.nickCounts = totals;
+                updateWallSpotlight();
             });
-            var totals = {};
-            Object.keys(byNick).forEach(function (n) { totals[n] = Object.keys(byNick[n]).length; });
-            mkWall.nickCounts = totals;
-            updateWallSpotlight();
         }).catch(function () {});
 
         // Elävyys: ambient-valopallot + iso aikalaskuri (sekunneilla) + karuselli

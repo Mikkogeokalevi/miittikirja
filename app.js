@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.73.2";
+const APP_VERSION = "7.74.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1824,6 +1824,51 @@ if (btnSaveWallNote) {
         const val = document.getElementById('gb-wall-note').value.trim();
         db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId).update({ wallNote: val })
             .then(() => showToast('📌 Seinälappu tallennettu!'));
+    };
+}
+
+const btnBackfillNicks = document.getElementById('btn-backfill-nicks');
+if (btnBackfillNicks) {
+    btnBackfillNicks.onclick = async function() {
+        if (!currentUser) return;
+        if (!confirm('Rakennetaan kävijäindeksi: skannataan kaikki logit ja kirjoitetaan nicks/-aggregaatti. Tämä tekee vieraiden kirjauksista ja seinästä huomattavasti nopeampia. Jatketaanko?')) return;
+        btnBackfillNicks.disabled = true;
+        const oldTxt = btnBackfillNicks.innerText;
+        btnBackfillNicks.innerText = '⏳ Indeksoidaan…';
+        try {
+            const snap = await db.ref('miitit/' + currentUser.uid + '/logs').once('value');
+            const agg = {};
+            snap.forEach(evt => {
+                evt.forEach(lg => {
+                    const v = lg.val() || {};
+                    const raw = (v.nickname || '').trim();
+                    const norm = raw.toLowerCase().replace(/\s+/g, ' ');
+                    if (!norm) return;
+                    const ts = (typeof v.timestamp === 'number') ? v.timestamp : 0;
+                    if (!agg[norm]) agg[norm] = { n: 0, ev: {}, first: 0, last: 0, raw: raw };
+                    const a = agg[norm];
+                    a.ev[evt.key] = 1;
+                    if (ts) {
+                        if (!a.first || ts < a.first) a.first = ts;
+                        if (ts > a.last) a.last = ts;
+                    }
+                });
+            });
+            const updates = {};
+            Object.keys(agg).forEach(norm => {
+                const a = agg[norm];
+                a.n = Object.keys(a.ev).length;
+                updates['miitit/' + currentUser.uid + '/nicks/' + norm] = a;
+            });
+            if (Object.keys(updates).length) {
+                await db.ref().update(updates);
+            }
+            showToast('✅ Kävijäindeksi valmis: ' + Object.keys(updates).length + ' kävijää');
+        } catch (e) {
+            alert('Indeksointi epäonnistui: ' + e.message);
+        }
+        btnBackfillNicks.disabled = false;
+        btnBackfillNicks.innerText = oldTxt;
     };
 }
 
