@@ -239,3 +239,10 @@ parts.push(current.trim());
 - [ ] Color intensity accuracy
 - [ ] Import date display
 - [ ] Cross-device sync
+
+## IDEAS-BACKLOG (ei tehty vielä)
+- **Kioskikierto miittiseinalle**: seina kiertaa automaattisesti tiloja
+  (lapputaulu ~30s -> iso QR ~15s -> tilastokooste ~15s -> takaisin).
+  Asetukset: paalle/pois + aikavali (localStorage tai miittikohtainen).
+  Uusi kirjaus / QR-reveal keskeyttaa kierron hetkeksi.
+  Kayttaja pyytoi pitamaan mielessa, ei toteutettu (v7.74.x).
