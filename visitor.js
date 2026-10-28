@@ -458,11 +458,24 @@ function levenshteinDistance(a, b) {
     return matrix[left.length][right.length];
 }
 
+// Nimimerkki-avain kantaan: Firebase-avaimet eivät saa sisältää . # $ / [ ]
+// -> enkoodataan ne %XX-muotoon (esim. "tt.wahala" -> "tt%2Ewahala")
+function mkNickKey(norm) {
+    return (norm || '').replace(/[.#$\/\[\]]/g, function (c) {
+        return '%' + c.charCodeAt(0).toString(16).toUpperCase();
+    });
+}
+function mkNickFromKey(key) {
+    return (key || '').replace(/%[0-9A-Fa-f]{2}/g, function (m) {
+        return String.fromCharCode(parseInt(m.slice(1), 16));
+    });
+}
+
 // Vieraan indeksikirjoitus: päivittää nicks/{normNick}-aggregaatin.
 // Kutsutaan onnistuneen login jälkeen — virheet sivuutetaan (kirjaus on jo tallessa).
 function writeVisitorNickIndex(targetHost, eventId, nick) {
     try {
-        const normNick = normalizeNickname(nick);
+        const normNick = mkNickKey(normalizeNickname(nick));
         if (!normNick) return;
         const now = Date.now();
         const nr = firebase.database().ref(`miitit/${targetHost}/nicks/${normNick}`);
@@ -561,8 +574,8 @@ async function getVisitorNicknameIndex(targetHost) {
             const index = [];
             nSnap.forEach(c => {
                 const v = c.val() || {};
-                const raw = (v.raw || c.key || '').trim();
-                const norm = c.key;
+                const norm = mkNickFromKey(c.key);
+                const raw = (v.raw || norm || '').trim();
                 if (raw && norm) index.push({ raw, norm });
             });
             visitorNicknameCacheByHost[targetHost] = index;
@@ -1456,7 +1469,7 @@ window.handleVisitorSign = async function() {
         const snapPair = await Promise.all([
             firebase.database().ref('miitit/' + targetHost + '/events/' + eventId).once('value'),
             firebase.database().ref('miitit/' + targetHost + '/logs/' + eventId).once('value'),
-            firebase.database().ref('miitit/' + targetHost + '/nicks/' + nickNorm).once('value').catch(() => null)
+            firebase.database().ref('miitit/' + targetHost + '/nicks/' + mkNickKey(nickNorm)).once('value').catch(() => null)
         ]);
         const ev = snapPair[0].val() || {};
         const evLogsSnap = snapPair[1];

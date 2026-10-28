@@ -767,7 +767,15 @@ function openWall() {
         db.ref('miitit/' + uid + '/nicks').once('value').then(function (snap) {
             if (snap.exists()) {
                 var totals = {};
-                snap.forEach(function (c) { var v = c.val() || {}; if (v.n) totals[c.key] = v.n; });
+                snap.forEach(function (c) {
+                    var v = c.val() || {};
+                    if (!v.n) return;
+                    // Avaimet enkoodattuja (%XX) — dekoodataan takaisin normiksi
+                    var norm = (c.key || '').replace(/%[0-9A-Fa-f]{2}/g, function (m) {
+                        return String.fromCharCode(parseInt(m.slice(1), 16));
+                    });
+                    totals[norm] = v.n;
+                });
                 mkWall.nickCounts = totals;
                 updateWallSpotlight();
                 return;

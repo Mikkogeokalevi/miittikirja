@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.74.0";
+const APP_VERSION = "7.74.1";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1855,10 +1855,11 @@ if (btnBackfillNicks) {
                 });
             });
             const updates = {};
+            const nickKey = (s) => s.replace(/[.#$\/\[\]]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
             Object.keys(agg).forEach(norm => {
                 const a = agg[norm];
                 a.n = Object.keys(a.ev).length;
-                updates['miitit/' + currentUser.uid + '/nicks/' + norm] = a;
+                updates['miitit/' + currentUser.uid + '/nicks/' + nickKey(norm)] = a;
             });
             if (Object.keys(updates).length) {
                 await db.ref().update(updates);
