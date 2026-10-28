@@ -3758,3 +3758,55 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
     color: #8B4513;
     opacity: 0.75;
 }
+
+/* ===== PUHELIN: kompakti miittiseinä ===== */
+/* Kapea ruutu TAI matala ruutu (puhelin vaakatasossa) — kaikki skaalautuu pieneksi */
+@media (max-width: 560px), (max-height: 520px) {
+    .wall-inner { padding: 6px 8px; }
+    /* Yläreuna aina kahteen sarakkeeseen: tiedot vasemmalle, laskuri oikealle */
+    #wall-head { flex-direction: row; align-items: flex-start; gap: 8px; }
+    #wall-head-left { flex: 1; align-items: flex-start; text-align: left; min-width: 0; }
+    #wall-title { font-size: 1.0em; text-align: left; line-height: 1.15; }
+    #wall-series-badge { font-size: 0.58em; padding: 2px 9px; margin-top: 4px; letter-spacing: 0.5px; }
+    #wall-live { font-size: 0.62em; margin-top: 4px; text-align: left; letter-spacing: 0; }
+    #wall-next { font-size: 0.58em; padding: 2px 8px; margin-top: 3px; }
+    #wall-countdown { margin: 0; flex-shrink: 0; }
+    .wall-cd-label { font-size: 0.5em; }
+    .wall-cd-time { font-size: clamp(1em, 4.6vw, 1.35em) !important; }
+    /* Laskuri pieneksi ja ylös — ei vie taulun tilaa */
+    .wall-main { gap: 8px; }
+    .wall-counter-box { align-self: flex-start; }
+    #wall-count { font-size: 2.4em; }
+    .wall-count-label { font-size: 0.55em; letter-spacing: 1px; }
+    #wall-quickstats { font-size: 0.62em; margin-top: 4px; letter-spacing: 0; }
+    #wall-series-total { font-size: 0.6em; margin-top: 3px; }
+    .wall-dot { width: 16px; height: 16px; line-height: 16px; font-size: 0.55em; margin: 2px; }
+    /* Pikku-postit: napautus suurentaa lukukokoon */
+    .wall-note { width: 92px; min-height: 70px; max-height: 118px; font-size: 0.74em; padding: 15px 7px 7px; }
+    .wall-note::before { width: 9px; height: 9px; margin-left: -4px; top: 4px; }
+    .wall-note-photo { width: 100px; padding: 6px 6px 18px; }
+    .wall-note-img { height: 64px; }
+    .wall-note-zoomed { transform: rotate(0deg) scale(2.6) !important; }
+    .wall-note-zoomed .wall-note-img { height: 150px; }
+    /* QR-kulma pieneksi — mahtuu taulun reunaan */
+    .wall-corner-qr { transform: scale(0.58); transform-origin: bottom left; }
+    .wall-corner-info { font-size: 0.6em; padding-bottom: 4px; }
+    .wall-corners { bottom: 84px; left: 8px; right: 8px; }
+    #wall-reacts { bottom: 78px; gap: 6px; }
+    .wall-react-chip { font-size: 0.9em; padding: 2px 9px; gap: 4px; }
+    .wall-react-float { bottom: 74px; }
+    /* Tervetuloa- ja loppunäkymä kompaktiksi */
+    .wall-welcome-hi { font-size: 1.5em; }
+    .wall-welcome-name { font-size: 2.1em; }
+    .wall-welcome-sub { font-size: 0.9em; }
+    .wall-end-title { font-size: 1.7em; }
+    .wall-end-sub, .wall-end-stats, .wall-end-names { font-size: 0.85em; }
+    .wall-end-next-when { font-size: 1.1em; }
+    /* Ääni/teema/sulje-napit hieman pienemmät */
+    #wall-sound, #wall-theme, #wall-close { width: 36px; height: 36px; font-size: 1em; }
+}
+/* Puhelin pystyssä: tickerin kat-rivi ja QR piilossa tiiviisti */
+@media (max-width: 560px) {
+    .wt-cats { display: none; }
+    .wt-weather { font-size: 0.8em; }
+}

@@ -1030,11 +1030,15 @@ function wallBoardCapacity() {
     var feed = document.getElementById('wall-feed');
     if (!feed) return { cap: 12, cols: 4, rows: 3 };
     var W = feed.clientWidth || 600, H = feed.clientHeight || 400;
-    var cols = Math.max(1, Math.floor(W / 150));
-    var rows = Math.max(1, Math.floor(H / 122));
+    // Puhelin: laput ovat pienempiä -> pienemmät ruudukkoyksiköt
+    var small = (W < 560 || H < 300);
+    var cols = Math.max(1, Math.floor(W / (small ? 106 : 150)));
+    var rows = Math.max(1, Math.floor(H / (small ? 84 : 122)));
     // Matalalla ruudulla max 3 riviä — alimman rivin laput näkyvät kokonaan
     if (H < 720 && rows > 3) rows = 3;
-    return { cap: cols * rows, cols: cols, rows: rows };
+    var cap = cols * rows;
+    if (small && cap > 12) cap = 12;
+    return { cap: cap, cols: cols, rows: rows };
 }
 
 // --- Elävä ilmoitustaulu ---
@@ -1205,10 +1209,12 @@ function makeWallNoteEl(it) {
 
 // Satunnainen paikka — preferoidaan kohtaa joka ei ole toisen lapun päällä
 function mkWallPickPos(W, H) {
+    var small = (W < 560 || H < 300);
+    var nw = small ? 104 : 160, nh = small ? 90 : 150;
     var best = null, bestScore = -1;
     for (var t = 0; t < 7; t++) {
-        var x = Math.random() * Math.max(1, W - 160);
-        var y = Math.random() * Math.max(1, H - 150);
+        var x = Math.random() * Math.max(1, W - nw);
+        var y = Math.random() * Math.max(1, H - nh);
         var minD = 1e9;
         for (var k in mkWall.liveNotes) {
             var r = mkWall.liveNotes[k];
