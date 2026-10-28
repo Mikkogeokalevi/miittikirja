@@ -2531,7 +2531,7 @@ function showVisitorModalWithLang(nick, history, stats) {
     if (reactEvId && reactHost && typeof firebase !== 'undefined') {
         const REACTS = (typeof MK_Config !== 'undefined' && MK_Config.WALL_REACTIONS)
             ? MK_Config.WALL_REACTIONS
-            : { heart: '❤️', thumbs: '👍', laugh: '😄', fire: '🔥', cheers: '🍻', party: '🎉', clap: '👏', wow: '🤩', love: '🥰', hundred: '💯', thumbsdown: '👎', yikes: '😬', bored: '🥱', meh: '😕', poop: '💩' };
+            : { heart: '❤️', thumbs: '👍', laugh: '😄', fire: '🔥', cheers: '🍻', thumbsdown: '👎', yikes: '😬', bored: '🥱', meh: '😕', poop: '💩' };
         const reactRow = document.createElement('div');
         reactRow.id = 'vv-react-row';
         reactRow.className = 'vv-react-row';

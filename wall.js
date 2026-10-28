@@ -465,7 +465,7 @@ function applyWallSpot(l) {
 function mkWallReactionEmojis() {
     return (typeof MK_Config !== 'undefined' && MK_Config.WALL_REACTIONS)
         ? MK_Config.WALL_REACTIONS
-        : { heart: '❤️', thumbs: '👍', laugh: '😄', fire: '🔥', cheers: '🍻', party: '🎉', clap: '👏', wow: '🤩', love: '🥰', hundred: '💯', thumbsdown: '👎', yikes: '😬', bored: '🥱', meh: '😕', poop: '💩' };
+        : { heart: '❤️', thumbs: '👍', laugh: '😄', fire: '🔥', cheers: '🍻', thumbsdown: '👎', yikes: '😬', bored: '🥱', meh: '😕', poop: '💩' };
 }
 
 // Reaktiolaskuri seinän alalaitaan — näyttää vain emojit joita on annettu

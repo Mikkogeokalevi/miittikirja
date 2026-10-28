@@ -144,11 +144,6 @@ const MK_Config = {
         laugh: "😄",
         fire: "🔥",
         cheers: "🍻",
-        party: "🎉",
-        clap: "👏",
-        wow: "🤩",
-        love: "🥰",
-        hundred: "💯",
         thumbsdown: "👎",
         yikes: "😬",
         bored: "🥱",
@@ -157,5 +152,5 @@ const MK_Config = {
     },
 
     // Sovelluksen versio (näytetään kirjautumissivulla)
-    VERSION: "7.72.4"
+    VERSION: "7.72.5"
 };
