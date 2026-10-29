@@ -2247,6 +2247,11 @@ function initReportBindings() {
         printBtn.onclick = () => printMiittiReport();
         printBtn.dataset.bound = '1';
     }
+    const mailBtn = document.getElementById('btn-mail-report');
+    if (mailBtn && !mailBtn.dataset.bound) {
+        mailBtn.onclick = () => copyMailEventList();
+        mailBtn.dataset.bound = '1';
+    }
     const chartBtn = document.getElementById('btn-chart-report');
     if (chartBtn && !chartBtn.dataset.bound) {
         chartBtn.onclick = () => runReportCharts();
@@ -2271,6 +2276,39 @@ function initReportBindings() {
         extBtn.dataset.bound = '1';
     }
     renderExternalList();
+}
+
+// ==========================================
+// MAILI-LISTA: pvm / aika / nimi — kopioitava teksti sähköpostiin
+// ==========================================
+function copyMailEventList() {
+    const collected = collectReportRows();
+    if (!collected || !collected.rows || !collected.rows.length) {
+        alert('Ei miittejä valituilla ehdoilla — säädä suodattimia ja muodosta raportti ensin.');
+        return;
+    }
+    const rows = collected.rows.slice().sort((a, b) =>
+        ((a.date || '') + 'T' + (a.time || '')).localeCompare((b.date || '') + 'T' + (b.time || '')));
+    const lines = rows.map(e => {
+        const d = rptDateFi(e.date || '') || '-';
+        const t = (e.time || '').trim() || '-';
+        const n = (e.name || 'Miitti').trim();
+        return d + ' / ' + t + ' / ' + n;
+    });
+    const text = lines.join('\n');
+    const out = document.getElementById('report-output');
+    if (out) {
+        out.innerHTML = '<div class="rpt-doc"><div class="rpt-title">✉️ Miittilista mailiin (' + lines.length + ' kpl)</div>' +
+            '<div class="rpt-meta">Kopioi alla oleva lista — muoto: pvm / aika / nimi</div>' +
+            '<textarea id="report-mail-list" readonly style="width:100%; box-sizing:border-box; min-height:' + Math.min(420, 70 + lines.length * 22) + 'px; margin-top:10px; font-family:monospace; font-size:0.95em; line-height:1.5; padding:10px; border:1px solid #ccc; border-radius:6px; background:#fffdf5;"></textarea></div>';
+        const ta = document.getElementById('report-mail-list');
+        if (ta) { ta.value = text; ta.focus(); ta.select(); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            if (typeof showToast === 'function') showToast('📋 Lista kopioitu leikepöydälle');
+        }).catch(() => {});
+    }
 }
 
 // ==========================================

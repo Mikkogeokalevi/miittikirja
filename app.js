@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.74.1";
+const APP_VERSION = "7.75.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -1123,6 +1123,16 @@ if (newEventToggle) {
     };
 }
 
+// GPX-tuonnista tulee vain aloitusaika — lisätään loppuaika +30 min (miittien vakiopituus)
+function mkGpxTimeRange(timeStr) {
+    const m = (timeStr || '').trim().match(/^(\d{1,2})[:.](\d{2})$/);
+    if (!m) return timeStr; // jo valmiiksi aikaväli tai muu muoto -> ennalleen
+    const end = (parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + 30) % 1440;
+    const eh = String(Math.floor(end / 60)).padStart(2, '0');
+    const em = String(end % 60).padStart(2, '0');
+    return m[1] + ':' + m[2] + ' - ' + eh + ':' + em;
+}
+
 const fileInputNew = document.getElementById('import-gpx-new');
 if (fileInputNew) {
     fileInputNew.onchange = async function(e) {
@@ -1138,7 +1148,7 @@ if (fileInputNew) {
                 document.getElementById('new-gc').value = data.gc || "";
                 document.getElementById('new-name').value = data.name || "";
                 document.getElementById('new-date').value = data.date || "";
-                document.getElementById('new-time').value = data.time || "";
+                document.getElementById('new-time').value = mkGpxTimeRange(data.time);
                 document.getElementById('new-coords').value = data.coords || "";
                 document.getElementById('new-desc').value = data.descriptionHtml || "";
                 
