@@ -2360,11 +2360,15 @@ function parseExternalGPX(xmlText) {
             if (finder) names.add(finder);
         }
         const attendeeNames = Array.from(names);
+        // GC-koodi: wpt/name, varmuudeksi myös url:sta (esim. .../geocache/GCB1234)
+        const urlVal = gpTagVal(wpt, 'url') || '';
+        const gcFromUrl = (urlVal.match(/GC[A-Z0-9]+/) || [''])[0];
+        const startTime = timeRaw && timeRaw.indexOf('T') !== -1 ? timeRaw.split('T')[1].slice(0, 5) : '';
         out.push({
-            gc: gpTagVal(wpt, 'name') || '',
+            gc: gpTagVal(wpt, 'name') || gcFromUrl,
             name: name || 'Miitti',
             date: timeRaw ? timeRaw.split('T')[0] : '',
-            time: timeRaw && timeRaw.indexOf('T') !== -1 ? timeRaw.split('T')[1].slice(0, 5) : '',
+            time: (typeof mkGpxTimeRange === 'function') ? mkGpxTimeRange(startTime) : startTime,
             coords: (wpt.getAttribute('lat') || '') + ', ' + (wpt.getAttribute('lon') || ''),
             organizer: organizer,
             type: myType,
@@ -2398,13 +2402,19 @@ async function importExternalGPX() {
         if (!ok) { if (statusEl) statusEl.innerText = 'Tuonti peruttu.'; return; }
 
         const ref = db.ref('miitit/' + currentUser.uid + '/externalEvents');
+        // Merge-avain: GC-koodi, tai jos ei ole -> pvm+alkuaika+nimi -yhdiste
+        // (alkuaika vain, koska loppuaika voi täydentyä uudemmalla tuonnilla)
+        const mergeKeyOf = (e) => (e.gc)
+            ? 'G' + (e.gc + '').toUpperCase()
+            : 'D|' + (e.date || '') + '|' + ((e.time || '').split(' ')[0]) + '|' + normalizeNickname(e.name || '');
         const existingByGc = new Map();
-        (allStatsData.externalEvents || []).forEach(e => { if (e.gc) existingByGc.set((e.gc + '').toUpperCase(), e); });
+        (allStatsData.externalEvents || []).forEach(e => { existingByGc.set(mergeKeyOf(e), e); });
         const updates = {};
         let added = 0, merged = 0, skipped = 0;
         parsed.forEach(e => {
-            const key = (e.gc || '').toUpperCase();
-            const old = key ? existingByGc.get(key) : null;
+            const key = mergeKeyOf(e);
+            const old = existingByGc.get(key)
+                || existingByGc.get('D|' + (e.date || '') + '|' + ((e.time || '').split(' ')[0]) + '|' + normalizeNickname(e.name || ''));
             if (old) {
                 // Käsin korjattua kävijämäärää (override) ei kosketa koskaan
                 if (old.attendeeCountOverride != null) { skipped++; return; }
@@ -2418,6 +2428,7 @@ async function importExternalGPX() {
                 });
                 updates[old.key] = {
                     name: e.name || old.name,
+                    gc: e.gc || old.gc,
                     date: e.date || old.date,
                     time: e.time || old.time,
                     coords: e.coords || old.coords,
