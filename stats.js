@@ -371,6 +371,7 @@ function updateStatsView(data) {
     renderLoyaltyPyramid(data); 
     renderWordCloud(data);
     renderTimeSlots(data);
+    renderTimeSlotsVisitors(data);
     renderFirstTimersTopEvents(data);
     renderOneTimers(data);
     renderLongestStreaks(data);
@@ -1602,6 +1603,40 @@ function renderTimeSlots(data) {
             if (slotCounts.hasOwnProperty(normalized)) {
                 slotCounts[normalized]++;
                 if (slotCounts[normalized] > maxCount) maxCount = slotCounts[normalized];
+            }
+        }
+    });
+
+    let html = "";
+    Object.keys(slotCounts).sort().forEach(time => {
+        const count = slotCounts[time];
+        const isActive = count > 0;
+        const className = isActive ? "time-slot-box active" : "time-slot-box empty";
+        const content = isActive ? `${time}<br><strong>${count}</strong>` : time;
+        html += `<div class="${className}">${content}</div>`;
+    });
+
+    el.innerHTML = html;
+}
+
+function renderTimeSlotsVisitors(data) {
+    const el = document.getElementById('stats-time-slots-visitors');
+    if (!el) return;
+
+    const slotCounts = {};
+    for (let h = 0; h < 24; h++) {
+        for (let m = 0; m < 60; m += 15) {
+            const key = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+            slotCounts[key] = 0;
+        }
+    }
+
+    data.forEach(evt => {
+        if (evt.time) {
+            const start = evt.time.split('-')[0].trim();
+            const normalized = start.replace('.', ':');
+            if (slotCounts.hasOwnProperty(normalized)) {
+                slotCounts[normalized] += (evt.attendeeCount || 0);
             }
         }
     });
