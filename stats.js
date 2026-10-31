@@ -208,6 +208,7 @@ async function initStats() {
             extSnap.forEach(c => {
                 const e = c.val() || {};
                 e.key = c.key;
+                e._external = true;
                 if (!Array.isArray(e.attendeeNames)) e.attendeeNames = [];
                 e.attendeeCount = (e.attendeeCountOverride != null) ? e.attendeeCountOverride : e.attendeeNames.length;
                 extEvents.push(e);
@@ -265,6 +266,9 @@ document.getElementById('btn-apply-filters').onclick = () => {
 };
 
 function updateStatsView(data) {
+    // Varmuus: vieraiden järjestäjien miitit (externalEvents) eivät saa koskaan
+    // näkyä omissa tilastoissa — ne kuuluvat vain raportti-osioon.
+    data = (data || []).filter(e => !e._external);
     window.currentFilteredData = data;
 
     // 1. Lasketaan perusluvut ja tyypit
