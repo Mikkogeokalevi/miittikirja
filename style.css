@@ -1220,6 +1220,15 @@ body.theme-light .time-slot-box.active {
     color: #000;
 }
 
+.time-slot-box.clickable {
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.time-slot-box.clickable:hover {
+    transform: scale(1.08);
+    box-shadow: 0 0 8px rgba(0,0,0,0.5);
+}
+
 .time-slot-box.empty {
     opacity: 0.3;
 }

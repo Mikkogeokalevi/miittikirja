@@ -1583,37 +1583,37 @@ function renderMapLegend(legendSet) {
     });
 }
 
+window._slotEventsMap = {};
+
+function collectSlotEvents(data) {
+    const map = {};
+    for (let h = 0; h < 24; h++) {
+        for (let m = 0; m < 60; m += 15) {
+            map[`${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`] = [];
+        }
+    }
+    data.forEach(evt => {
+        if (evt.time) {
+            const normalized = evt.time.split('-')[0].trim().replace('.', ':');
+            if (map.hasOwnProperty(normalized)) map[normalized].push(evt);
+        }
+    });
+    return map;
+}
+
 function renderTimeSlots(data) {
     const el = document.getElementById('stats-time-slots');
     if (!el) return;
-
-    const slotCounts = {};
-    for (let h = 0; h < 24; h++) {
-        for (let m = 0; m < 60; m += 15) {
-            const key = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
-            slotCounts[key] = 0;
-        }
-    }
-
-    let maxCount = 0;
-    data.forEach(evt => {
-        if (evt.time) {
-            const start = evt.time.split('-')[0].trim();
-            const normalized = start.replace('.', ':');
-            if (slotCounts.hasOwnProperty(normalized)) {
-                slotCounts[normalized]++;
-                if (slotCounts[normalized] > maxCount) maxCount = slotCounts[normalized];
-            }
-        }
-    });
+    window._slotEventsMap = collectSlotEvents(data);
 
     let html = "";
-    Object.keys(slotCounts).sort().forEach(time => {
-        const count = slotCounts[time];
+    Object.keys(window._slotEventsMap).sort().forEach(time => {
+        const count = window._slotEventsMap[time].length;
         const isActive = count > 0;
-        const className = isActive ? "time-slot-box active" : "time-slot-box empty";
+        const className = isActive ? "time-slot-box active clickable" : "time-slot-box empty";
         const content = isActive ? `${time}<br><strong>${count}</strong>` : time;
-        html += `<div class="${className}">${content}</div>`;
+        const click = isActive ? ` onclick="showSlotEvents('${time}')" title="Näytä miitit"` : '';
+        html += `<div class="${className}"${click}>${content}</div>`;
     });
 
     el.innerHTML = html;
@@ -1622,36 +1622,47 @@ function renderTimeSlots(data) {
 function renderTimeSlotsVisitors(data) {
     const el = document.getElementById('stats-time-slots-visitors');
     if (!el) return;
-
-    const slotCounts = {};
-    for (let h = 0; h < 24; h++) {
-        for (let m = 0; m < 60; m += 15) {
-            const key = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
-            slotCounts[key] = 0;
-        }
-    }
-
-    data.forEach(evt => {
-        if (evt.time) {
-            const start = evt.time.split('-')[0].trim();
-            const normalized = start.replace('.', ':');
-            if (slotCounts.hasOwnProperty(normalized)) {
-                slotCounts[normalized] += (evt.attendeeCount || 0);
-            }
-        }
-    });
+    const map = window._slotEventsMap && Object.keys(window._slotEventsMap).length
+        ? window._slotEventsMap
+        : collectSlotEvents(data);
 
     let html = "";
-    Object.keys(slotCounts).sort().forEach(time => {
-        const count = slotCounts[time];
+    Object.keys(map).sort().forEach(time => {
+        const count = map[time].reduce((s, evt) => s + (evt.attendeeCount || 0), 0);
         const isActive = count > 0;
-        const className = isActive ? "time-slot-box active" : "time-slot-box empty";
+        const className = isActive ? "time-slot-box active clickable" : "time-slot-box empty";
         const content = isActive ? `${time}<br><strong>${count}</strong>` : time;
-        html += `<div class="${className}">${content}</div>`;
+        const click = isActive ? ` onclick="showSlotEvents('${time}')" title="Näytä miitit"` : '';
+        html += `<div class="${className}"${click}>${content}</div>`;
     });
 
     el.innerHTML = html;
 }
+
+window.showSlotEvents = function(time) {
+    const modal = document.getElementById('slot-events-modal');
+    if (!modal) return;
+    const evts = (window._slotEventsMap && window._slotEventsMap[time]) || [];
+    const totalVisitors = evts.reduce((s, e) => s + (e.attendeeCount || 0), 0);
+    document.getElementById('slot-events-title').innerHTML =
+        `🕐 klo ${escapeHtml(time)} — ${evts.length} miittiä, ${totalVisitors} kävijää`;
+    document.getElementById('slot-events-list').innerHTML = evts
+        .slice()
+        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+        .map(evt => {
+            const row = `<span>${escapeHtml(evt.name || 'Nimetön miitti')}</span><strong>${escapeHtml(evt.date || '')} 👤${evt.attendeeCount || 0}</strong>`;
+            return evt.key
+                ? `<div class="stats-row clickable" onclick="closeSlotEventsModal(); openGuestbook('${evt.key}')">${row}</div>`
+                : `<div class="stats-row">${row}</div>`;
+        })
+        .join('') || '<em>Ei miittejä</em>';
+    modal.style.display = 'flex';
+};
+
+window.closeSlotEventsModal = function() {
+    const modal = document.getElementById('slot-events-modal');
+    if (modal) modal.style.display = 'none';
+};
 
 window.openUserProfile = function(nickname) {
     if (!nickname) return;
