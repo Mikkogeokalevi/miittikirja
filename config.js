@@ -152,5 +152,5 @@ const MK_Config = {
     },
 
     // Sovelluksen versio (näytetään kirjautumissivulla)
-    VERSION: "7.77.1"
+    VERSION: "7.77.2"
 };

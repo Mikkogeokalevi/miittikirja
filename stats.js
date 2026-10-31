@@ -1596,7 +1596,7 @@ function collectSlotEvents(data) {
             map[`${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`] = [];
         }
     }
-    data.forEach(evt => {
+    data.filter(evt => !(evt.name || '').includes('/ PERUTTU /')).forEach(evt => {
         if (evt.time) {
             const normalized = evt.time.split('-')[0].trim().replace('.', ':');
             if (map.hasOwnProperty(normalized)) map[normalized].push(evt);
