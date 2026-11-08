@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.78.0";
+const APP_VERSION = "7.78.1";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -2031,12 +2031,22 @@ if (btnArtPrompt) {
         const extraEl = document.getElementById('artprompt-extra');
         const outEl = document.getElementById('artprompt-out');
         if (!extraEl || !outEl) return;
-        const refresh = () => { outEl.value = buildArtPrompt(); };
-        extraEl.oninput = refresh;
-        refresh();
+        outEl.dataset.dirty = '';
+        // Lisätoive päivittää pohjaa vain kun käyttäjä ei ole muokannut sitä käsin
+        extraEl.oninput = () => { if (!outEl.dataset.dirty) outEl.value = buildArtPrompt(); };
+        outEl.oninput = () => { outEl.dataset.dirty = '1'; };
+        outEl.value = buildArtPrompt();
         document.getElementById('artprompt-modal').style.display = 'flex';
     };
 }
+
+window.resetArtPrompt = function() {
+    const outEl = document.getElementById('artprompt-out');
+    if (!outEl) return;
+    outEl.dataset.dirty = '';
+    outEl.value = buildArtPrompt();
+    showToast('↻ Pohja luotu uudelleen');
+};
 
 window.copyArtPrompt = function() {
     const outEl = document.getElementById('artprompt-out');
