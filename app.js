@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.77.2";
+const APP_VERSION = "7.78.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
@@ -2005,6 +2005,49 @@ if (btnSaveWallPhotos) {
             .then(() => showToast('📷 Kuvalinkit tallennettu!'));
     };
 }
+
+// 🎨 Kuvaprompti tekoälylle — miitin nimi teemaksi + valinnainen lisätoive
+function buildArtPrompt() {
+    const name = (document.getElementById('gb-event-name') || {}).innerText || 'miitti';
+    const extra = (document.getElementById('artprompt-extra') || {}).value || '';
+    const extraBlock = extra.trim() ? `\n\nLisätoiveet: ${extra.trim()}` : '';
+    const textRule = /tekst|kirjaim|tekstiä/i.test(extra)
+        ? '- Kuvaan toivotaan tekstiä vain lisätoiveiden mukaisesti — muuten ei tekstiä'
+        : '- Ei tekstiä kuvaan';
+    return `Luo kuvitusaiheinen kuva aiheesta: ${name.trim()}.${extraBlock}
+
+Tekniset vaatimukset:
+- Vaakasuuntainen kuva, kuvasuhde 4:3 (esim. 800×600 px)
+- Keskitä pääkohde kuvan keskelle — jätä reunat vapaaksi tilaa, koska kuva rajataan myöhemmin sekä vaaka- että pystyruutuun
+- Selkeä, yksinkertainen sommittelu joka toimii myös pienenä (kuva näkyy useimmiten vain noin 130×110 pikselin kokoisena)
+- Värikäs ja miellyttävä, kuvitus-/sarjakuvamainen tyyli
+${textRule}
+- Tyyli: lämmin, leikkisä, vähän nostalginen — kuin pieni polaroid-piirros ilmoitustaululla`;
+}
+
+const btnArtPrompt = document.getElementById('btn-gb-artprompt');
+if (btnArtPrompt) {
+    btnArtPrompt.onclick = function() {
+        const extraEl = document.getElementById('artprompt-extra');
+        const outEl = document.getElementById('artprompt-out');
+        if (!extraEl || !outEl) return;
+        const refresh = () => { outEl.value = buildArtPrompt(); };
+        extraEl.oninput = refresh;
+        refresh();
+        document.getElementById('artprompt-modal').style.display = 'flex';
+    };
+}
+
+window.copyArtPrompt = function() {
+    const outEl = document.getElementById('artprompt-out');
+    if (!outEl) return;
+    const done = () => showToast('📋 Prompti kopioitu — liitä ChatGPT:hen tai Geminiin!');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(outEl.value).then(done).catch(() => { outEl.select(); document.execCommand('copy'); done(); });
+    } else {
+        outEl.select(); document.execCommand('copy'); done();
+    }
+};
 
 const btnAddWallPhoto = document.getElementById('btn-add-wall-photo');
 const gbPhotoFile = document.getElementById('gb-wall-photo-file');

@@ -538,6 +538,7 @@
                 <div id="gb-wall-photos-list" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:8px;"></div>
                 <input type="file" id="gb-wall-photo-file" accept="image/*" multiple style="display:none;">
                 <button id="btn-add-wall-photo" class="btn btn-small btn-gray" style="width:100%; margin-top:6px;">📱 Lisää kuva laitteelta — pienennetään automaattisesti</button>
+                <button id="btn-gb-artprompt" class="btn btn-small btn-gray" style="width:100%; margin-top:6px;">🎨 Kuvaprompti tekoälylle (ChatGPT/Gemini)</button>
             </div>
 
             <div style="margin-bottom:10px; border:1px dashed #b8a8d8; border-radius:8px; padding:10px; background:#f8f5ff;">
@@ -805,6 +806,19 @@
             
             <div id="visitor-action-buttons">
                 <button onclick="document.getElementById('user-profile-modal').style.display='none'" class="btn btn-red" style="margin-top:15px;">Sulje</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="artprompt-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="border-bottom:2px solid var(--primary-color); padding-bottom:10px; margin-bottom:15px;">🎨 Kuvaprompti tekoälylle</h3>
+            <label style="font-size:0.85em; font-weight:bold; display:block; margin-bottom:4px;">Lisätoive (valinnainen) — esim. "onnittelukortti" tai teksti: "PALJON ONNEA ISILLE"</label>
+            <input type="text" id="artprompt-extra" placeholder="esim. onnittelukortti, teksti: PALJON ONNEA ISILLE" style="width:100%; margin-bottom:10px; box-sizing:border-box;">
+            <textarea id="artprompt-out" rows="12" readonly style="width:100%; font-size:0.85em; box-sizing:border-box;"></textarea>
+            <div style="display:flex; gap:10px; margin-top:12px;">
+                <button onclick="copyArtPrompt()" class="btn btn-green" style="flex:1;">📋 Kopioi prompti</button>
+                <button onclick="document.getElementById('artprompt-modal').style.display='none'" class="btn btn-red" style="flex:1;">Sulje</button>
             </div>
         </div>
     </div>
