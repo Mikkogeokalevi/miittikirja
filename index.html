@@ -6,6 +6,17 @@
     <title>MK:n Sähköinen Miittikirja</title>
     
     <link rel="manifest" href="manifest.json">
+    <script>
+    // Vierasnäkymä (?event=...) — ei PWA-asennustarjousta vieraan puhelimelle.
+    // Pääsovellus isännän käytössä pysyy normaalisti asennettavana.
+    (function () {
+        if (new URLSearchParams(location.search).has('event')) {
+            var m = document.querySelector('link[rel="manifest"]');
+            if (m && m.parentNode) m.parentNode.removeChild(m);
+            window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); });
+        }
+    })();
+    </script>
     <link rel="stylesheet" href="style.css">
     
     <meta name="theme-color" content="#121212">
