@@ -13,6 +13,8 @@ var mkWall = {
     event: null,
     eventRef: null,
     reactRef: null,
+    photosRef: null,
+    photos: null,
     reactions: null,
     seriesEvents: [],
     vuoro: 0,
@@ -763,6 +765,16 @@ function openWall() {
             });
         });
 
+        // Kuvat omasta photos-solmusta — ei kuormita events-hakuja, päivittyy livenä
+        mkWall.photosRef = db.ref('miitit/' + uid + '/photos/' + evId);
+        mkWall.photosRef.on('value', function (snap) {
+            if (!mkWall.open) return;
+            var nv = snap.val() || null;
+            if (JSON.stringify(nv) === JSON.stringify(mkWall.photos || null)) return;
+            mkWall.photos = nv;
+            buildWallPool(mkWall.logs.slice().sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); }));
+        });
+
         // Vieraiden kokonaiskäyntimäärät ("N. miitti" karuselliin) — indeksi, fallback täysskannaus
         db.ref('miitit/' + uid + '/nicks').once('value').then(function (snap) {
             if (snap.exists()) {
@@ -1115,7 +1127,7 @@ function mkWallPhotos() {
         var src = (parts[0] || '').trim();
         if (/^https?:\/\//i.test(src)) out.push({ src: src, cap: (parts[1] || '').trim() });
     });
-    var ups = ev.wallPhotos;
+    var ups = mkWall.photos || ev.wallPhotos;
     // Firebase voi palauttaa taulukon objektina — normalisoidaan
     var arr = Array.isArray(ups) ? ups
         : (ups && typeof ups === 'object' ? Object.keys(ups).sort().map(function (k) { return ups[k]; }) : []);
@@ -1495,6 +1507,8 @@ function closeWall() {
     mkWall.logRefs = [];
     if (mkWall.eventRef) { try { mkWall.eventRef.off(); } catch (e) {} mkWall.eventRef = null; }
     if (mkWall.reactRef) { try { mkWall.reactRef.off(); } catch (e) {} mkWall.reactRef = null; }
+    if (mkWall.photosRef) { try { mkWall.photosRef.off(); } catch (e) {} mkWall.photosRef = null; }
+    mkWall.photos = null;
     mkWall.reactions = null;
     var rr = document.getElementById('wall-reacts');
     if (rr) { rr.innerHTML = ''; rr.style.display = 'none'; }

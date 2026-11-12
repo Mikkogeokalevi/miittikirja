@@ -7,7 +7,7 @@ const MK_Config = {
     // TÄMÄ ON SE TÄRKEIN: Sinun käyttäjä-ID
     // Kaikki muut tiedostot (app.js, visitor.js) lukevat tämän täältä.
     // Jos vaihdat tiliä, päivitä vain tämä rivi!
-    HOST_UID: "T8wI16Gf67W4G4yX3Cq7U0U1H6I2",
+    HOST_UID: "nKymM7y5u5PVftNfR5R9aoJlJ8J3",
 
     // Oma geocaching-nimimerkki (raporttien järjestäjäerittelyissä)
     OWNER_NICK: "mikkokalevi",
@@ -152,5 +152,5 @@ const MK_Config = {
     },
 
     // Sovelluksen versio (näytetään kirjautumissivulla)
-    VERSION: "7.78.2"
+    VERSION: "7.79.0"
 };

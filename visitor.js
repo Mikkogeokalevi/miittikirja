@@ -535,6 +535,34 @@ function buildInstantVisitorStats(ev, nick, fromValue, messageValue, nickData, v
     };
 }
 
+// Kevyt "väärennös"-snapshot tavalliselle objektille — sama rajapinta kuin DataSnapshot
+function mkObjSnap(obj, key) {
+    const has = obj !== null && obj !== undefined;
+    const isObj = has && typeof obj === 'object';
+    const childKeys = isObj ? Object.keys(obj) : [];
+    return {
+        key: key === undefined ? null : key,
+        exists: () => has,
+        val: () => obj,
+        numChildren: () => childKeys.length,
+        hasChild: (k) => isObj && obj[k] !== undefined,
+        child: (k) => mkObjSnap(isObj ? obj[k] : null, k),
+        forEach: (cb) => {
+            for (const k of childKeys) {
+                if (cb(mkObjSnap(obj[k], k)) === true) return true;
+            }
+            return false;
+        }
+    };
+}
+
+// nicks-indeksin avaimet ovat %XX-enkoodattuja — dekoodataan takaisin
+function mkNickDecode(k) {
+    return (k || '').replace(/%[0-9A-Fa-f]{2}/g, function (m) {
+        return String.fromCharCode(parseInt(m.slice(1), 16));
+    });
+}
+
 // "Ilmava" snapshot-kääre: kuten logsSnap, mutta eventId:n alta suodatetaan pois yksi logi.
 // Tarvitaan prev-tilaston laskemiseen kun push on jo kannassa.
 function mkFilterLogSnap(logsSnap, skipEventId, skipLogKey) {
@@ -666,7 +694,7 @@ window.updateVisitorNicknameAssist = async function() {
         return;
     }
 
-    const targetHost = window.currentVisitorTargetUid || 'T8wI16Gf67W4G4yX3Cq7U0U1H6I2';
+    const targetHost = window.currentVisitorTargetUid || 'nKymM7y5u5PVftNfR5R9aoJlJ8J3';
     let index = [];
     try {
         index = await getVisitorNicknameIndex(targetHost);
@@ -1448,7 +1476,7 @@ window.handleVisitorSign = async function() {
 
     const targetHost = window.currentVisitorTargetUid
         || (typeof MK_Config !== 'undefined' && MK_Config.HOST_UID)
-        || "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
+        || "nKymM7y5u5PVftNfR5R9aoJlJ8J3"; 
     const eventId = window.currentEventId;
 
     if (!eventId) { setError("Virhe: Tapahtuman tunnistetta ei löytynyt."); return; }
@@ -1518,21 +1546,52 @@ window.handleVisitorSign = async function() {
         setStatus(t.savedMsg || 'Tallennettu');
         showVisitorModalWithLang(nick, null, instantStats);
 
-        // Vaihe 2 (tausta): täydet tilastot koko historialla — Lite-tilassa ohitetaan
+        // Vaihe 2 (tausta): täydet tilastot — kevyt reitti kävijäindeksillä:
+        // vain vieraan omien miittien logit + nicks-laskurit rankkaukseen.
+        // Lite-tilassa ohitetaan kokonaan.
         if (!window.MK_LITE) {
             (async () => {
                 try {
-                    const pair = await Promise.all([
-                        firebase.database().ref('miitit/' + targetHost + '/events').once('value'),
-                        firebase.database().ref('miitit/' + targetHost + '/logs').once('value')
-                    ]);
-                    const eventsSnap = pair[0];
-                    const logsSnap = pair[1];
+                    const eventsPromise = firebase.database().ref('miitit/' + targetHost + '/events').once('value');
+                    let logsSnap = null;
+                    let indexCounts = null;
+
+                    const attendedIds = (nickData && nickData.ev) ? Object.keys(nickData.ev) : null;
+                    if (attendedIds) {
+                        // Kevyt reitti: haetaan vain vieraan omien miittien logit + koko nicks-indeksi
+                        if (attendedIds.indexOf(eventId) === -1) attendedIds.push(eventId);
+                        const reqs = attendedIds.map(id =>
+                            firebase.database().ref('miitit/' + targetHost + '/logs/' + id).once('value'));
+                        reqs.push(firebase.database().ref('miitit/' + targetHost + '/nicks').once('value').catch(() => null));
+                        const snaps = await Promise.all(reqs);
+                        const nicksSnap = snaps.pop();
+                        const logsObj = {};
+                        snaps.forEach(s => { if (s.exists()) logsObj[s.key] = s.val(); });
+                        logsSnap = mkObjSnap(logsObj);
+                        if (nicksSnap && nicksSnap.exists()) {
+                            indexCounts = {};
+                            nicksSnap.forEach(c => {
+                                const v = c.val() || {};
+                                if (typeof v.n === 'number') indexCounts[mkNickDecode(c.key)] = v.n;
+                            });
+                        }
+                    } else {
+                        // Fallback: kävijäindeksiä ei ole -> vanha täyshaku
+                        logsSnap = await firebase.database().ref('miitit/' + targetHost + '/logs').once('value');
+                    }
+                    const eventsSnap = await eventsPromise;
+
+                    // "Ennen"-laskenta: vähennetään juuri kirjattu käynti indeksimäärästä
+                    const prevIndexCounts = indexCounts ? Object.assign({}, indexCounts) : null;
+                    if (prevIndexCounts && newLogKey && prevIndexCounts[nickNorm] != null) {
+                        prevIndexCounts[nickNorm] = Math.max(0, prevIndexCounts[nickNorm] - 1);
+                    }
+
                     const prevSnap = newLogKey ? mkFilterLogSnap(logsSnap, eventId, newLogKey) : logsSnap;
-                    const prevResult = await computeVisitorStats(targetHost, eventId, nick, null, { eventsSnap, logsSnap: prevSnap });
+                    const prevResult = await computeVisitorStats(targetHost, eventId, nick, null, { eventsSnap, logsSnap: prevSnap, indexCounts: prevIndexCounts });
                     const prevBadgeKeys = new Set((prevResult.stats.badges || []).map(b => b.key));
                     const prevTitle = prevResult.stats.title || '';
-                    const after = await computeVisitorStats(targetHost, eventId, nick, null, { eventsSnap, logsSnap });
+                    const after = await computeVisitorStats(targetHost, eventId, nick, null, { eventsSnap, logsSnap, indexCounts });
                     after.stats.newBadges = (after.stats.badges || []).filter(b => !prevBadgeKeys.has(b.key));
                     after.stats.rankUp = !!(prevTitle && after.stats.title && prevTitle !== after.stats.title);
                     after.stats.justSigned = { nick, from: fromValue, message: messageValue };
@@ -1671,7 +1730,9 @@ async function computeVisitorStats(targetHost, eventId, nick, virtualLog, preloa
 
         const eventAttendees = {};
         const eventFirstSigner = {}; // eventKey -> { nick, ts } (aikaisin kirjautuja)
-        const visitCountByNick = {};
+        // Rankkausluvut: nicks-indeksistä jos saatavilla — indeksissä olevia ei lasketa logeista uudelleen
+        const indexCounts = (preloaded && preloaded.indexCounts) || null;
+        const visitCountByNick = indexCounts ? Object.assign({}, indexCounts) : {};
         const fromCounts = {};
         let messageCount = 0;
         const userLogTimeBuckets = new Set();
@@ -1735,7 +1796,9 @@ async function computeVisitorStats(targetHost, eventId, nick, virtualLog, preloa
                 if (attendees.size > 0) {
                     eventAttendees[eventKey] = attendees;
                     attendees.forEach(n => {
-                        visitCountByNick[n] = (visitCountByNick[n] || 0) + 1;
+                        if (!indexCounts || indexCounts[n] == null) {
+                            visitCountByNick[n] = (visitCountByNick[n] || 0) + 1;
+                        }
                     });
                 }
                 if (attended) userHistory.push(evtData);

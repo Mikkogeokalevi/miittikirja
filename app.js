@@ -3,16 +3,16 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.78.2";
+const APP_VERSION = "7.79.0";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyCZIupycr2puYrPK2KajAW7PcThW9Pjhb0",
-    authDomain: "perhekalenteri-projekti.firebaseapp.com",
-    databaseURL: "https://perhekalenteri-projekti-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "perhekalenteri-projekti",
-    storageBucket: "perhekalenteri-projekti.appspot.com",
-    messagingSenderId: "588536838615",
-    appId: "1:588536838615:web:148de0581bbd46c42c7392"
+    apiKey: "AIzaSyAruAMMM_dl7EgGqw2WLK6dwqLZNhxK_yU",
+    authDomain: "miittikirja.firebaseapp.com",
+    databaseURL: "https://miittikirja-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "miittikirja",
+    storageBucket: "miittikirja.firebasestorage.app",
+    messagingSenderId: "302019719171",
+    appId: "1:302019719171:web:1ea22605179fd53b8b5e36"
 };
 
 function parseEventDate(dateStr) {
@@ -288,7 +288,7 @@ let nicknameTotalVisitIndexUid = null;
 let lastAttendeeCount = null;
 
 // OLETUS HOST_UID (Varmuuskopio)
-const HOST_UID = "T8wI16Gf67W4G4yX3Cq7U0U1H6I2"; 
+const HOST_UID = "nKymM7y5u5PVftNfR5R9aoJlJ8J3"; 
 
 // Käyttöliittymän elementit
 const loginView = document.getElementById('login-view');
@@ -1373,7 +1373,10 @@ function loadEvents() {
 // ==========================================
 
 window.openGuestbook = function(eventKey) {
-    if(currentEventId) db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
+    if(currentEventId) {
+        db.ref('miitit/' + currentUser.uid + '/logs/' + currentEventId).off();
+        db.ref('miitit/' + currentUser.uid + '/photos/' + currentEventId).off();
+    }
     currentEventId = eventKey;
     window.currentEventId = eventKey;
     
@@ -1476,7 +1479,20 @@ window.openGuestbook = function(eventKey) {
         }
         const phEl = document.getElementById('gb-wall-photos');
         if (phEl && document.activeElement !== phEl) phEl.value = evt.wallPhotoUrls || '';
-        renderGbPhotoThumbs(evt);
+
+        // Laiska siirto: vanhat wallPhotos events-solmusta -> photos/{eventId}
+        // (kuvat eivät kuormita enää jokaista events-hakua)
+        if (evt.wallPhotos) {
+            const oldArr = gbPhotoArray(evt);
+            if (oldArr.length) {
+                const pRef = db.ref('miitit/' + currentUser.uid + '/photos/' + eventKey);
+                pRef.once('value').then(ps => {
+                    const merged = gbPhotoArrayRaw(ps.val());
+                    oldArr.forEach(p => { if (!merged.some(x => x.src === p.src)) merged.push(p); });
+                    return pRef.set(merged.slice(0, 6));
+                }).then(() => db.ref('miitit/' + currentUser.uid + '/events/' + eventKey + '/wallPhotos').remove());
+            }
+        }
 
         // Seinän lappukategoriat (oletus: kaikki näkyvissä)
         const cats = evt.wallCats || {};
@@ -1491,6 +1507,11 @@ window.openGuestbook = function(eventKey) {
 
         // Aktivoi nimiehdotukset admin-kirjaukseen
         if(currentUser) setupAutocomplete('log-nickname', 'log-autocomplete', currentUser.uid);
+    });
+
+    // Kuvat omasta photos-solmusta (ei kuormita events-solmua) — päivittyy livenä
+    db.ref('miitit/' + currentUser.uid + '/photos/' + eventKey).on('value', psnap => {
+        renderGbPhotoThumbs(psnap.val());
     });
 
     if(adminView) adminView.style.display = 'none'; 
@@ -1914,18 +1935,21 @@ if (btnGbArchive) {
 
 // --- Seinän kuvalaput: URL-linkit + laitteelta ladatut (pakataan pieneksi) ---
 // Firebase voi palauttaa taulukon objektina — normalisoidaan aina
-function gbPhotoArray(evt) {
-    const raw = evt && evt.wallPhotos;
+function gbPhotoArrayRaw(raw) {
     const arr = Array.isArray(raw) ? raw
         : (raw && typeof raw === 'object' ? Object.keys(raw).sort().map(k => raw[k]) : []);
     return arr.map(p => (typeof p === 'string') ? { src: p, cap: '' } : (p || { src: '', cap: '' }))
         .filter(p => typeof p.src === 'string' && p.src.length > 10);
 }
+// Legacy-yhteensopivuus: lukee vanhan wallPhotos-kentän eventistä
+function gbPhotoArray(evt) {
+    return gbPhotoArrayRaw(evt && evt.wallPhotos);
+}
 
-function renderGbPhotoThumbs(evt) {
+function renderGbPhotoThumbs(raw) {
     const box = document.getElementById('gb-wall-photos-list');
     if (!box) return;
-    const photos = gbPhotoArray(evt);
+    const photos = gbPhotoArrayRaw(raw);
     box.innerHTML = '';
     photos.forEach((p, i) => {
         const w = document.createElement('div');
@@ -1954,25 +1978,25 @@ function renderGbPhotoThumbs(evt) {
 
 window.removeGbPhoto = function(i) {
     if (!currentUser || !currentEventId) return;
-    const ref = db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId);
+    const ref = db.ref('miitit/' + currentUser.uid + '/photos/' + currentEventId);
     ref.once('value').then(s => {
-        const arr = gbPhotoArray(s.val() || {});
+        const arr = gbPhotoArrayRaw(s.val());
         arr.splice(i, 1);
-        return ref.update({ wallPhotos: arr });
+        return ref.set(arr);
     });
 };
 
 // Pikkukuvan napautus -> kuvatekstin muokkaus
 window.editGbPhotoCap = function(i) {
     if (!currentUser || !currentEventId) return;
-    const ref = db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId);
+    const ref = db.ref('miitit/' + currentUser.uid + '/photos/' + currentEventId);
     ref.once('value').then(s => {
-        const arr = gbPhotoArray(s.val() || {});
+        const arr = gbPhotoArrayRaw(s.val());
         if (!arr[i]) return;
         const cap = prompt('Kuvateksti (näkyy kuvan alla — voi jättää tyhjäksi):', arr[i].cap || '');
         if (cap === null) return;
         arr[i].cap = cap.trim();
-        return ref.update({ wallPhotos: arr });
+        return ref.set(arr);
     });
 };
 
@@ -2081,10 +2105,10 @@ if (btnAddWallPhoto && gbPhotoFile) {
                 } catch (e2) { failed++; }
             }
             if (!items.length) { showToast(failed ? 'Kuvan purku/pakkaus epäonnistui' : 'Ei lisättäviä kuvia', 'error'); return; }
-            const ref = db.ref('miitit/' + currentUser.uid + '/events/' + currentEventId);
+            const ref = db.ref('miitit/' + currentUser.uid + '/photos/' + currentEventId);
             const snap = await ref.once('value');
-            const merged = gbPhotoArray(snap.val() || {}).concat(items).slice(0, 6);
-            await ref.update({ wallPhotos: merged });
+            const merged = gbPhotoArrayRaw(snap.val()).concat(items).slice(0, 6);
+            await ref.set(merged);
             showToast('📷 ' + items.length + ' kuvaa lisätty seinälle!' + (failed ? ' (' + failed + ' epäonnistui)' : ''));
         } catch (e) {
             showToast('Kuvan lisäys epäonnistui', 'error');

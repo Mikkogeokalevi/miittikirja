@@ -1,44 +1,5 @@
 {
-  // ============================================================
-  // Firebase Realtime Database -säännöt (perhekalenteri-projekti)
-  //
-  // SISÄLTÄÄ KAIKEN: muut projektit (tapahtumat, tehtavalista,
-  // ajopaivakirja, users, refuelings, poi) + miittikirja (miitit).
-  //
-  // MIITTIKIRJA-MUUTOS vs vanhat säännöt:
-  //   logs/{logId}/message + messageUpdatedAt saivat oman
-  //   .write-säännön — vieras voi päivittää oman viestinsä
-  //   ("muokkaa viestiä" -toiminto). Muut kentät pysyvät
-  //   vain-luonti-tilassa kuten ennen.
-  // ============================================================
   "rules": {
-    "tapahtumat": {
-      ".read": "auth != null",
-      ".write": "auth != null"
-    },
-    "tehtavalista": {
-      ".read": "auth != null",
-      ".write": "auth != null"
-    },
-    "ajopaivakirja": {
-      "$uid": {
-        ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid",
-        ".indexOn": ["startTime"]
-      }
-    },
-    "users": {
-      "$uid": {
-        ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid"
-      }
-    },
-    "refuelings": {
-      "$uid": {
-        ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid"
-      }
-    },
     "miitit": {
       "$uid": {
         ".write": "$uid === auth.uid",
@@ -50,6 +11,9 @@
           ".read": true,
           ".indexOn": ["date"],
           "$eventId": {}
+        },
+        "photos": {
+          ".read": true
         },
         "logs": {
           ".read": true,
@@ -101,12 +65,6 @@
           ".read": "$uid === auth.uid",
           ".write": "$uid === auth.uid"
         }
-      }
-    },
-    "poi": {
-      "$uid": {
-        ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid"
       }
     }
   }
