@@ -3862,14 +3862,21 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
 .wg-go { background: linear-gradient(135deg, #06d6a0, #2bb673); color: #fff; box-shadow: 0 4px 16px rgba(6,214,160,0.4); }
 .wg-stop { background: rgba(255,80,80,0.18); color: #ff8a8a; border: 1px solid rgba(255,80,80,0.4); }
 
-/* Vieraan peliohjain */
-.vv-game {
+/* Vieraan peliohjain — kiinteä alapalkki kirjautumisnäkymässä */
+body > .vv-game {
     position: fixed; left: 10px; right: 10px; bottom: 10px;
+    z-index: 60;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+}
+/* Tilastomodaalin yläreunassa (vv-game-slot) — virtaa sisällössä */
+#vv-game-slot .vv-game {
+    position: static; margin-bottom: 12px; z-index: 1;
+}
+.vv-game {
     background: linear-gradient(160deg, #1d2540, #141b30);
     border: 1px solid rgba(255,255,255,0.18);
-    border-radius: 18px; padding: 14px; z-index: 60;
+    border-radius: 18px; padding: 14px;
     color: #fff; text-align: center;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
 }
 .vvg-title { font-size: 1.15em; font-weight: 800; }
 .vvg-sub { font-size: 0.85em; opacity: 0.85; margin-top: 5px; }

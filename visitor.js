@@ -3207,6 +3207,18 @@ function vvGameMyRank() {
 function vvGameRender() {
     var el = document.getElementById('vv-game');
     if (!el) return;
+    // Sijoitus: kun tilastomodaali (user-profile-modal) on auki, peliohjain
+    // siirretään modaalin yläreunaan — muuten se on kiinteä alapalkki.
+    var modal = document.getElementById('user-profile-modal');
+    var slot = document.getElementById('vv-game-slot');
+    var modalOpen = modal && modal.style.display === 'block';
+    if (modalOpen && slot && el.parentNode !== slot) {
+        slot.appendChild(el);
+        el.dataset.sig = ''; // pakota uudelleenrakennus uuteen sijaintiin
+    } else if (!modalOpen && el.parentNode !== document.body) {
+        document.body.appendChild(el);
+        el.dataset.sig = '';
+    }
     var m = vvGame.mode;
     if (!m || !vvGame.ev) { el.style.display = 'none'; return; }
     el.style.display = 'block';
