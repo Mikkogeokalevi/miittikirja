@@ -3104,7 +3104,7 @@ var vvGame = {
     modeRef: null, playersRef: null, myRef: null,
     host: null, ev: null, mode: null, players: {},
     myKey: null, myNick: null, myTaps: 0, lastSent: -1, joined: false, myDone: false, myWins: 0,
-    myReact: null, quiz: null, myAns: null,
+    myReact: null, quiz: null, myAns: null, seenSelf: false,
     flushTimer: null, tickTimer: null, fullscreen: false
 };
 var VV_GAME_TARGET = (typeof MK_Config !== 'undefined' && MK_Config.GAME_TARGET_TAPS) || 200;
@@ -3122,6 +3122,15 @@ function vvGameAttach(host, eventId) {
         vvGame.playersRef = firebase.database().ref(base + '/players');
         vvGame.playersRef.on('value', function (s) {
             vvGame.players = s.val() || {};
+            // Isäntä poisti pelaajasolmun (peli lopetettiin tai vaihtui) →
+            // oma liittyminen on vanhentunut, LIITY MUKAAN palaa näkyviin
+            if (vvGame.joined && vvGame.myKey) {
+                if (vvGame.players[vvGame.myKey]) {
+                    vvGame.seenSelf = true;
+                } else if (vvGame.seenSelf) {
+                    vvGameResetJoin();
+                }
+            }
             vvGameRender();
         });
     } catch (e) { /* peliä ei pakoteta — virhe jätetään sivuun */ }
@@ -3139,18 +3148,39 @@ function vvGameDetach() {
     vvGame.host = null; vvGame.ev = null; vvGame.mode = null; vvGame.players = {};
     vvGame.myKey = null; vvGame.myNick = null; vvGame.myTaps = 0; vvGame.lastSent = -1; vvGame.joined = false;
     vvGame.myDone = false; vvGame.myWins = 0; vvGame.myReact = null;
-    vvGame.quiz = null; vvGame.myAns = null;
+    vvGame.quiz = null; vvGame.myAns = null; vvGame.seenSelf = false;
     vvGame.fullscreen = false; vvGame.resumeNick = null;
     var el = document.getElementById('vv-game');
     if (el) el.style.display = 'none';
 }
 
+// Oman liittymisen nollaus — peli vaihtui tai pelaajanote poistui kannasta.
+// Kutsuttaessa pelaaja palaa "LIITY MUKAAN" -tilaan.
+function vvGameResetJoin() {
+    if (vvGame.myRef) {
+        try { vvGame.myRef.onDisconnect().cancel(); vvGame.myRef.remove(); } catch (e) {}
+        vvGame.myRef = null;
+    }
+    vvGame.joined = false;
+    vvGame.seenSelf = false;
+    vvGame.myTaps = 0;
+    vvGame.myReact = null;
+    vvGame.myAns = null;
+    vvGame.myDone = false;
+    vvGame.lastSent = -1;
+    var el = document.getElementById('vv-game');
+    if (el) el.dataset.sig = '';
+}
+
 function vvGameOnMode(m) {
     var prevSt = vvGame.mode ? vvGame.mode.st : null;
     var prevQ = vvGame.mode ? vvGame.mode.q : null;
+    var prevG = vvGame.mode ? vvGame.mode.g : null;
     // Reagoidaan vain tunnettuihin pelityyppeihin — muut ohittuvat
     // (mahdollistaa tulevien pelien rinnakkaisuuden samassa game-solmussa)
     vvGame.mode = (m && m.st && m.st !== 'off' && (!m.g || m.g === 'rampyt' || m.g === 'sahkottaja' || m.g === 'quiz')) ? m : null;
+    // Pelityyppi vaihtui → edellisen pelin liittyminen nollautuu
+    if (vvGame.mode && vvGame.joined && prevG && prevG !== vvGame.mode.g) vvGameResetJoin();
     if (vvGame.mode && vvGame.mode.g === 'quiz') {
         if (!vvGame.quiz) vvQuizFetch();
         // uusi kysymys → vastauslukko auki
