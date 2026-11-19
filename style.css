@@ -3848,6 +3848,16 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
 .wg-runner { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 1.45em; transition: left 0.2s ease-out; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4)); }
 .wg-goal { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 1em; opacity: 0.9; }
 .wg-num { width: 52px; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+.wg-lobby { display: flex; gap: 24px; width: 100%; align-items: flex-start; }
+.wg-lobby-col { flex: 1; min-width: 0; }
+.wg-lobby-h { font-size: 1.05em; font-weight: 800; letter-spacing: 0.5px; opacity: 0.85; margin-bottom: 10px; border-bottom: 2px solid rgba(255,215,0,0.35); padding-bottom: 6px; }
+.wg-board-row { font-size: 1.25em; font-weight: 700; padding: 6px 0; display: flex; justify-content: space-between; }
+.wg-board-w { color: #ffd700; }
+.wg-board-empty { opacity: 0.6; font-style: italic; font-size: 0.9em; padding: 10px 0; }
+.wg-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.wg-chip { font-size: 1.2em; font-weight: 700; padding: 8px 14px; border-radius: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); animation: wgChipIn 0.3s ease-out; }
+#wall-view.wall-light .wg-chip { background: rgba(0,0,0,0.07); border-color: rgba(0,0,0,0.1); }
+@keyframes wgChipIn { 0% { transform: scale(0.7); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 .wg-count { font-size: 7em; font-weight: 900; text-align: center; opacity: 0.9; align-self: center; margin: auto; }
 .wg-count-pop { animation: wgPop 0.9s ease-out; }
 @keyframes wgPop { 0% { transform: scale(1.5); } 60% { transform: scale(0.92); } 100% { transform: scale(1); } }
@@ -3926,6 +3936,9 @@ body > .vv-game {
     .wg-name { width: 84px; font-size: 0.85em; }
     .wg-runner { font-size: 1.15em; }
     .wg-num { width: 40px; font-size: 0.9em; }
+    .wg-lobby { flex-direction: column; gap: 12px; }
+    .wg-board-row { font-size: 1.05em; }
+    .wg-chip { font-size: 1.0em; padding: 6px 11px; }
     #wg-title { font-size: 1.1em; }
     .wg-count { font-size: 5em; }
     .wg-btn { font-size: 0.95em; padding: 12px 18px; }

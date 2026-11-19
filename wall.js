@@ -1699,7 +1699,7 @@ function mkWallGameEmoji(key) {
 function wallGameToggle() {
     if (mkWall.game) { wallGameEnd(); return; }
     if (!mkWall.uid || !mkWall.evId || !mkWall.open) return;
-    mkWall.game = { st: 'lobby', round: 1, end: 0, players: {}, wins: {} };
+    mkWall.game = { st: 'lobby', round: 1, end: 0, players: {}, wins: {}, winsNicks: {} };
     mkWall.gameSeenPlayers = {};
     var base = mkWallGameBase();
     mkWall.gameModeRef = firebase.database().ref(base + '/mode');
@@ -1731,7 +1731,10 @@ function wallGameToggle() {
         if (!mkWall.game) return;
         var data = s.val() || {};
         var w = data.wins || {};
-        Object.keys(w).forEach(function (k) { mkWall.game.wins[k] = Number(w[k].w) || 0; });
+        Object.keys(w).forEach(function (k) {
+            mkWall.game.wins[k] = Number(w[k].w) || 0;
+            if (w[k].nick) mkWall.game.winsNicks[k] = String(w[k].nick).slice(0, 20);
+        });
         var lastRound = 0;
         var res = data.results || {};
         Object.keys(res).forEach(function (k) { if (Number(k) > lastRound) lastRound = Number(k); });
@@ -1773,7 +1776,10 @@ function wallGameTick() {
         wallGameRender();
     } else if (g.st === 'run' && (now >= g.end || wallGameHasFinisher())) {
         var top = wallGameTopPlayers(3);
-        top.forEach(function (p) { mkWall.game.wins[p.key] = (mkWall.game.wins[p.key] || 0) + 1; });
+        top.forEach(function (p) {
+            mkWall.game.wins[p.key] = (mkWall.game.wins[p.key] || 0) + 1;
+            mkWall.game.winsNicks[p.key] = p.nick;
+        });
         // Tulos talteen kantaan: kierrospodium + pelaajakohtainen voittolaskuri
         // (wins käytettävissä myös tulevien pelien näkymissä)
         var res = { ts: now, top: {} };
@@ -1864,7 +1870,31 @@ function wallGameRender() {
         if (sub) sub.innerText = list.length
             ? '🎮 ' + list.length + ' pelaajaa mukana — liittyminen auki! Skannaa QR ja paina NAPAUTA.'
             : '🎮 Odottaa pelaajia — skannaa QR, kirjaudu ja paina NAPAUTA!';
-        if (lanes) lanes.innerHTML = '<div class="wg-count" id="wg-count">…</div>';
+        if (lanes) {
+            // Tulostaulukko: top-5 illan voitoista + pelaajalista kilpurikorteilla
+            var board = Object.keys(g.wins).map(function (k) {
+                var p = g.players[k];
+                var nick = (p && p.nick) ? p.nick : (g.winsNicks[k] || k);
+                return { nick: nick, w: g.wins[k] };
+            }).filter(function (x) { return x.w > 0; })
+              .sort(function (a, b) { return b.w - a.w || a.nick.localeCompare(b.nick, 'fi'); })
+              .slice(0, 5);
+            var medals = ['🥇', '🥈', '🥉', '4.', '5.'];
+            var boardHtml = board.length
+                ? board.map(function (b, i) {
+                    return '<div class="wg-board-row">' + medals[i] + ' ' + wallEsc(b.nick) +
+                        ' <span class="wg-board-w">' + b.w + '×</span></div>';
+                }).join('')
+                : '<div class="wg-board-empty">Ei tuloksia vielä — ensimmäinen voittaja pääsee taululle!</div>';
+            var chips = list.map(function (p) {
+                return '<div class="wg-chip">' + mkWallGameEmoji(p.key) + ' ' + wallEsc(p.nick) + '</div>';
+            }).join('');
+            lanes.innerHTML = '<div class="wg-lobby">' +
+                '<div class="wg-lobby-col"><div class="wg-lobby-h">🏆 TULOSTAULUKKO</div>' + boardHtml + '</div>' +
+                '<div class="wg-lobby-col"><div class="wg-lobby-h">👥 PELAAJAT (' + list.length + ')</div>' +
+                    '<div class="wg-chips">' + (chips || '<div class="wg-board-empty">Odottaa liittyjiä…</div>') + '</div></div>' +
+            '</div>';
+        }
         if (btns) btns.innerHTML = '<button class="wg-btn wg-go" onclick="wallGameStart()">▶ KÄYNNISTÄ KIERROS</button>';
     } else if (g.st === 'count') {
         if (sub) sub.innerText = list.length + ' kilpuria lähtöviivalla…';
