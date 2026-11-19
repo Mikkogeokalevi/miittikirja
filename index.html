@@ -636,6 +636,7 @@
                 <div id="wall-head-right">
                     <div id="wall-countdown"></div>
                     <div id="wall-btns">
+                        <button id="wall-game-btn" title="Peli: Rämpytyskisa">🎮</button>
                         <button id="wall-sound" title="Äänimerkki uudesta kirjautujasta">🔇</button>
                         <button id="wall-theme" title="Vaalea / tumma teema">☀️</button>
                         <button id="wall-close" title="Sulje (ESC)">✕</button>
@@ -705,6 +706,13 @@
         <div id="wall-qr-zoom">
             <div id="wall-qr-big" class="wall-qr-box"></div>
             <div class="wall-qr-zoom-hint">napauta sulkeaksesi</div>
+        </div>
+        <div id="wall-game" style="display:none;">
+            <div id="wg-title"></div>
+            <div id="wg-sub"></div>
+            <div id="wg-lanes"></div>
+            <div id="wg-podium"></div>
+            <div id="wg-btns"></div>
         </div>
     </div>
 
@@ -843,6 +851,8 @@
             <button onclick="closeSlotEventsModal()" class="btn btn-red" style="margin-top:15px;">Sulje</button>
         </div>
     </div>
+
+    <div id="vv-game" class="vv-game" style="display:none;" role="status"></div>
 
     <div id="toast-container" aria-live="polite"></div>
 

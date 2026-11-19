@@ -151,6 +151,9 @@ const MK_Config = {
         poop: "💩"
     },
 
+    // Pelit (rämpytyskisa): kierroksen pituus millisekunteina
+    GAME_ROUND_MS: 30000,
+
     // Sovelluksen versio (näytetään kirjautumissivulla)
-    VERSION: "7.79.0"
+    VERSION: "7.80.0"
 };

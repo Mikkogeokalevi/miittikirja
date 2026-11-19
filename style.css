@@ -3820,3 +3820,83 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
     .wt-cats { display: none; }
     .wt-weather { font-size: 0.8em; }
 }
+
+/* ===== PELI: RÄMPYTYSKISA ===== */
+#wall-game {
+    position: absolute;
+    top: 92px; left: 14px; right: 14px; bottom: 130px;
+    display: flex; flex-direction: column; align-items: center;
+    background: rgba(12, 16, 28, 0.92);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 18px;
+    padding: 14px 20px;
+    z-index: 5; /* wall-end (8) ja wall-welcome (15) peittävät pelin tarvittaessa */
+    overflow: hidden;
+    backdrop-filter: blur(6px);
+}
+#wall-view.wall-light #wall-game { background: rgba(255,255,255,0.92); border-color: rgba(0,0,0,0.12); }
+#wg-title { font-size: 1.5em; font-weight: 800; letter-spacing: 0.5px; }
+#wg-sub { font-size: 0.95em; opacity: 0.85; margin: 4px 0 10px; text-align: center; }
+#wg-lanes { flex: 1; width: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+.wg-lane { display: flex; align-items: center; gap: 10px; }
+.wg-runner { font-size: 1.8em; width: 44px; text-align: center; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4)); }
+.wg-name { width: 130px; font-weight: 700; font-size: 1.0em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wg-track { flex: 1; height: 26px; background: rgba(255,255,255,0.08); border-radius: 13px; overflow: hidden; position: relative; }
+#wall-view.wall-light .wg-track { background: rgba(0,0,0,0.08); }
+.wg-bar { height: 100%; width: 0; border-radius: 13px; background: linear-gradient(90deg, #3a86ff, #06d6a0); transition: width 0.2s ease-out; }
+.wg-num { width: 52px; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+.wg-count { font-size: 7em; font-weight: 900; text-align: center; opacity: 0.9; align-self: center; margin: auto; }
+.wg-count-pop { animation: wgPop 0.9s ease-out; }
+@keyframes wgPop { 0% { transform: scale(1.5); } 60% { transform: scale(0.92); } 100% { transform: scale(1); } }
+#wg-podium { width: 100%; }
+.wg-podium-row { display: flex; justify-content: center; align-items: flex-end; gap: 18px; margin: 10px 0; }
+.wg-place { text-align: center; padding: 12px 18px; border-radius: 14px; background: rgba(255,255,255,0.07); min-width: 110px; }
+#wall-view.wall-light .wg-place { background: rgba(0,0,0,0.06); }
+.wg-p0 { transform: scale(1.15); background: rgba(255,215,0,0.16); border: 1px solid rgba(255,215,0,0.45); }
+.wg-medal { font-size: 2.4em; }
+.wg-pname { font-weight: 800; margin: 4px 0 2px; }
+.wg-ptaps { font-size: 0.85em; opacity: 0.8; }
+.wg-champ { text-align: center; margin-top: 8px; font-weight: 700; color: #ffd700; }
+#wg-btns { display: flex; gap: 12px; margin-top: 10px; }
+.wg-btn { font-size: 1.15em; font-weight: 800; padding: 14px 28px; border-radius: 14px; border: none; cursor: pointer; letter-spacing: 0.5px; }
+.wg-go { background: linear-gradient(135deg, #06d6a0, #2bb673); color: #fff; box-shadow: 0 4px 16px rgba(6,214,160,0.4); }
+.wg-stop { background: rgba(255,80,80,0.18); color: #ff8a8a; border: 1px solid rgba(255,80,80,0.4); }
+
+/* Vieraan peliohjain */
+.vv-game {
+    position: fixed; left: 10px; right: 10px; bottom: 10px;
+    background: linear-gradient(160deg, #1d2540, #141b30);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 18px; padding: 14px; z-index: 60;
+    color: #fff; text-align: center;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+}
+.vvg-title { font-size: 1.15em; font-weight: 800; }
+.vvg-sub { font-size: 0.85em; opacity: 0.85; margin-top: 5px; }
+.vvg-count { font-size: 4em; font-weight: 900; }
+.vvg-btn { font-size: 1.1em; font-weight: 800; padding: 14px 26px; border-radius: 14px; border: none; cursor: pointer; margin-top: 10px; }
+.vvg-join { background: linear-gradient(135deg, #3a86ff, #06d6a0); color: #fff; width: 100%; }
+.vvg-hud { display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 1.05em; padding: 0 6px; margin-bottom: 8px; }
+.vvg-rank { color: #ffd700; }
+.vvg-tap {
+    display: block; width: 100%; padding: 34px 0;
+    font-size: 1.9em; font-weight: 900; letter-spacing: 1px;
+    color: #fff; border: none; border-radius: 16px; cursor: pointer;
+    background: linear-gradient(135deg, #ef476f, #d90429);
+    box-shadow: 0 5px 0 #a00320, 0 8px 20px rgba(217,4,41,0.45);
+    touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.vvg-tap:active { transform: translateY(4px); box-shadow: 0 1px 0 #a00320; }
+.vvg-tap-pop { animation: vvgPop 0.12s ease-out; }
+@keyframes vvgPop { 0% { transform: scale(0.97); } 100% { transform: scale(1); } }
+.vvg-podium { margin: 8px 0; }
+.vvg-prow { padding: 4px 0; font-weight: 700; font-size: 0.95em; }
+@media (max-width: 560px) {
+    #wall-game { top: 76px; bottom: 96px; left: 8px; right: 8px; padding: 10px; }
+    .wg-name { width: 84px; font-size: 0.85em; }
+    .wg-runner { font-size: 1.4em; width: 34px; }
+    .wg-num { width: 40px; font-size: 0.9em; }
+    #wg-title { font-size: 1.1em; }
+    .wg-count { font-size: 5em; }
+    .wg-btn { font-size: 0.95em; padding: 12px 18px; }
+}

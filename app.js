@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.79.0";
+const APP_VERSION = "7.80.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAruAMMM_dl7EgGqw2WLK6dwqLZNhxK_yU",
@@ -478,6 +478,11 @@ async function openVisitorGuestbook(uid, eventId) {
         // Palaavan kävijän esitäyttö (1-tap-kirjaus) — ei vanhentuneelle miitille
         if (!expired && typeof window.autoFillVisitorProfile === 'function') {
             window.autoFillVisitorProfile();
+        }
+
+        // Peliohjain: rämpytyskisa ilmestyy automaattisesti kun isäntä avaa kisan
+        if (!expired && typeof window.vvGameAttach === 'function') {
+            window.vvGameAttach(uid, eventId);
         }
 
         if (evt.date) {

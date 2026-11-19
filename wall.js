@@ -16,6 +16,13 @@ var mkWall = {
     photosRef: null,
     photos: null,
     reactions: null,
+    uid: null,
+    evId: null,
+    game: null,
+    gameModeRef: null,
+    gamePlayersRef: null,
+    gameTimer: null,
+    gameSeenPlayers: null,
     seriesEvents: [],
     vuoro: 0,
     lastTotal: null,
@@ -688,6 +695,8 @@ function openWall() {
 
     closeWall(); // nollaa mahdollinen edellinen tila
     mkWall.open = true;
+    mkWall.uid = uid;
+    mkWall.evId = evId;
 
     var view = document.getElementById('wall-view');
     if (!view) return;
@@ -1510,6 +1519,13 @@ function closeWall() {
     if (mkWall.photosRef) { try { mkWall.photosRef.off(); } catch (e) {} mkWall.photosRef = null; }
     mkWall.photos = null;
     mkWall.reactions = null;
+    if (mkWall.gameModeRef) { try { mkWall.gameModeRef.off(); } catch (e) {} mkWall.gameModeRef = null; }
+    if (mkWall.gamePlayersRef) { try { mkWall.gamePlayersRef.off(); } catch (e) {} mkWall.gamePlayersRef = null; }
+    if (mkWall.gameTimer) { clearInterval(mkWall.gameTimer); mkWall.gameTimer = null; }
+    mkWall.game = null;
+    mkWall.gameSeenPlayers = null;
+    var wg = document.getElementById('wall-game');
+    if (wg) wg.style.display = 'none';
     var rr = document.getElementById('wall-reacts');
     if (rr) { rr.innerHTML = ''; rr.style.display = 'none'; }
     var rfx = document.getElementById('wall-react-fx');
@@ -1635,6 +1651,8 @@ if (wallEndCloseBtn) wallEndCloseBtn.onclick = function () {
     mkWall.endDismissed = true;
     updateWallEnd();
 };
+var wallGameBtn = document.getElementById('wall-game-btn');
+if (wallGameBtn) wallGameBtn.onclick = wallGameToggle;
 var wallCloseBtn = document.getElementById('wall-close');
 if (wallCloseBtn) wallCloseBtn.onclick = closeWall;
 document.addEventListener('keydown', function (e) {
@@ -1653,3 +1671,217 @@ if (wallQrWrap) {
         }
     };
 }
+
+// ===== PELI: RÄMPYTYSKISA =====
+// Seinä on ainoa tilan hallitsija: kirjoittaa mode-tilaa (lobby -> count -> run -> podium)
+// ja kuuntelee players-solmua. Vieraat kirjoittavat vain omaa pelaajanotaansa.
+var MK_GAME_EMOJIS = ['🐌','🐢','🦔','🐇','🐎','🦆','🐸','🦀','🐝','🐙','🚗','🏎️','🐓','🦎','🐜','🦞'];
+var MK_GAME_ROUND_MS = (typeof MK_Config !== 'undefined' && MK_Config.GAME_ROUND_MS) || 30000;
+var MK_GAME_COUNT_MS = 3000;
+
+function mkWallGameBase() {
+    return 'miitit/' + mkWall.uid + '/game/' + mkWall.evId;
+}
+
+function mkWallGameSetMode(patch) {
+    if (!mkWall.uid || !mkWall.evId) return;
+    firebase.database().ref(mkWallGameBase() + '/mode').update(patch).catch(function () {});
+}
+
+function mkWallGameEmoji(key, idx) {
+    return MK_GAME_EMOJIS[idx % MK_GAME_EMOJIS.length];
+}
+
+function wallGameToggle() {
+    if (mkWall.game) { wallGameEnd(); return; }
+    if (!mkWall.uid || !mkWall.evId || !mkWall.open) return;
+    mkWall.game = { st: 'lobby', round: 1, end: 0, players: {}, wins: {} };
+    mkWall.gameSeenPlayers = {};
+    var base = mkWallGameBase();
+    mkWall.gameModeRef = firebase.database().ref(base + '/mode');
+    mkWall.gameModeRef.on('value', function (s) {
+        var m = s.val();
+        if (!mkWall.game) return;
+        if (m && m.st) {
+            mkWall.game.st = m.st;
+            mkWall.game.end = m.end || 0;
+            mkWall.game.round = m.round || mkWall.game.round;
+        }
+        wallGameRender();
+    });
+    mkWall.gamePlayersRef = firebase.database().ref(base + '/players');
+    mkWall.gamePlayersRef.on('value', function (s) {
+        if (!mkWall.game) return;
+        var players = s.val() || {};
+        var seen = mkWall.gameSeenPlayers || {};
+        var fresh = false;
+        Object.keys(players).forEach(function (k) { if (!seen[k]) { seen[k] = true; fresh = true; } });
+        mkWall.gameSeenPlayers = seen;
+        mkWall.game.players = players;
+        if (fresh && mkWall.soundOn) mkWallPlayDing();
+        wallGameRender();
+    });
+    mkWallGameSetMode({ g: 'rampyt', st: 'lobby', round: 1 });
+    mkWall.gameTimer = setInterval(wallGameTick, 250);
+    var btn = document.getElementById('wall-game-btn');
+    if (btn) { btn.innerText = '🏁'; btn.title = 'Peli käynnissä — paina lopettaaksesi'; }
+    wallGameRender();
+}
+
+function wallGameEnd() {
+    mkWallGameSetMode({ st: 'off' });
+    if (mkWall.gameModeRef) { try { mkWall.gameModeRef.off(); } catch (e) {} mkWall.gameModeRef = null; }
+    if (mkWall.gamePlayersRef) { try { mkWall.gamePlayersRef.off(); } catch (e) {} mkWall.gamePlayersRef = null; }
+    if (mkWall.gameTimer) { clearInterval(mkWall.gameTimer); mkWall.gameTimer = null; }
+    mkWall.game = null;
+    mkWall.gameSeenPlayers = null;
+    var wg = document.getElementById('wall-game');
+    if (wg) wg.style.display = 'none';
+    var btn = document.getElementById('wall-game-btn');
+    if (btn) { btn.innerText = '🎮'; btn.title = 'Peli: Rämpytyskisa'; }
+    // siivotaan pelaajat pois pelin päätyttyä (kertaluontoinen operaatio)
+    try { firebase.database().ref(mkWallGameBase() + '/players').remove().catch(function () {}); } catch (e) {}
+}
+
+// Aikapohjainen tilakone — ainoastaan seinä kirjoittaa mode-tilaa
+function wallGameTick() {
+    var g = mkWall.game;
+    if (!g || !mkWall.open) return;
+    var now = Date.now();
+    if (g.st === 'count' && now >= g.end) {
+        mkWallGameSetMode({ st: 'run', end: now + MK_GAME_ROUND_MS });
+        g.st = 'run'; g.end = now + MK_GAME_ROUND_MS;
+        wallGameRender();
+    } else if (g.st === 'run' && now >= g.end) {
+        var top = wallGameTopPlayers(3);
+        top.forEach(function (p) { mkWall.game.wins[p.key] = (mkWall.game.wins[p.key] || 0) + 1; });
+        mkWallGameSetMode({ st: 'podium' });
+        g.st = 'podium';
+        wallGameRender();
+    } else if (g.st === 'run') {
+        wallGameUpdateLanes(); // kevyt päivitys — ei DOM-uudelleenrakentoa
+    } else if (g.st === 'count') {
+        var el = document.getElementById('wg-count');
+        if (el) {
+            var n = Math.max(1, Math.ceil((g.end - now) / 1000));
+            if (el.dataset.n !== String(n)) { el.dataset.n = String(n); el.innerText = n; el.classList.remove('wg-count-pop'); void el.offsetWidth; el.classList.add('wg-count-pop'); }
+        }
+    }
+}
+
+function wallGameSortedPlayers() {
+    var g = mkWall.game;
+    if (!g) return [];
+    return Object.keys(g.players).map(function (k, i) {
+        var p = g.players[k] || {};
+        return { key: k, nick: String(p.nick || '?').slice(0, 20), taps: Number(p.taps) || 0, idx: i };
+    }).sort(function (a, b) { return b.taps - a.taps || a.nick.localeCompare(b.nick, 'fi'); });
+}
+
+function wallGameTopPlayers(n) { return wallGameSortedPlayers().slice(0, n); }
+
+function wallGameUpdateLanes() {
+    var g = mkWall.game;
+    if (!g) return;
+    var list = wallGameSortedPlayers();
+    var max = Math.max(1, list.length ? list[0].taps : 1);
+    list.forEach(function (p) {
+        var bar = document.getElementById('wg-bar-' + p.key);
+        if (bar) bar.style.width = Math.round((p.taps / max) * 100) + '%';
+        var cnt = document.getElementById('wg-n-' + p.key);
+        if (cnt) cnt.innerText = p.taps;
+    });
+}
+
+function wallGameRender() {
+    var g = mkWall.game;
+    var wg = document.getElementById('wall-game');
+    if (!g || !wg) { if (wg) wg.style.display = 'none'; return; }
+    wg.style.display = 'flex';
+    var title = document.getElementById('wg-title');
+    var sub = document.getElementById('wg-sub');
+    var lanes = document.getElementById('wg-lanes');
+    var podium = document.getElementById('wg-podium');
+    var btns = document.getElementById('wg-btns');
+    var list = wallGameSortedPlayers();
+
+    if (title) title.innerText = '🏁 RÄMPYTYSKISA — kierros ' + g.round;
+    if (podium) podium.innerHTML = '';
+    if (btns) btns.innerHTML = '';
+
+    if (g.st === 'lobby') {
+        if (sub) sub.innerText = list.length
+            ? '🎮 ' + list.length + ' pelaajaa mukana — liittyminen auki! Skannaa QR ja paina NAPAUTA.'
+            : '🎮 Odottaa pelaajia — skannaa QR, kirjaudu ja paina NAPAUTA!';
+        if (lanes) lanes.innerHTML = '<div class="wg-count" id="wg-count">…</div>';
+        if (btns) btns.innerHTML = '<button class="wg-btn wg-go" onclick="wallGameStart()">▶ KÄYNNISTÄ KIERROS</button>';
+    } else if (g.st === 'count') {
+        if (sub) sub.innerText = list.length + ' kilpuria lähtöviivalla…';
+        if (lanes) lanes.innerHTML = '<div class="wg-count" id="wg-count">3</div>';
+        if (btns) btns.innerHTML = '<button class="wg-btn wg-stop" onclick="wallGameEnd()">✕ Keskeytä</button>';
+    } else if (g.st === 'run') {
+        var left = Math.max(0, Math.ceil((g.end - Date.now()) / 1000));
+        if (sub) sub.innerText = '⏱ ' + left + ' s — RÄMPYTÄ!';
+        if (lanes) {
+            var max = Math.max(1, list.length ? list[0].taps : 1);
+            lanes.innerHTML = list.map(function (p, i) {
+                return '<div class="wg-lane">' +
+                    '<div class="wg-runner">' + mkWallGameEmoji(p.key, i) + '</div>' +
+                    '<div class="wg-name">' + (i === 0 ? '👑 ' : '') + wallEsc(p.nick) + '</div>' +
+                    '<div class="wg-track"><div class="wg-bar" id="wg-bar-' + p.key + '" style="width:' + Math.round((p.taps / max) * 100) + '%"></div></div>' +
+                    '<div class="wg-num" id="wg-n-' + p.key + '">' + p.taps + '</div>' +
+                '</div>';
+            }).join('');
+        }
+        if (btns) btns.innerHTML = '<button class="wg-btn wg-stop" onclick="wallGameEnd()">✕ Keskeytä</button>';
+    } else if (g.st === 'podium') {
+        var top = wallGameTopPlayers(3);
+        var medals = ['🥇', '🥈', '🥉'];
+        if (sub) sub.innerText = 'Kierros ' + g.round + ' ohi!';
+        if (lanes) lanes.innerHTML = '';
+        if (podium) {
+            var html = '<div class="wg-podium-row">' + top.map(function (p, i) {
+                return '<div class="wg-place wg-p' + i + '"><div class="wg-medal">' + medals[i] + '</div>' +
+                    '<div class="wg-pname">' + mkWallGameEmoji(p.key, p.idx) + ' ' + wallEsc(p.nick) + '</div>' +
+                    '<div class="wg-ptaps">' + p.taps + ' napautusta</div></div>';
+            }).join('') + '</div>';
+            var champs = Object.keys(g.wins).filter(function (k) { return g.wins[k] >= 2; });
+            if (champs.length) {
+                html += '<div class="wg-champ">👑 Illan mestari: ' + champs.map(function (k) {
+                    var p = g.players[k];
+                    return wallEsc(p && p.nick ? p.nick : k) + ' (' + g.wins[k] + '×)';
+                }).join(', ') + '</div>';
+            }
+            podium.innerHTML = html;
+        }
+        if (btns) btns.innerHTML =
+            '<button class="wg-btn wg-go" onclick="wallGameNextRound()">🔁 SEURAAVA KIERROS</button>' +
+            '<button class="wg-btn wg-stop" onclick="wallGameEnd()">✕ LOPETA PELI</button>';
+    }
+}
+
+function wallGameStart() {
+    var g = mkWall.game;
+    if (!g) return;
+    mkWallGameSetMode({ st: 'count', end: Date.now() + MK_GAME_COUNT_MS });
+}
+
+function wallGameNextRound() {
+    var g = mkWall.game;
+    if (!g) return;
+    // nollataan kaikkien pelaajien laskurit ennen uutta kierrosta
+    var base = mkWallGameBase() + '/players';
+    var updates = {};
+    Object.keys(g.players).forEach(function (k) { updates[k + '/taps'] = 0; });
+    if (Object.keys(updates).length) {
+        firebase.database().ref(base).update(updates).catch(function () {});
+    }
+    mkWallGameSetMode({ st: 'count', end: Date.now() + MK_GAME_COUNT_MS, round: g.round + 1 });
+}
+
+function wallEsc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+}
+

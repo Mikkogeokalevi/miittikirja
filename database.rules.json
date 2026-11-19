@@ -64,6 +64,20 @@
         "externalEvents": {
           ".read": "$uid === auth.uid",
           ".write": "$uid === auth.uid"
+        },
+        "game": {
+          ".read": true,
+          "$eventId": {
+            "players": {
+              "$pk": {
+                ".write": true,
+                "nick": { ".validate": "newData.isString() && newData.val().length <= 40" },
+                "taps": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
+                "joined": { ".validate": "newData.isNumber()" },
+                "$other": { ".validate": false }
+              }
+            }
+          }
         }
       }
     }
