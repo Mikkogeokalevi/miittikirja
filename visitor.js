@@ -1517,6 +1517,13 @@ window.handleVisitorSign = async function() {
 
         if (alreadyLogged) {
             setLoading(false);
+            // Peli käynnissä: paluuskannaus avaa pelkän pelinäkymän suoraan —
+            // vieras liitetään peliin automaattisesti tunnetulla nimimerkillä
+            if (vvGame.mode) {
+                vvGameAutoJoin(nick);
+                vvGameFullscreen(true);
+                return;
+            }
             setError(t.alertDup.replace('{0}', nick));
             setStatus('');
             markFieldError('vv-nickname');
@@ -3092,7 +3099,7 @@ var vvGame = {
     modeRef: null, playersRef: null, myRef: null,
     host: null, ev: null, mode: null, players: {},
     myKey: null, myTaps: 0, lastSent: -1, joined: false,
-    flushTimer: null, tickTimer: null
+    flushTimer: null, tickTimer: null, fullscreen: false
 };
 
 function vvGameAttach(host, eventId) {
@@ -3151,6 +3158,29 @@ function vvGameMyNick() {
         try { nick = (getSavedVisitorProfile().nickname || '').trim(); } catch (e) {}
     }
     return nick;
+}
+
+// Automaattinen liittyminen tunnetulla nimimerkillä — kutsutaan kun vieras
+// palaa QR:lla eikä tarvitse erikseen painaa LIITY MUKAAN -nappia.
+function vvGameAutoJoin(nick) {
+    if (!vvGame.mode || !vvGame.ev || vvGame.joined || !nick) return;
+    vvGame.myKey = mkNickKey(normalizeNickname(nick));
+    var ref = firebase.database().ref('miitit/' + vvGame.host + '/game/' + vvGame.ev + '/players/' + vvGame.myKey);
+    vvGame.myRef = ref;
+    vvGame.joined = true;
+    vvGame.myTaps = 0;
+    vvGame.lastSent = -1;
+    ref.set({ nick: nick.slice(0, 40), taps: 0, joined: Date.now() }).catch(function () {});
+    try { ref.onDisconnect().remove(); } catch (e) {}
+    vvGameStartFlush();
+}
+
+// Kokonäytön pelitila päälle/pois (paluuskannaus tai liittyminen)
+function vvGameFullscreen(on) {
+    vvGame.fullscreen = !!on;
+    var el = document.getElementById('vv-game');
+    if (el) el.dataset.sig = ''; // pakota uudelleenrakennus
+    vvGameRender();
 }
 
 function vvGameJoin() {
@@ -3222,6 +3252,8 @@ function vvGameRender() {
     var m = vvGame.mode;
     if (!m || !vvGame.ev) { el.style.display = 'none'; return; }
     el.style.display = 'block';
+    // Kokonäytön pelitila vain body-tasolla (modaalin sisällä virtaa normaalisti)
+    el.classList.toggle('vvg-full', !!(vvGame.fullscreen && el.parentNode === document.body));
     // Sig-vartija: layout rakennetaan vain kun tila/kierros/liittyminen muuttuu —
     // napit eivät saa kadota sormen alta 500ms tickin takia
     var count = Object.keys(vvGame.players).length;
@@ -3270,6 +3302,10 @@ function vvGameRender() {
                 ? '<div class="vvg-sub">Sinun sijoituksesi: ' + vvGameMyRank() + ' — ' + vvGame.myTaps + ' napautusta</div><div class="vvg-sub">Seuraava kierros pian…</div>'
                 : '<button class="vvg-btn vvg-join" onclick="vvGameJoin()">🎮 LIITY SEURAAVAAN KIERROKSEEN</button>');
     }
+    // Kokonäytössä pieni sulje-ruksi — paluu normaaliin vierasnäkymään
+    if (vvGame.fullscreen && el.parentNode === document.body && !el.querySelector('.vvg-close')) {
+        el.insertAdjacentHTML('afterbegin', '<div class="vvg-close" onclick="vvGameFullscreen(false)">✕</div>');
+    }
 }
 
 // Kevyt kenttäpäivitys sig-tilan pysyessä — countdown, kello ja sija elävät
@@ -3291,3 +3327,4 @@ function vvGameUpdateFields() {
 window.vvGameAttach = vvGameAttach;
 window.vvGameJoin = vvGameJoin;
 window.vvGameTap = vvGameTap;
+window.vvGameFullscreen = vvGameFullscreen;

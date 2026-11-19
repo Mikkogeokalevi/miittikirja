@@ -3898,6 +3898,22 @@ body > .vv-game {
 @keyframes vvgPop { 0% { transform: scale(0.97); } 100% { transform: scale(1); } }
 .vvg-podium { margin: 8px 0; }
 .vvg-prow { padding: 4px 0; font-weight: 700; font-size: 0.95em; }
+/* Kokonäytön pelitila — paluuskannauksessa peli yksinään keskiössä */
+.vv-game.vvg-full {
+    position: fixed !important;
+    inset: 12px; top: 12px; right: 12px; bottom: 12px; left: 12px;
+    z-index: 90;
+    display: flex !important; flex-direction: column; justify-content: center;
+    font-size: 1.15em;
+}
+.vv-game.vvg-full .vvg-title { font-size: 1.6em; }
+.vv-game.vvg-full .vvg-tap { padding: 56px 0; font-size: 2.6em; border-radius: 22px; }
+.vv-game.vvg-full .vvg-hud { font-size: 1.4em; margin-bottom: 14px; }
+.vv-game.vvg-full .vvg-count { font-size: 6em; }
+.vv-game.vvg-full .vvg-prow { font-size: 1.2em; padding: 8px 0; }
+.vv-game.vvg-full .vvg-btn { font-size: 1.3em; padding: 18px 30px; }
+.vvg-close { position: absolute; top: 12px; right: 16px; font-size: 1.5em; opacity: 0.7; cursor: pointer; z-index: 2; }
+.vv-game:not(.vvg-full) .vvg-close { display: none; }
 @media (max-width: 560px) {
     #wall-game { top: 76px; bottom: 96px; left: 8px; right: 8px; padding: 10px; }
     .wg-name { width: 84px; font-size: 0.85em; }
