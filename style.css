@@ -3853,6 +3853,22 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
 .wgm-chip-sel { border-color: #d4a017; background: #fff6d8; box-shadow: 0 2px 8px rgba(212,160,23,0.3); }
 .wgm-season { font-size: 0.8em; opacity: 0.6; }
 .wgm-open { width: 100%; margin-top: 18px; font-size: 1.1em; }
+.wgm-divider { height: 1px; background: rgba(0,0,0,0.12); margin: 18px 0 14px; }
+/* Sähköttäjä */
+.wgs-lamp { text-align: center; font-size: 3em; font-weight: 800; padding: 14px; border-radius: 18px; margin: 6px auto 14px; max-width: 520px; letter-spacing: 1px; }
+.wgs-wait { background: rgba(200,30,30,0.25); border: 2px solid rgba(200,30,30,0.5); animation: wgsPulse 0.9s ease-in-out infinite; }
+.wgs-fire { background: rgba(30,160,60,0.3); border: 2px solid rgba(30,160,60,0.6); }
+@keyframes wgsPulse { 0%,100% { opacity: 0.75; } 50% { opacity: 1; } }
+.wgs-list { display: flex; flex-direction: column; gap: 6px; max-width: 520px; margin: 0 auto; width: 100%; }
+.wgs-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 14px; border-radius: 10px; background: rgba(255,255,255,0.08); font-size: 1.1em; }
+#wall-view.wall-light .wgs-row { background: rgba(0,0,0,0.06); }
+.wgs-name { font-weight: 700; }
+.wgs-ms { font-variant-numeric: tabular-nums; font-weight: 800; }
+.wgs-fouls { text-align: center; margin-top: 10px; opacity: 0.8; font-size: 0.95em; }
+.vvg-tap-wait { background: linear-gradient(180deg, #8e2020, #6b1414) !important; }
+.vvg-tap-fire { background: linear-gradient(180deg, #2e9e4f, #1d7a38) !important; }
+.vvg-react { font-size: 2.4em; font-weight: 800; text-align: center; margin: 8px 0; }
+.vvg-foul { font-size: 1.6em; font-weight: 800; text-align: center; color: #e53935; margin: 8px 0; }
 #wg-sub { font-size: 0.95em; opacity: 0.85; margin: 4px 0 10px; text-align: center; }
 #wg-clock { font-size: 3.2em; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: #ffd700; text-shadow: 0 3px 14px rgba(255,215,0,0.35); margin-bottom: 8px; }
 #wall-view.wall-light #wg-clock { color: #b8860b; }
