@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.83.1";
+const APP_VERSION = "7.84.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAruAMMM_dl7EgGqw2WLK6dwqLZNhxK_yU",
@@ -1793,6 +1793,142 @@ async function deleteAllGameResults() {
     }
 }
 window.deleteAllGameResults = deleteAllGameResults;
+
+// ===== VISAN KYSYMYSEDITORI =====
+// Kysymykset tallentuvat miittikohtaisesti game/{eventId}/quiz/-polkuun.
+// Järjestäjä voi lisätä/muokata/poistaa tai tuoda valmiin paketin.
+let quizEditKey = null;
+let quizCache = {};
+
+function quizBase() {
+    return 'miitit/' + currentUser.uid + '/game/' + currentEventId + '/quiz';
+}
+
+async function openQuizEditor() {
+    if (!currentUser || !currentEventId) { showToast('Avaa ensin miitti', 'error'); return; }
+    const packSel = document.getElementById('qe-pack');
+    if (packSel && typeof MK_QUIZ_PACKS !== 'undefined' && !packSel.options.length) {
+        Object.keys(MK_QUIZ_PACKS).forEach(k => {
+            const o = document.createElement('option');
+            o.value = k;
+            o.textContent = MK_QUIZ_PACKS[k].name + ' (' + MK_QUIZ_PACKS[k].questions.length + ' kysymystä)';
+            packSel.appendChild(o);
+        });
+    }
+    await renderQuizList();
+    quizEditorNew();
+    document.getElementById('quiz-editor-modal').style.display = 'block';
+}
+window.openQuizEditor = openQuizEditor;
+
+async function renderQuizList() {
+    const listEl = document.getElementById('qe-list');
+    if (!listEl) return;
+    try {
+        const snap = await db.ref(quizBase()).once('value');
+        quizCache = {};
+        const keys = [];
+        snap.forEach(c => { quizCache[c.key] = c.val(); keys.push(c.key); });
+        if (!keys.length) {
+            listEl.innerHTML = '<div style="text-align:center; padding:16px; opacity:0.6;">Ei kysymyksiä vielä — lisää alla tai tuo valmis paketti.</div>';
+            return;
+        }
+        listEl.innerHTML = keys.map((k, i) => {
+            const q = quizCache[k] || {};
+            const correct = (q.a || [])[q.c] || '';
+            return '<div class="qe-item"><div class="qe-item-q"><strong>' + (i + 1) + '.</strong> ' +
+                String(q.q || '').replace(/&/g, '&amp;').replace(/</g, '&lt;') +
+                '<div class="qe-item-a">✓ ' + String(correct).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</div></div>' +
+                '<div class="qe-item-btns"><button class="btn-small" onclick="quizEditorEdit(\'' + k + '\')" title="Muokkaa">✏️</button>' +
+                '<button class="btn-small btn-red" onclick="quizEditorDelete(\'' + k + '\')" title="Poista">🗑</button></div></div>';
+        }).join('');
+    } catch (e) {
+        listEl.innerHTML = '<div style="color:#a33; padding:15px;">Lataus epäonnistui.</div>';
+    }
+}
+
+function quizEditorNew() {
+    quizEditKey = null;
+    ['qe-q', 'qe-a0', 'qe-a1', 'qe-a2'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    const c = document.getElementById('qe-c');
+    if (c) c.value = '0';
+}
+window.quizEditorNew = quizEditorNew;
+
+function quizEditorEdit(key) {
+    const q = quizCache[key];
+    if (!q) return;
+    quizEditKey = key;
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+    set('qe-q', q.q);
+    set('qe-a0', (q.a || [])[0]);
+    set('qe-a1', (q.a || [])[1]);
+    set('qe-a2', (q.a || [])[2]);
+    const c = document.getElementById('qe-c');
+    if (c) c.value = String(q.c || 0);
+    const qel = document.getElementById('qe-q');
+    if (qel) qel.focus();
+}
+window.quizEditorEdit = quizEditorEdit;
+
+async function quizEditorSave() {
+    const q = (document.getElementById('qe-q').value || '').trim();
+    const a = [0, 1, 2].map(i => (document.getElementById('qe-a' + i).value || '').trim());
+    const c = Number(document.getElementById('qe-c').value) || 0;
+    if (!q || a.some(x => !x)) { showToast('Täytä kysymys ja kaikki 3 vaihtoehtoa', 'error'); return; }
+    try {
+        const data = { q: q.slice(0, 200), a: a.map(x => x.slice(0, 60)), c: c };
+        if (quizEditKey) {
+            await db.ref(quizBase() + '/' + quizEditKey).set(data);
+        } else {
+            await db.ref(quizBase()).push(data);
+        }
+        await renderQuizList();
+        quizEditorNew();
+        showToast('Kysymys tallennettu', 'success');
+    } catch (e) {
+        showToast('Tallennus epäonnistui', 'error');
+    }
+}
+window.quizEditorSave = quizEditorSave;
+
+async function quizEditorDelete(key) {
+    const q = quizCache[key];
+    const ok = await customConfirm('Poista kysymys', 'Poistetaanko kysymys "' + String((q && q.q) || '').slice(0, 60) + '"?');
+    if (!ok) return;
+    try {
+        await db.ref(quizBase() + '/' + key).remove();
+        if (quizEditKey === key) quizEditorNew();
+        await renderQuizList();
+    } catch (e) {
+        showToast('Poisto epäonnistui', 'error');
+    }
+}
+window.quizEditorDelete = quizEditorDelete;
+
+async function quizImportPack() {
+    const sel = document.getElementById('qe-pack');
+    const pack = sel && typeof MK_QUIZ_PACKS !== 'undefined' ? MK_QUIZ_PACKS[sel.value] : null;
+    if (!pack) { showToast('Valitse ensin paketti', 'error'); return; }
+    const ok = await customConfirm('Tuo kysymyspaketti', 'Tuodaanko ' + pack.name + ' (' + pack.questions.length + ' kysymystä) tähän miittiin? Olemassa olevat säilyvät.');
+    if (!ok) return;
+    try {
+        const updates = {};
+        pack.questions.forEach(q => {
+            const k = db.ref(quizBase()).push().key;
+            updates[k] = { q: q.q, a: q.a, c: q.c };
+        });
+        await db.ref(quizBase()).update(updates);
+        await renderQuizList();
+        showToast(pack.questions.length + ' kysymystä tuotu!', 'success');
+    } catch (e) {
+        showToast('Tuonti epäonnistui', 'error');
+    }
+}
+window.quizImportPack = quizImportPack;
 
         const countEl = document.getElementById('attendee-count');
         if(countEl) {

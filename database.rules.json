@@ -76,6 +76,10 @@
                 "joined": { ".validate": "newData.isNumber()" },
                 "done": { ".validate": "newData.isNumber()" },
                 "react": { ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 60000" },
+                "ans": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9" },
+                "ats": { ".validate": "newData.isNumber()" },
+                "score": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99999" },
+                "gain": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
                 "$other": { ".validate": false }
               }
             }

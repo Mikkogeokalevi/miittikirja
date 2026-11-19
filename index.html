@@ -578,6 +578,7 @@
 
             <button id="btn-backfill-nicks" class="btn btn-small" style="margin-bottom:10px; width:100%; background:#fff; color:#5a5a8a; border:1px dashed #aaa;" title="Rakentaa nopean kävijäindeksin kaikista logeista — aja kerran">🔧 Päivitä kävijäindeksi (huolto)</button>
             <button id="btn-reset-game" class="btn btn-small" onclick="openGameResultsModal()" style="margin-bottom:10px; width:100%; background:#fff; color:#a33; border:1px dashed #c66;" title="Selaa ja hallitse miitin pelituloksia — poista yksittäisiä kierroksia tai kaikki">🏁 Hallitse pelituloksia</button>
+            <button id="btn-quiz-editor" class="btn btn-small" onclick="openQuizEditor()" style="margin-bottom:10px; width:100%; background:#fff; color:#336; border:1px dashed #66a;" title="Lisää, muokkaa ja poista miitin tietovisan kysymyksiä — tai tuo valmis kysymyspaketti">🧠 Visan kysymykset</button>
             <button id="btn-gb-archive" class="btn btn-small btn-red" style="margin-bottom:10px; width:100%;">📦 Arkistoi miitti</button>
         </div>
 
@@ -844,6 +845,32 @@
             <div style="display:flex; gap:10px; margin-top:15px;">
                 <button onclick="deleteAllGameResults()" class="btn btn-red" style="flex:1;">🗑 Poista kaikki</button>
                 <button onclick="document.getElementById('game-results-modal').style.display='none'" class="btn btn-gray" style="flex:1;">Sulje</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="quiz-editor-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="border-bottom:2px solid var(--primary-color); padding-bottom:10px; margin-bottom:15px;">🧠 Visan kysymykset</h3>
+            <div id="qe-list" class="scroll-box" style="max-height:32vh;"></div>
+            <div class="qe-form">
+                <input id="qe-q" type="text" placeholder="Kysymys…" maxlength="200">
+                <input id="qe-a0" type="text" placeholder="Vaihtoehto A" maxlength="60">
+                <input id="qe-a1" type="text" placeholder="Vaihtoehto B" maxlength="60">
+                <input id="qe-a2" type="text" placeholder="Vaihtoehto C" maxlength="60">
+                <div class="qe-row">
+                    <label for="qe-c">Oikea:</label>
+                    <select id="qe-c"><option value="0">A</option><option value="1">B</option><option value="2">C</option></select>
+                    <button class="btn btn-small btn-green" onclick="quizEditorSave()" style="flex:1;">💾 Tallenna</button>
+                    <button class="btn btn-small btn-gray" onclick="quizEditorNew()">Tyhjennä</button>
+                </div>
+            </div>
+            <div class="qe-row" style="margin-top:10px;">
+                <select id="qe-pack" style="flex:1;"></select>
+                <button class="btn btn-small" onclick="quizImportPack()" style="background:#eef; color:#336; border:1px solid #aac;">📦 Tuo paketti</button>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button onclick="document.getElementById('quiz-editor-modal').style.display='none'" class="btn btn-gray" style="flex:1;">Sulje</button>
             </div>
         </div>
     </div>
