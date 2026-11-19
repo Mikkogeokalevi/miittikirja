@@ -1726,6 +1726,21 @@ function wallGameToggle() {
         wallGameRender();
     });
     mkWallGameSetMode({ g: 'rampyt', st: 'lobby', round: 1 });
+    // Palautetaan aiemmat pelitulokset kannasta — voitot ja kierrosnumero säilyvät reloadin yli
+    firebase.database().ref(base).once('value').then(function (s) {
+        if (!mkWall.game) return;
+        var data = s.val() || {};
+        var w = data.wins || {};
+        Object.keys(w).forEach(function (k) { mkWall.game.wins[k] = Number(w[k].w) || 0; });
+        var lastRound = 0;
+        var res = data.results || {};
+        Object.keys(res).forEach(function (k) { if (Number(k) > lastRound) lastRound = Number(k); });
+        if (lastRound > 0) {
+            mkWall.game.round = lastRound + 1;
+            mkWallGameSetMode({ round: mkWall.game.round });
+        }
+        wallGameRender();
+    }).catch(function () {});
     mkWall.gameTimer = setInterval(wallGameTick, 250);
     var btn = document.getElementById('wall-game-btn');
     if (btn) { btn.innerText = '🏁'; btn.title = 'Peli käynnissä — paina lopettaaksesi'; }
@@ -1759,10 +1774,25 @@ function wallGameTick() {
     } else if (g.st === 'run' && (now >= g.end || wallGameHasFinisher())) {
         var top = wallGameTopPlayers(3);
         top.forEach(function (p) { mkWall.game.wins[p.key] = (mkWall.game.wins[p.key] || 0) + 1; });
+        // Tulos talteen kantaan: kierrospodium + pelaajakohtainen voittolaskuri
+        // (wins käytettävissä myös tulevien pelien näkymissä)
+        var res = { ts: now, top: {} };
+        var winUpdates = {};
+        top.forEach(function (p, i) {
+            res.top[i + 1] = { nick: p.nick, taps: p.taps, done: p.done || null };
+            winUpdates[p.key + '/w'] = (mkWall.game.wins[p.key] || 0);
+            winUpdates[p.key + '/nick'] = p.nick;
+        });
+        firebase.database().ref(mkWallGameBase() + '/results/' + g.round).set(res).catch(function () {});
+        if (Object.keys(winUpdates).length) {
+            firebase.database().ref(mkWallGameBase() + '/wins').update(winUpdates).catch(function () {});
+        }
         mkWallGameSetMode({ st: 'podium' });
         g.st = 'podium';
         wallGameRender();
     } else if (g.st === 'run') {
+        var clk = document.getElementById('wg-clock');
+        if (clk) { clk.style.display = 'block'; clk.innerText = Math.max(0, Math.ceil((g.end - now) / 1000)); }
         wallGameUpdateLanes(); // kevyt päivitys — ei DOM-uudelleenrakentoa
     } else if (g.st === 'count') {
         var el = document.getElementById('wg-count');
@@ -1827,6 +1857,8 @@ function wallGameRender() {
     if (title) title.innerText = '🏁 RÄMPYTYSKISA — kierros ' + g.round;
     if (podium) podium.innerHTML = '';
     if (btns) btns.innerHTML = '';
+    var clk = document.getElementById('wg-clock');
+    if (clk) clk.style.display = g.st === 'run' ? 'block' : 'none';
 
     if (g.st === 'lobby') {
         if (sub) sub.innerText = list.length

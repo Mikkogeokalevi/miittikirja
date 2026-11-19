@@ -3837,6 +3837,8 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
 #wall-view.wall-light #wall-game { background: rgba(255,255,255,0.92); border-color: rgba(0,0,0,0.12); }
 #wg-title { font-size: 1.5em; font-weight: 800; letter-spacing: 0.5px; }
 #wg-sub { font-size: 0.95em; opacity: 0.85; margin: 4px 0 10px; text-align: center; }
+#wg-clock { font-size: 3.2em; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; color: #ffd700; text-shadow: 0 3px 14px rgba(255,215,0,0.35); margin-bottom: 8px; }
+#wall-view.wall-light #wg-clock { color: #b8860b; }
 #wg-lanes { flex: 1; width: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
 .wg-lane { display: flex; align-items: center; gap: 10px; }
 .wg-name { width: 130px; font-weight: 700; font-size: 1.0em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3898,6 +3900,9 @@ body > .vv-game {
 .vvg-tap-pop { animation: vvgPop 0.12s ease-out; }
 @keyframes vvgPop { 0% { transform: scale(0.97); } 100% { transform: scale(1); } }
 .vvg-done { font-size: 2.2em; font-weight: 900; padding: 24px 0; color: #ffd700; text-shadow: 0 3px 12px rgba(255,215,0,0.4); }
+.vvg-wins { margin-top: 6px; font-weight: 700; color: #ffd700; }
+.game-result-row { padding: 5px 0; border-bottom: 1px dashed #ddd; font-size: 0.95em; }
+.game-result-champ { font-weight: 700; color: #b8860b; padding: 6px 0; }
 .vvg-podium { margin: 8px 0; }
 .vvg-prow { padding: 4px 0; font-weight: 700; font-size: 0.95em; }
 /* Kokonäytön pelitila — paluuskannauksessa peli yksinään keskiössä */

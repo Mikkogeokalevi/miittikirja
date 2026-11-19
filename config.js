@@ -156,5 +156,5 @@ const MK_Config = {
     GAME_TARGET_TAPS: 200,
 
     // Sovelluksen versio (näytetään kirjautumissivulla)
-    VERSION: "7.81.0"
+    VERSION: "7.82.0"
 };

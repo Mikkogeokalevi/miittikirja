@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.81.0";
+const APP_VERSION = "7.82.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAruAMMM_dl7EgGqw2WLK6dwqLZNhxK_yU",
@@ -1626,6 +1626,34 @@ if (btnSignLog) {
 function loadAttendees(eventKey) {
     // Tässä käytetään aina kirjautunutta käyttäjää logien lataukseen
     if (!currentUser) return;
+
+    // Pelitulokset: live-kuuntelija — renderöi kierrospodiumit + illan mestarin
+    db.ref('miitit/' + currentUser.uid + '/game/' + eventKey).on('value', (snap) => {
+        const box = document.getElementById('gb-game-results');
+        const listEl = document.getElementById('gb-game-results-list');
+        if (!box || !listEl) return;
+        const data = snap.val() || {};
+        const res = data.results || {};
+        const rounds = Object.keys(res).map(Number).filter(n => n > 0).sort((a, b) => a - b);
+        if (!rounds.length) { box.style.display = 'none'; return; }
+        const medals = ['🥇', '🥈', '🥉'];
+        const rows = rounds.map(r => {
+            const top = res[r].top || {};
+            const line = [1, 2, 3].map(i => {
+                const p = top[i];
+                return p ? medals[i - 1] + ' ' + (p.nick || '?') + ' — ' + (p.taps || 0) : '';
+            }).filter(Boolean).join(' · ');
+            return '<div class="game-result-row"><strong>Kierros ' + r + ':</strong> ' + line + '</div>';
+        }).join('');
+        const wins = data.wins || {};
+        const champs = Object.keys(wins).map(k => ({ nick: wins[k].nick || k, w: Number(wins[k].w) || 0 }))
+            .filter(c => c.w > 0).sort((a, b) => b.w - a.w);
+        const champHtml = champs.length
+            ? '<div class="game-result-champ">👑 Illan mestari: ' + champs.map(c => c.nick + ' (' + c.w + '×)').join(', ') + '</div>'
+            : '';
+        listEl.innerHTML = champHtml + rows;
+        box.style.display = 'block';
+    });
     
     db.ref('miitit/' + currentUser.uid + '/logs/' + eventKey).on('value', (snapshot) => {
         const listEl = document.getElementById('attendee-list'); if(!listEl) return;
@@ -1662,6 +1690,20 @@ function loadAttendees(eventKey) {
             listEl.appendChild(row);
         });
         
+// Nollaa miitin pelitulokset (results + wins + players) — testipelaamisen siivous
+async function resetGameResults() {
+    if (!currentUser || !currentEventId) { showToast('Avaa ensin miitti', 'error'); return; }
+    const ok = await customConfirm('Nollaa pelitulokset?', 'Poistetaan tämän miitin kaikki pelitulokset ja pelaajat. Toimintoa ei voi perua.');
+    if (!ok) return;
+    try {
+        await db.ref('miitit/' + currentUser.uid + '/game/' + currentEventId).remove();
+        showToast('Pelitulokset nollattu 🗑', 'success');
+    } catch (e) {
+        showToast('Nollaus epäonnistui: ' + (e && e.message ? e.message : e), 'error');
+    }
+}
+window.resetGameResults = resetGameResults;
+
         const countEl = document.getElementById('attendee-count');
         if(countEl) {
             const currentCount = logs.length;

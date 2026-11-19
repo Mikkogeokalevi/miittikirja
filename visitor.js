@@ -3103,7 +3103,7 @@ window.closeAndResetVisitorModal = closeAndResetVisitorModal;
 var vvGame = {
     modeRef: null, playersRef: null, myRef: null,
     host: null, ev: null, mode: null, players: {},
-    myKey: null, myTaps: 0, lastSent: -1, joined: false, myDone: false,
+    myKey: null, myTaps: 0, lastSent: -1, joined: false, myDone: false, myWins: 0,
     flushTimer: null, tickTimer: null, fullscreen: false
 };
 var VV_GAME_TARGET = (typeof MK_Config !== 'undefined' && MK_Config.GAME_TARGET_TAPS) || 200;
@@ -3137,6 +3137,7 @@ function vvGameDetach() {
     }
     vvGame.host = null; vvGame.ev = null; vvGame.mode = null; vvGame.players = {};
     vvGame.myKey = null; vvGame.myTaps = 0; vvGame.lastSent = -1; vvGame.joined = false;
+    vvGame.myDone = false; vvGame.myWins = 0;
     vvGame.fullscreen = false; vvGame.resumeNick = null;
     var el = document.getElementById('vv-game');
     if (el) el.style.display = 'none';
@@ -3153,6 +3154,7 @@ function vvGameOnMode(m) {
         if (vvGame.myRef) vvGame.myRef.update({ taps: 0 }).catch(function () {});
         if (!vvGame.flushTimer) vvGameStartFlush();
     }
+    if (vvGame.mode && vvGame.mode.st === 'podium' && vvGame.joined) vvGameFetchWins();
     if (vvGame.mode && !vvGame.tickTimer) {
         vvGame.tickTimer = setInterval(vvGameRender, 500);
     }
@@ -3199,6 +3201,18 @@ function vvGameAutoJoin(nick) {
     ref.set({ nick: nick.slice(0, 40), taps: 0, joined: Date.now() }).catch(function () {});
     try { ref.onDisconnect().remove(); } catch (e) {}
     vvGameStartFlush();
+    vvGameFetchWins();
+}
+
+// Oman voittohistorian haku — "olet voittanut jo X kierrosta" -näyttö
+function vvGameFetchWins() {
+    if (!vvGame.host || !vvGame.ev || !vvGame.myKey) return;
+    firebase.database().ref('miitit/' + vvGame.host + '/game/' + vvGame.ev + '/wins/' + vvGame.myKey)
+        .once('value').then(function (s) {
+            var w = s.val();
+            vvGame.myWins = (w && typeof w.w === 'number') ? w.w : 0;
+            vvGameRender();
+        }).catch(function () {});
 }
 
 // Kokonäytön pelitila päälle/pois (paluuskannaus tai liittyminen)
@@ -3234,6 +3248,7 @@ function vvGameJoin() {
     ref.set({ nick: nick.slice(0, 40), taps: 0, joined: Date.now() }).catch(function () {});
     try { ref.onDisconnect().remove(); } catch (e) {}
     vvGameStartFlush();
+    vvGameFetchWins();
     vvGameRender();
 }
 
@@ -3313,7 +3328,8 @@ function vvGameRender() {
 
     if (m.st === 'lobby') {
         el.innerHTML = vvGame.joined
-            ? '<div class="vvg-title">🏁 RÄMPYTYSKISA</div><div class="vvg-sub">Olet mukana! (' + count + ' pelaajaa) — odotetaan lähtöä…</div>'
+            ? '<div class="vvg-title">🏁 RÄMPYTYSKISA</div><div class="vvg-sub">Olet mukana! (' + count + ' pelaajaa) — odotetaan lähtöä…</div>' +
+                (vvGame.myWins > 0 ? '<div class="vvg-wins">⭐ Sinulla on jo ' + vvGame.myWins + ' voitto' + (vvGame.myWins > 1 ? 'a' : '') + '!</div>' : '')
             : '<div class="vvg-title">🏁 PELI KÄYNNISSÄ!</div><div class="vvg-sub">Rämpytyskisa — eniten napautuksia 30 s aikana voittaa!</div><button class="vvg-btn vvg-join" onclick="vvGameJoin()">🎮 LIITY MUKAAN</button>';
     } else if (m.st === 'count') {
         var n = Math.max(1, Math.ceil(((m.end || 0) - Date.now()) / 1000));
@@ -3349,7 +3365,9 @@ function vvGameRender() {
         }).join('');
         el.innerHTML = '<div class="vvg-title">🏁 TULOKSET</div><div class="vvg-podium">' + rows + '</div>' +
             (vvGame.joined
-                ? '<div class="vvg-sub">Sinun sijoituksesi: ' + vvGameMyRank() + ' — ' + vvGame.myTaps + ' napautusta</div><div class="vvg-sub">Seuraava kierros pian…</div>'
+                ? '<div class="vvg-sub">Sinun sijoituksesi: ' + vvGameMyRank() + ' — ' + vvGame.myTaps + ' napautusta</div>' +
+                    (vvGame.myWins > 0 ? '<div class="vvg-wins">⭐ Voittoja: ' + vvGame.myWins + '</div>' : '') +
+                    '<div class="vvg-sub">Seuraava kierros pian…</div>'
                 : '<button class="vvg-btn vvg-join" onclick="vvGameJoin()">🎮 LIITY SEURAAVAAN KIERROKSEEN</button>');
     }
     // Kokonäytössä pieni sulje-ruksi — paluu normaaliin vierasnäkymään
