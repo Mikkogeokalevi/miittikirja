@@ -23,6 +23,8 @@ var mkWall = {
     gamePlayersRef: null,
     gameTimer: null,
     gameSeenPlayers: null,
+    posterRef: null,
+    gamePoster: null,
     seriesEvents: [],
     vuoro: 0,
     lastTotal: null,
@@ -361,6 +363,7 @@ function mkWallLabel(type) {
     if (type === 'joke') return c.WALL_JOKE_LABEL || 'HÖPÖ HÖPÖ';
     if (type === 'quote') return c.WALL_QUOTE_LABEL || 'KÄTKÖILIJÄN VIISAUS';
     if (type === 'pin') return c.WALL_PIN_LABEL || '📌 ISÄNNÄLTÄ';
+    if (type === 'game') return '🏁 PELITULOKSET';
     return '';
 }
 
@@ -784,6 +787,15 @@ function openWall() {
             buildWallPool(mkWall.logs.slice().sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); }));
         });
 
+        // Pelitulos-lappu: poster-solmusta livenä — pysyvä kuin 📌-lappu
+        mkWall.posterRef = db.ref('miitit/' + uid + '/game/' + evId + '/poster');
+        mkWall.posterRef.on('value', function (snap) {
+            if (!mkWall.open) return;
+            mkWall.gamePoster = snap.val() || null;
+            buildWallPool(mkWall.logs.slice().sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); }));
+            if (mkWall.gamePoster) ensureWallNote('gameposter');
+        });
+
         // Vieraiden kokonaiskäyntimäärät ("N. miitti" karuselliin) — indeksi, fallback täysskannaus
         db.ref('miitit/' + uid + '/nicks').once('value').then(function (snap) {
             if (snap.exists()) {
@@ -1110,6 +1122,10 @@ function buildWallPool(logs) {
     // Polaroid-kuvalaput — kiertävät muiden mukana
     var photos = mkWallPhotos();
     for (var ph = 0; ph < photos.length; ph++) pool.push({ type: 'photo', key: 'photo' + ph, src: photos[ph].src, cap: photos[ph].cap });
+    // Pelitulos-lappu — pysyvä kuin 📌-lappu, poistuu kun tulokset nollataan
+    if (mkWall.gamePoster && mkWall.gamePoster.lines && mkWall.gamePoster.lines.length) {
+        pool.push({ type: 'game', key: 'gameposter', lines: mkWall.gamePoster.lines });
+    }
     mkWall.pool = pool;
     var ok = {};
     pool.forEach(function (p) { ok[p.key] = 1; });
@@ -1169,12 +1185,13 @@ function makeWallNoteEl(it) {
     if (it.type === 'joke') note.className += ' wall-note-joke';
     if (it.type === 'quote') note.className += ' wall-note-quote';
     if (it.type === 'pin') note.className += ' wall-note-pin';
+    if (it.type === 'game') note.className += ' wall-note-game';
     if (it.type === 'photo') note.className += ' wall-note-photo';
     if (it.type === 'empty') note.className += ' wall-note-empty';
     note.setAttribute('data-k', it.key);
     note.style.setProperty('--rot', (Math.round(Math.random() * 12) - 6) + 'deg');
     var palette = ['#fff9a3', '#ffd0dc', '#cde7ff', '#d5f5c0', '#ffe0b3', '#e8d7ff'];
-    var colr = it.type === 'fact' ? '#dcecff' : (it.type === 'joke' ? '#ffe3ef' : (it.type === 'empty' ? '#eeeeee' : (it.type === 'pin' ? '#ffe9a8' : (it.type === 'photo' ? '#ffffff' : (it.type === 'quote' ? '#e6ffdd' : palette[Math.floor(Math.random() * palette.length)])))));
+    var colr = it.type === 'fact' ? '#dcecff' : (it.type === 'joke' ? '#ffe3ef' : (it.type === 'empty' ? '#eeeeee' : (it.type === 'pin' ? '#ffe9a8' : (it.type === 'photo' ? '#ffffff' : (it.type === 'game' ? '#d4f0ff' : (it.type === 'quote' ? '#e6ffdd' : palette[Math.floor(Math.random() * palette.length)]))))));
     note.style.background = 'linear-gradient(180deg, #ffffff88 0%, ' + colr + ' 18%, ' + colr + ' 100%)';
     if (it.type === 'log') {
         var l = it.l;
@@ -1211,6 +1228,17 @@ function makeWallNoteEl(it) {
         ptx.innerText = it.text || ((mkWall.event || {}).wallNote || '').trim();
         note.appendChild(plbl);
         note.appendChild(ptx);
+    } else if (it.type === 'game') {
+        var glbl = document.createElement('div');
+        glbl.className = 'wall-note-label';
+        glbl.innerText = mkWallLabel('game');
+        note.appendChild(glbl);
+        (it.lines || []).forEach(function (line) {
+            var gl = document.createElement('div');
+            gl.className = 'wall-note-fact-text wall-note-game-line';
+            gl.innerText = line;
+            note.appendChild(gl);
+        });
     } else if (it.type === 'photo') {
         var im = document.createElement('img');
         im.className = 'wall-note-img';
@@ -1277,7 +1305,7 @@ function spawnWallNote(it) {
     el.style.zIndex = String(++mkWall.zTop);
     feed.appendChild(el);
     // Kiinteä lappu ei koskaan haalistu eikä väisty — muut elävät 18-44 s
-    var dieAt = it.type === 'pin' ? Infinity : Date.now() + 18000 + Math.random() * 26000;
+    var dieAt = (it.type === 'pin' || it.type === 'game') ? Infinity : Date.now() + 18000 + Math.random() * 26000;
     mkWall.liveNotes[it.key] = { el: el, x: pos.x, y: pos.y, z: mkWall.zTop, dieAt: dieAt };
 }
 
@@ -1521,6 +1549,8 @@ function closeWall() {
     mkWall.reactions = null;
     if (mkWall.gameModeRef) { try { mkWall.gameModeRef.off(); } catch (e) {} mkWall.gameModeRef = null; }
     if (mkWall.gamePlayersRef) { try { mkWall.gamePlayersRef.off(); } catch (e) {} mkWall.gamePlayersRef = null; }
+    if (mkWall.posterRef) { try { mkWall.posterRef.off(); } catch (e) {} mkWall.posterRef = null; }
+    mkWall.gamePoster = null;
     if (mkWall.gameTimer) { clearInterval(mkWall.gameTimer); mkWall.gameTimer = null; }
     mkWall.game = null;
     mkWall.gameSeenPlayers = null;
@@ -1750,7 +1780,26 @@ function wallGameToggle() {
     wallGameRender();
 }
 
+// Pelin päättyessä: lopputilanne pysyvään seinälappuun (poster-solmuun,
+// jota seinä kuuntelee aina — lappu säilyy reloadin yli ja poistuu
+// vasta kun pelitulokset nollataan)
+function mkWallGamePosterWrite() {
+    if (!mkWall.uid || !mkWall.evId || !mkWall.game) return;
+    var wins = mkWall.game.wins || {};
+    var keys = Object.keys(wins).filter(function (k) { return wins[k] > 0; })
+        .sort(function (a, b) { return wins[b] - wins[a]; }).slice(0, 3);
+    if (!keys.length) return;
+    var medals = ['🥇', '🥈', '🥉'];
+    var lines = keys.map(function (k, i) {
+        var nick = mkWall.game.winsNicks[k] || (mkWall.game.players[k] || {}).nick || k;
+        return medals[i] + ' ' + nick + ' — ' + wins[k] + '× voittoa';
+    });
+    firebase.database().ref(mkWallGameBase() + '/poster')
+        .set({ lines: lines, ts: Date.now(), g: 'rampyt' }).catch(function () {});
+}
+
 function wallGameEnd() {
+    mkWallGamePosterWrite();
     mkWallGameSetMode({ st: 'off' });
     if (mkWall.gameModeRef) { try { mkWall.gameModeRef.off(); } catch (e) {} mkWall.gameModeRef = null; }
     if (mkWall.gamePlayersRef) { try { mkWall.gamePlayersRef.off(); } catch (e) {} mkWall.gamePlayersRef = null; }

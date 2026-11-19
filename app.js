@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.82.4";
+const APP_VERSION = "7.82.5";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAruAMMM_dl7EgGqw2WLK6dwqLZNhxK_yU",
@@ -1760,6 +1760,18 @@ async function deleteGameRound(round) {
             });
         });
         await db.ref(base + '/wins').set(wins);
+        // Päivitetään seinän pysyvä tuloslappu vastaamaan uutta tilannetta
+        const wkeys = Object.keys(wins).filter(k => wins[k].w > 0)
+            .sort((a, b) => wins[b].w - wins[a].w).slice(0, 3);
+        if (!wkeys.length) {
+            await db.ref(base + '/poster').remove();
+        } else {
+            const medals = ['🥇', '🥈', '🥉'];
+            await db.ref(base + '/poster').set({
+                lines: wkeys.map((k, i) => medals[i] + ' ' + (wins[k].nick || '?') + ' — ' + wins[k].w + '× voittoa'),
+                ts: Date.now(), g: 'rampyt'
+            });
+        }
         renderGameResultsList();
         showToast('Kierros ' + round + ' poistettu', 'success');
     } catch (e) {

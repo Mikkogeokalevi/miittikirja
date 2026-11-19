@@ -2841,6 +2841,9 @@ body.theme-light .form-error { color: #B22222; }
 .wall-note-quote .wall-note-fact-text { font-style: italic; }
 .wall-note-pin .wall-note-label { color: #8B4513; }
 .wall-note-pin { box-shadow: 0 4px 14px rgba(139,69,19,0.5); border: 1px solid rgba(139,69,19,0.35); }
+.wall-note-game { box-shadow: 0 4px 14px rgba(30,90,160,0.45); border: 1px solid rgba(30,90,160,0.3); }
+.wall-note-game .wall-note-label { color: #1e5aa0; }
+.wall-note-game-line { font-weight: 600; margin-top: 2px; }
 /* Polaroid-kuvalappu: valkoinen reuna, paksumpi alalaita, nasta yläreunassa */
 .wall-note-photo {
     padding: 9px 9px 26px;
