@@ -3103,7 +3103,7 @@ window.closeAndResetVisitorModal = closeAndResetVisitorModal;
 var vvGame = {
     modeRef: null, playersRef: null, myRef: null,
     host: null, ev: null, mode: null, players: {},
-    myKey: null, myTaps: 0, lastSent: -1, joined: false, myDone: false, myWins: 0,
+    myKey: null, myNick: null, myTaps: 0, lastSent: -1, joined: false, myDone: false, myWins: 0,
     flushTimer: null, tickTimer: null, fullscreen: false
 };
 var VV_GAME_TARGET = (typeof MK_Config !== 'undefined' && MK_Config.GAME_TARGET_TAPS) || 200;
@@ -3136,7 +3136,7 @@ function vvGameDetach() {
         vvGame.myRef = null;
     }
     vvGame.host = null; vvGame.ev = null; vvGame.mode = null; vvGame.players = {};
-    vvGame.myKey = null; vvGame.myTaps = 0; vvGame.lastSent = -1; vvGame.joined = false;
+    vvGame.myKey = null; vvGame.myNick = null; vvGame.myTaps = 0; vvGame.lastSent = -1; vvGame.joined = false;
     vvGame.myDone = false; vvGame.myWins = 0;
     vvGame.fullscreen = false; vvGame.resumeNick = null;
     var el = document.getElementById('vv-game');
@@ -3200,6 +3200,7 @@ function vvGameAutoJoin(nick) {
     vvGame.joined = true;
     vvGame.myTaps = 0;
     vvGame.lastSent = -1;
+    vvGame.myNick = nick.slice(0, 40);
     ref.set({ nick: nick.slice(0, 40), taps: 0, joined: Date.now() }).catch(function () {});
     try { ref.onDisconnect().remove(); } catch (e) {}
     vvGameStartFlush();
@@ -3247,6 +3248,7 @@ function vvGameJoin() {
     vvGame.joined = true;
     vvGame.myTaps = 0;
     vvGame.lastSent = -1;
+    vvGame.myNick = nick.slice(0, 40);
     ref.set({ nick: nick.slice(0, 40), taps: 0, joined: Date.now() }).catch(function () {});
     try { ref.onDisconnect().remove(); } catch (e) {}
     vvGameStartFlush();
@@ -3260,7 +3262,9 @@ function vvGameStartFlush() {
         if (vvGame.myRef && vvGame.myTaps !== vvGame.lastSent) {
             var t = vvGame.myTaps;
             vvGame.lastSent = t;
-            vvGame.myRef.update({ taps: t }).catch(function () {});
+            // nick mukana joka synkkauksessa — jos onDisconnect poisti noden
+            // (yhteyskatko + paluu), update luo sen uudelleen TÄYDELLISENÄ
+            vvGame.myRef.update({ nick: vvGame.myNick, taps: t }).catch(function () {});
         }
     }, 180);
 }
@@ -3274,7 +3278,7 @@ function vvGameTap() {
         vvGame.myTaps = VV_GAME_TARGET;
         if (vvGame.myRef) {
             vvGame.lastSent = VV_GAME_TARGET;
-            vvGame.myRef.update({ taps: VV_GAME_TARGET, done: Date.now() }).catch(function () {});
+            vvGame.myRef.update({ nick: vvGame.myNick, taps: VV_GAME_TARGET, done: Date.now() }).catch(function () {});
         }
         try { navigator.vibrate([80, 50, 120]); } catch (e) {}
         vvGameRender();
