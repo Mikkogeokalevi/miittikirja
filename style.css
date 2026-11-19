@@ -1099,7 +1099,7 @@ body.theme-light .attr-tag.neg {
 }
 /* Vahvistusdialogi aina päällimmäisenä — sitä käytetään myös muiden
    modaalien (kysymyseditori, pelitulokset) sisältä */
-#confirm-modal { z-index: 300; }
+#confirm-modal { z-index: 10100; }
 .modal-content {
     background-color: var(--bg-color);
     margin: 5% auto;
@@ -3843,7 +3843,7 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
 #wall-view.wall-light #wall-game { background: rgba(255,255,255,0.92); border-color: rgba(0,0,0,0.12); }
 #wg-title { font-size: 1.5em; font-weight: 800; letter-spacing: 0.5px; color: var(--wg-accent, inherit); }
 /* Pelinvalikko */
-.wgm-overlay { position: fixed; inset: 0; z-index: 130; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); }
+.wgm-overlay { position: fixed; inset: 0; z-index: 10005; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); }
 .wgm-card { position: relative; max-width: 460px; width: 92%; max-height: 84vh; overflow-y: auto; background: #fffef8; border-radius: 18px; padding: 22px 20px; box-shadow: 0 12px 44px rgba(0,0,0,0.45); color: #232347; }
 .wgm-close { position: absolute; top: 10px; right: 14px; font-size: 1.4em; cursor: pointer; opacity: 0.55; padding: 4px 8px; }
 .wgm-close:hover { opacity: 1; }
