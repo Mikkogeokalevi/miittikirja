@@ -793,7 +793,8 @@ function openWall() {
             if (!mkWall.open) return;
             mkWall.gamePoster = snap.val() || null;
             buildWallPool(mkWall.logs.slice().sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); }));
-            if (mkWall.gamePoster) ensureWallNote('gameposter');
+            if (mkWall.gamePoster) refreshWallGameNote();
+            else if (mkWall.liveNotes['gameposter']) fadeWallNote('gameposter');
         });
 
         // Vieraiden kokonaiskäyntimäärät ("N. miitti" karuselliin) — indeksi, fallback täysskannaus
@@ -1338,6 +1339,22 @@ function unzoomWallNote() {
 }
 
 // Uusi kirjautuminen taululle heti — tarvittaessa vanhin väistää
+// Pelituloslappu päivitetään paikallaan — rivit vaihtuvat ilman että
+// lappu hyppää uuteen kohtaan taululla
+function refreshWallGameNote() {
+    var rec = mkWall.liveNotes['gameposter'];
+    if (!rec || !rec.el) { ensureWallNote('gameposter'); return; }
+    var lines = (mkWall.gamePoster && mkWall.gamePoster.lines) || [];
+    var olds = rec.el.querySelectorAll('.wall-note-game-line');
+    for (var i = 0; i < olds.length; i++) olds[i].parentNode.removeChild(olds[i]);
+    lines.forEach(function (line) {
+        var gl = document.createElement('div');
+        gl.className = 'wall-note-fact-text wall-note-game-line';
+        gl.innerText = line;
+        rec.el.appendChild(gl);
+    });
+}
+
 function ensureWallNote(key) {
     if (!key || mkWall.liveNotes[key]) return;
     var it = null;
