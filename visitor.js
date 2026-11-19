@@ -3103,9 +3103,10 @@ window.closeAndResetVisitorModal = closeAndResetVisitorModal;
 var vvGame = {
     modeRef: null, playersRef: null, myRef: null,
     host: null, ev: null, mode: null, players: {},
-    myKey: null, myTaps: 0, lastSent: -1, joined: false,
+    myKey: null, myTaps: 0, lastSent: -1, joined: false, myDone: false,
     flushTimer: null, tickTimer: null, fullscreen: false
 };
+var VV_GAME_TARGET = (typeof MK_Config !== 'undefined' && MK_Config.GAME_TARGET_TAPS) || 200;
 
 function vvGameAttach(host, eventId) {
     if (!host || !eventId || typeof firebase === 'undefined') return;
@@ -3147,6 +3148,7 @@ function vvGameOnMode(m) {
     if (vvGame.mode && vvGame.mode.st === 'count' && prevSt !== 'count') {
         // uusi kierros alkamassa — nollataan oma laskuri
         vvGame.myTaps = 0;
+        vvGame.myDone = false;
         vvGame.lastSent = -1;
         if (vvGame.myRef) vvGame.myRef.update({ taps: 0 }).catch(function () {});
         if (!vvGame.flushTimer) vvGameStartFlush();
@@ -3247,8 +3249,20 @@ function vvGameStartFlush() {
 }
 
 function vvGameTap() {
-    if (!vvGame.joined || !vvGame.mode || vvGame.mode.st !== 'run') return;
+    if (!vvGame.joined || !vvGame.mode || vvGame.mode.st !== 'run' || vvGame.myDone) return;
     vvGame.myTaps++;
+    if (vvGame.myTaps >= VV_GAME_TARGET) {
+        // MAALI! Lukitaan aikaleima — ensimmäinen tavoitteeseen voittaa
+        vvGame.myDone = true;
+        vvGame.myTaps = VV_GAME_TARGET;
+        if (vvGame.myRef) {
+            vvGame.lastSent = VV_GAME_TARGET;
+            vvGame.myRef.update({ taps: VV_GAME_TARGET, done: Date.now() }).catch(function () {});
+        }
+        try { navigator.vibrate([80, 50, 120]); } catch (e) {}
+        vvGameRender();
+        return;
+    }
     try { navigator.vibrate(8); } catch (e) {}
     var el = document.getElementById('vvg-taps');
     if (el) el.innerText = vvGame.myTaps;
@@ -3292,7 +3306,7 @@ function vvGameRender() {
     // napit eivät saa kadota sormen alta 500ms tickin takia
     var count = Object.keys(vvGame.players).length;
     // run-tilassa count ei ole osa sigiä — NAPAUTA-nappi ei saa kadota sormen alta
-    var sig = m.st + '|' + (m.round || '') + '|' + vvGame.joined + (m.st === 'run' ? '' : '|' + count);
+    var sig = m.st + '|' + (m.round || '') + '|' + vvGame.joined + '|' + vvGame.myDone + (m.st === 'run' ? '' : '|' + count);
     if (el.dataset.sig === sig) { vvGameUpdateFields(); return; }
     el.dataset.sig = sig;
     var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
@@ -3312,9 +3326,11 @@ function vvGameRender() {
             // NAPAUTA-nappia EI saa rakentaa uudelleen joka päivityksellä —
             // napin alla oleva sormi menettäisi osumia. Rakennetaan layout kerran
             // ja päivitetään vain tekstikentät.
-            if (!document.getElementById('vvg-tap')) {
-                el.innerHTML = '<div class="vvg-hud"><span class="vvg-rank" id="vvg-rank"></span><span class="vvg-time" id="vvg-time"></span><span class="vvg-taps"><span id="vvg-taps">' + vvGame.myTaps + '</span> 👆</span></div>' +
-                    '<button id="vvg-tap" class="vvg-tap" onclick="vvGameTap()">NAPAUTA!</button>';
+            if (!document.getElementById('vvg-tap') && !document.getElementById('vvg-done')) {
+                el.innerHTML = '<div class="vvg-hud"><span class="vvg-rank" id="vvg-rank"></span><span class="vvg-time" id="vvg-time"></span><span class="vvg-taps"><span id="vvg-taps">' + vvGame.myTaps + '</span> / ' + VV_GAME_TARGET + '</span></div>' +
+                    (vvGame.myDone
+                        ? '<div class="vvg-done" id="vvg-done">🏁 MAALI!</div><div class="vvg-sub">Odotetaan muita maaliin…</div>'
+                        : '<button id="vvg-tap" class="vvg-tap" onclick="vvGameTap()">NAPAUTA!</button>');
             }
             var left = Math.max(0, Math.ceil(((m.end || 0) - Date.now()) / 1000));
             var timeEl = document.getElementById('vvg-time');

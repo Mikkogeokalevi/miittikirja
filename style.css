@@ -3839,11 +3839,12 @@ html.mk-lite .visitor-badge-chip { animation: none !important; }
 #wg-sub { font-size: 0.95em; opacity: 0.85; margin: 4px 0 10px; text-align: center; }
 #wg-lanes { flex: 1; width: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
 .wg-lane { display: flex; align-items: center; gap: 10px; }
-.wg-runner { font-size: 1.8em; width: 44px; text-align: center; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4)); }
 .wg-name { width: 130px; font-weight: 700; font-size: 1.0em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wg-track { flex: 1; height: 26px; background: rgba(255,255,255,0.08); border-radius: 13px; overflow: hidden; position: relative; }
+.wg-track { flex: 1; height: 30px; background: rgba(255,255,255,0.08); border-radius: 15px; overflow: hidden; position: relative; }
 #wall-view.wall-light .wg-track { background: rgba(0,0,0,0.08); }
-.wg-bar { height: 100%; width: 0; border-radius: 13px; background: linear-gradient(90deg, #3a86ff, #06d6a0); transition: width 0.2s ease-out; }
+.wg-bar { position: absolute; left: 0; top: 0; height: 100%; width: 0; border-radius: 15px; background: linear-gradient(90deg, #3a86ff, #06d6a0); transition: width 0.2s ease-out; opacity: 0.55; }
+.wg-runner { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 1.45em; transition: left 0.2s ease-out; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4)); }
+.wg-goal { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 1em; opacity: 0.9; }
 .wg-num { width: 52px; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
 .wg-count { font-size: 7em; font-weight: 900; text-align: center; opacity: 0.9; align-self: center; margin: auto; }
 .wg-count-pop { animation: wgPop 0.9s ease-out; }
@@ -3896,6 +3897,7 @@ body > .vv-game {
 .vvg-tap:active { transform: translateY(4px); box-shadow: 0 1px 0 #a00320; }
 .vvg-tap-pop { animation: vvgPop 0.12s ease-out; }
 @keyframes vvgPop { 0% { transform: scale(0.97); } 100% { transform: scale(1); } }
+.vvg-done { font-size: 2.2em; font-weight: 900; padding: 24px 0; color: #ffd700; text-shadow: 0 3px 12px rgba(255,215,0,0.4); }
 .vvg-podium { margin: 8px 0; }
 .vvg-prow { padding: 4px 0; font-weight: 700; font-size: 0.95em; }
 /* Kokonäytön pelitila — paluuskannauksessa peli yksinään keskiössä */
@@ -3917,7 +3919,7 @@ body > .vv-game {
 @media (max-width: 560px) {
     #wall-game { top: 76px; bottom: 96px; left: 8px; right: 8px; padding: 10px; }
     .wg-name { width: 84px; font-size: 0.85em; }
-    .wg-runner { font-size: 1.4em; width: 34px; }
+    .wg-runner { font-size: 1.15em; }
     .wg-num { width: 40px; font-size: 0.9em; }
     #wg-title { font-size: 1.1em; }
     .wg-count { font-size: 5em; }

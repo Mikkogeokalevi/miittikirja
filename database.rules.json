@@ -74,6 +74,7 @@
                 "nick": { ".validate": "newData.isString() && newData.val().length <= 40" },
                 "taps": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9999" },
                 "joined": { ".validate": "newData.isNumber()" },
+                "done": { ".validate": "newData.isNumber()" },
                 "$other": { ".validate": false }
               }
             }

@@ -151,9 +151,10 @@ const MK_Config = {
         poop: "💩"
     },
 
-    // Pelit (rämpytyskisa): kierroksen pituus millisekunteina
+    // Pelit (rämpytyskisa): kierroksen pituus ms + maalitavoite napautuksina
     GAME_ROUND_MS: 30000,
+    GAME_TARGET_TAPS: 200,
 
     // Sovelluksen versio (näytetään kirjautumissivulla)
-    VERSION: "7.80.2"
+    VERSION: "7.81.0"
 };

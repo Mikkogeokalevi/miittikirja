@@ -1677,6 +1677,7 @@ if (wallQrWrap) {
 // ja kuuntelee players-solmua. Vieraat kirjoittavat vain omaa pelaajanotaansa.
 var MK_GAME_EMOJIS = ['🐌','🐢','🦔','🐇','🐎','🦆','🐸','🦀','🐝','🐙','🚗','🏎️','🐓','🦎','🐜','🦞'];
 var MK_GAME_ROUND_MS = (typeof MK_Config !== 'undefined' && MK_Config.GAME_ROUND_MS) || 30000;
+var MK_GAME_TARGET = (typeof MK_Config !== 'undefined' && MK_Config.GAME_TARGET_TAPS) || 200;
 var MK_GAME_COUNT_MS = 3000;
 
 function mkWallGameBase() {
@@ -1688,8 +1689,11 @@ function mkWallGameSetMode(patch) {
     firebase.database().ref(mkWallGameBase() + '/mode').update(patch).catch(function () {});
 }
 
-function mkWallGameEmoji(key, idx) {
-    return MK_GAME_EMOJIS[idx % MK_GAME_EMOJIS.length];
+// Vakaa emoji per pelaaja — kilpuri ei vaihdu sijoituksen muuttuessa
+function mkWallGameEmoji(key) {
+    var h = 0;
+    for (var i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+    return MK_GAME_EMOJIS[h % MK_GAME_EMOJIS.length];
 }
 
 function wallGameToggle() {
@@ -1752,7 +1756,7 @@ function wallGameTick() {
         mkWallGameSetMode({ st: 'run', end: now + MK_GAME_ROUND_MS });
         g.st = 'run'; g.end = now + MK_GAME_ROUND_MS;
         wallGameRender();
-    } else if (g.st === 'run' && now >= g.end) {
+    } else if (g.st === 'run' && (now >= g.end || wallGameHasFinisher())) {
         var top = wallGameTopPlayers(3);
         top.forEach(function (p) { mkWall.game.wins[p.key] = (mkWall.game.wins[p.key] || 0) + 1; });
         mkWallGameSetMode({ st: 'podium' });
@@ -1769,13 +1773,26 @@ function wallGameTick() {
     }
 }
 
+// Onko joku saavuttanut maalin? Ensimmäinen tavoitelmaan = voittaja välittömästi
+function wallGameHasFinisher() {
+    var g = mkWall.game;
+    if (!g) return false;
+    return Object.keys(g.players).some(function (k) { return !!g.players[k].done; });
+}
+
 function wallGameSortedPlayers() {
     var g = mkWall.game;
     if (!g) return [];
     return Object.keys(g.players).map(function (k, i) {
         var p = g.players[k] || {};
-        return { key: k, nick: String(p.nick || '?').slice(0, 20), taps: Number(p.taps) || 0, idx: i };
-    }).sort(function (a, b) { return b.taps - a.taps || a.nick.localeCompare(b.nick, 'fi'); });
+        return { key: k, nick: String(p.nick || '?').slice(0, 20), taps: Number(p.taps) || 0, done: Number(p.done) || 0, idx: i };
+    }).sort(function (a, b) {
+        // Maaliin tulleet ensimmäisinä (pienin done-aika voittaa), sitten napautusmäärä
+        if (a.done && b.done) return a.done - b.done;
+        if (a.done) return -1;
+        if (b.done) return 1;
+        return b.taps - a.taps || a.nick.localeCompare(b.nick, 'fi');
+    });
 }
 
 function wallGameTopPlayers(n) { return wallGameSortedPlayers().slice(0, n); }
@@ -1784,10 +1801,12 @@ function wallGameUpdateLanes() {
     var g = mkWall.game;
     if (!g) return;
     var list = wallGameSortedPlayers();
-    var max = Math.max(1, list.length ? list[0].taps : 1);
     list.forEach(function (p) {
+        var pct = Math.min(100, Math.round((p.taps / MK_GAME_TARGET) * 100));
         var bar = document.getElementById('wg-bar-' + p.key);
-        if (bar) bar.style.width = Math.round((p.taps / max) * 100) + '%';
+        if (bar) bar.style.width = pct + '%';
+        var run = document.getElementById('wg-run-' + p.key);
+        if (run) run.style.left = Math.min(94, 2 + pct * 0.92) + '%';
         var cnt = document.getElementById('wg-n-' + p.key);
         if (cnt) cnt.innerText = p.taps;
     });
@@ -1821,14 +1840,17 @@ function wallGameRender() {
         if (btns) btns.innerHTML = '<button class="wg-btn wg-stop" onclick="wallGameEnd()">✕ Keskeytä</button>';
     } else if (g.st === 'run') {
         var left = Math.max(0, Math.ceil((g.end - Date.now()) / 1000));
-        if (sub) sub.innerText = '⏱ ' + left + ' s — RÄMPYTÄ!';
+        if (sub) sub.innerText = '⏱ ' + left + ' s — ensimmäinen ' + MK_GAME_TARGET + ':een voittaa!';
         if (lanes) {
-            var max = Math.max(1, list.length ? list[0].taps : 1);
             lanes.innerHTML = list.map(function (p, i) {
+                var pct = Math.min(100, Math.round((p.taps / MK_GAME_TARGET) * 100));
                 return '<div class="wg-lane">' +
-                    '<div class="wg-runner">' + mkWallGameEmoji(p.key, i) + '</div>' +
                     '<div class="wg-name">' + (i === 0 ? '👑 ' : '') + wallEsc(p.nick) + '</div>' +
-                    '<div class="wg-track"><div class="wg-bar" id="wg-bar-' + p.key + '" style="width:' + Math.round((p.taps / max) * 100) + '%"></div></div>' +
+                    '<div class="wg-track">' +
+                        '<div class="wg-bar" id="wg-bar-' + p.key + '" style="width:' + pct + '%"></div>' +
+                        '<div class="wg-runner" id="wg-run-' + p.key + '" style="left:' + Math.min(94, 2 + pct * 0.92) + '%">' + mkWallGameEmoji(p.key) + '</div>' +
+                        '<div class="wg-goal">🏁</div>' +
+                    '</div>' +
                     '<div class="wg-num" id="wg-n-' + p.key + '">' + p.taps + '</div>' +
                 '</div>';
             }).join('');
@@ -1842,7 +1864,7 @@ function wallGameRender() {
         if (podium) {
             var html = '<div class="wg-podium-row">' + top.map(function (p, i) {
                 return '<div class="wg-place wg-p' + i + '"><div class="wg-medal">' + medals[i] + '</div>' +
-                    '<div class="wg-pname">' + mkWallGameEmoji(p.key, p.idx) + ' ' + wallEsc(p.nick) + '</div>' +
+                    '<div class="wg-pname">' + mkWallGameEmoji(p.key) + ' ' + wallEsc(p.nick) + '</div>' +
                     '<div class="wg-ptaps">' + p.taps + ' napautusta</div></div>';
             }).join('') + '</div>';
             var champs = Object.keys(g.wins).filter(function (k) { return g.wins[k] >= 2; });
