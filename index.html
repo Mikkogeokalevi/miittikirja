@@ -577,7 +577,7 @@
             </div>
 
             <button id="btn-backfill-nicks" class="btn btn-small" style="margin-bottom:10px; width:100%; background:#fff; color:#5a5a8a; border:1px dashed #aaa;" title="Rakentaa nopean kävijäindeksin kaikista logeista — aja kerran">🔧 Päivitä kävijäindeksi (huolto)</button>
-            <button id="btn-reset-game" class="btn btn-small" onclick="resetGameResults()" style="margin-bottom:10px; width:100%; background:#fff; color:#a33; border:1px dashed #c66;" title="Poistaa miitin pelitulokset ja pelaajat — testipelaamisen siivous">🗑 Nollaa pelitulokset</button>
+            <button id="btn-reset-game" class="btn btn-small" onclick="openGameResultsModal()" style="margin-bottom:10px; width:100%; background:#fff; color:#a33; border:1px dashed #c66;" title="Selaa ja hallitse miitin pelituloksia — poista yksittäisiä kierroksia tai kaikki">🏁 Hallitse pelituloksia</button>
             <button id="btn-gb-archive" class="btn btn-small btn-red" style="margin-bottom:10px; width:100%;">📦 Arkistoi miitti</button>
         </div>
 
@@ -833,6 +833,17 @@
             
             <div id="visitor-action-buttons">
                 <button onclick="document.getElementById('user-profile-modal').style.display='none'" class="btn btn-red" style="margin-top:15px;">Sulje</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-results-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="border-bottom:2px solid var(--primary-color); padding-bottom:10px; margin-bottom:15px;">🏁 Pelitulosten hallinta</h3>
+            <div id="grm-list" class="scroll-box" style="max-height:50vh;"></div>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button onclick="deleteAllGameResults()" class="btn btn-red" style="flex:1;">🗑 Poista kaikki</button>
+                <button onclick="document.getElementById('game-results-modal').style.display='none'" class="btn btn-gray" style="flex:1;">Sulje</button>
             </div>
         </div>
     </div>

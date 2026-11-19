@@ -3913,6 +3913,8 @@ body > .vv-game {
 .vvg-wins { margin-top: 6px; font-weight: 700; color: #ffd700; }
 .game-result-row { padding: 5px 0; border-bottom: 1px dashed #ddd; font-size: 0.95em; }
 .game-result-champ { font-weight: 700; color: #b8860b; padding: 6px 0; }
+.grm-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed #ddd; }
+.grm-line { font-size: 0.85em; color: var(--text-muted); }
 .vvg-podium { margin: 8px 0; }
 .vvg-prow { padding: 4px 0; font-weight: 700; font-size: 0.95em; }
 /* Kokonäytön pelitila — paluuskannauksessa peli yksinään keskiössä */

@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.82.1";
+const APP_VERSION = "7.82.2";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAruAMMM_dl7EgGqw2WLK6dwqLZNhxK_yU",
@@ -1690,19 +1690,95 @@ function loadAttendees(eventKey) {
             listEl.appendChild(row);
         });
         
-// Nollaa miitin pelitulokset (results + wins + players) — testipelaamisen siivous
-async function resetGameResults() {
+// Pelitulosten hallinta: selaa tuloksia, poista yksittäinen kierros tai kaikki
+async function openGameResultsModal() {
     if (!currentUser || !currentEventId) { showToast('Avaa ensin miitti', 'error'); return; }
-    const ok = await customConfirm('Nollaa pelitulokset?', 'Poistetaan tämän miitin kaikki pelitulokset ja pelaajat. Toimintoa ei voi perua.');
+    const modal = document.getElementById('game-results-modal');
+    if (!modal) return;
+    await renderGameResultsList();
+    modal.style.display = 'block';
+}
+window.openGameResultsModal = openGameResultsModal;
+
+async function renderGameResultsList() {
+    const listEl = document.getElementById('grm-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<div style="text-align:center; padding:15px; opacity:0.6;">Ladataan…</div>';
+    try {
+        const snap = await db.ref('miitit/' + currentUser.uid + '/game/' + currentEventId).once('value');
+        const data = snap.val() || {};
+        const res = data.results || {};
+        const rounds = Object.keys(res).map(Number).filter(n => n > 0).sort((a, b) => b - a);
+        const wins = data.wins || {};
+        let html = '';
+        const champs = Object.keys(wins).map(k => ({ nick: wins[k].nick || k, w: Number(wins[k].w) || 0 }))
+            .filter(c => c.w > 0).sort((a, b) => b.w - a.w);
+        if (champs.length) {
+            html += '<div class="game-result-champ">👑 Voittotilasto: ' + champs.map(c => c.nick + ' (' + c.w + '×)').join(', ') + '</div>';
+        }
+        if (!rounds.length) {
+            html += '<div style="text-align:center; padding:20px; opacity:0.6;">Ei pelituloksia tässä miitissä.</div>';
+        } else {
+            const medals = ['🥇', '🥈', '🥉'];
+            html += rounds.map(r => {
+                const top = res[r].top || {};
+                const line = [1, 2, 3].map(i => {
+                    const p = top[i];
+                    return p ? medals[i - 1] + ' ' + (p.nick || '?') + ' — ' + (p.taps || 0) : '';
+                }).filter(Boolean).join(' · ');
+                return '<div class="grm-row"><div><strong>Kierros ' + r + '</strong><div class="grm-line">' + line + '</div></div>' +
+                    '<button class="btn-red btn-small" onclick="deleteGameRound(' + r + ')" title="Poista kierros">🗑</button></div>';
+            }).join('');
+        }
+        listEl.innerHTML = html;
+    } catch (e) {
+        listEl.innerHTML = '<div style="color:#a33; padding:15px;">Lataus epäonnistui.</div>';
+    }
+}
+
+async function deleteGameRound(round) {
+    if (!currentUser || !currentEventId) return;
+    try {
+        const base = 'miitit/' + currentUser.uid + '/game/' + currentEventId;
+        await db.ref(base + '/results/' + round).remove();
+        // Lasketaan voittotilasto uudelleen jäljelle jääneistä kierroksista
+        const snap = await db.ref(base + '/results').once('value');
+        const res = snap.val() || {};
+        const wins = {};
+        Object.keys(res).forEach(k => {
+            const top = res[k].top || {};
+            [1, 2, 3].forEach(i => {
+                const p = top[i];
+                if (p && p.nick) {
+                    const key = (typeof mkNickKey === 'function' && typeof normalizeNickname === 'function')
+                        ? mkNickKey(normalizeNickname(p.nick)) : p.nick;
+                    if (!wins[key]) wins[key] = { w: 0, nick: p.nick };
+                    wins[key].w++;
+                }
+            });
+        });
+        await db.ref(base + '/wins').set(wins);
+        renderGameResultsList();
+        showToast('Kierros ' + round + ' poistettu', 'success');
+    } catch (e) {
+        showToast('Poisto epäonnistui: ' + (e && e.message ? e.message : e), 'error');
+    }
+}
+window.deleteGameRound = deleteGameRound;
+
+async function deleteAllGameResults() {
+    if (!currentUser || !currentEventId) { showToast('Avaa ensin miitti', 'error'); return; }
+    const ok = await customConfirm('Poista kaikki pelitulokset?', 'Poistetaan tämän miitin kaikki pelitulokset, voittotilasto ja pelaajat. Toimintoa ei voi perua.');
     if (!ok) return;
     try {
         await db.ref('miitit/' + currentUser.uid + '/game/' + currentEventId).remove();
+        document.getElementById('game-results-modal').style.display = 'none';
         showToast('Pelitulokset nollattu 🗑', 'success');
     } catch (e) {
         showToast('Nollaus epäonnistui: ' + (e && e.message ? e.message : e), 'error');
     }
 }
-window.resetGameResults = resetGameResults;
+window.deleteAllGameResults = deleteAllGameResults;
 
         const countEl = document.getElementById('attendee-count');
         if(countEl) {
