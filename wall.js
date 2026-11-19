@@ -1719,17 +1719,82 @@ function mkWallGameSetMode(patch) {
     firebase.database().ref(mkWallGameBase() + '/mode').update(patch).catch(function () {});
 }
 
-// Vakaa emoji per pelaaja — kilpuri ei vaihdu sijoituksen muuttuessa
-function mkWallGameEmoji(key) {
-    var h = 0;
-    for (var i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
-    return MK_GAME_EMOJIS[h % MK_GAME_EMOJIS.length];
+// Aktiivisen pelin teema — mode.th kulkee mukana, puhelimet näyttävät saman
+function mkWallGameTheme() {
+    var th = (mkWall.game && mkWall.game.th) || mkWall.gameTheme;
+    return (typeof mkGameTheme === 'function') ? mkGameTheme(th) : null;
 }
 
+// Vakaa emoji per pelaaja — kilpuri ei vaihdu sijoituksen muuttuessa
+function mkWallGameEmoji(key) {
+    var th = mkWallGameTheme();
+    var emojis = (th && th.racers && th.racers.length) ? th.racers : MK_GAME_EMOJIS;
+    var h = 0;
+    for (var i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+    return emojis[h % emojis.length];
+}
+
+// 🎮-nappi: jos peli käynnissä → lopetetaan; muuten avataan pelivalikko
 function wallGameToggle() {
     if (mkWall.game) { wallGameEnd(); return; }
     if (!mkWall.uid || !mkWall.evId || !mkWall.open) return;
-    mkWall.game = { st: 'lobby', round: 1, end: 0, players: {}, wins: {}, winsNicks: {} };
+    wallGameMenu();
+}
+
+// Pelinvalikkonäkymä — valitaan peli + teema ennen aulan avaamista
+function wallGameMenu() {
+    var el = document.getElementById('wall-game-menu');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'wall-game-menu';
+        el.className = 'wgm-overlay';
+        document.body.appendChild(el);
+    }
+    var themes = (typeof MK_GAME_THEMES !== 'undefined') ? MK_GAME_THEMES : {};
+    var season = (typeof mkGameSeasonTheme === 'function') ? mkGameSeasonTheme() : null;
+    var tkeys = Object.keys(themes);
+    if (!tkeys.length) { tkeys = ['perus']; themes = { perus: { name: 'Perus', icon: '🏁' } }; }
+    var chips = tkeys.map(function (k) {
+        var t = themes[k] || {};
+        var sel = k === (season || 'perus');
+        return '<button class="wgm-chip' + (sel ? ' wgm-chip-sel' : '') + '" data-th="' + k + '" onclick="wallGameMenuPick(this)">' +
+            wallEsc(t.icon || '🎮') + ' ' + wallEsc(t.name || k) + (sel && season ? ' <span class="wgm-season">✓ kausi</span>' : '') + '</button>';
+    }).join('');
+    el.innerHTML = '<div class="wgm-card">' +
+        '<div class="wgm-close" onclick="wallGameMenuClose()">✕</div>' +
+        '<div class="wgm-title">🎮 VALITSE PELI</div>' +
+        '<div class="wgm-game">🏁 Tapaustuskisa <span class="wgm-hint">— kuka saavuttaa ' + MK_GAME_TARGET + ' ensimmäisenä?</span></div>' +
+        '<div class="wgm-sub">Valitse teema:</div>' +
+        '<div class="wgm-chips">' + chips + '</div>' +
+        '<button class="wg-btn wg-go wgm-open" onclick="wallGameMenuStart()">▶ AVAA AULA</button>' +
+    '</div>';
+    el.dataset.th = season || 'perus';
+    el.style.display = 'flex';
+}
+
+function wallGameMenuPick(btn) {
+    var el = document.getElementById('wall-game-menu');
+    if (!el) return;
+    el.dataset.th = btn.dataset.th || 'perus';
+    var chips = el.querySelectorAll('.wgm-chip');
+    for (var i = 0; i < chips.length; i++) chips[i].classList.toggle('wgm-chip-sel', chips[i] === btn);
+}
+
+function wallGameMenuStart() {
+    var el = document.getElementById('wall-game-menu');
+    var th = (el && el.dataset.th) || 'perus';
+    wallGameMenuClose();
+    wallGameOpen(th);
+}
+
+function wallGameMenuClose() {
+    var el = document.getElementById('wall-game-menu');
+    if (el) el.style.display = 'none';
+}
+
+function wallGameOpen(themeId) {
+    mkWall.gameTheme = themeId || 'perus';
+    mkWall.game = { st: 'lobby', round: 1, end: 0, players: {}, wins: {}, winsNicks: {}, th: mkWall.gameTheme };
     mkWall.gameSeenPlayers = {};
     var base = mkWallGameBase();
     mkWall.gameModeRef = firebase.database().ref(base + '/mode');
@@ -1740,6 +1805,7 @@ function wallGameToggle() {
             mkWall.game.st = m.st;
             mkWall.game.end = m.end || 0;
             mkWall.game.round = m.round || mkWall.game.round;
+            if (m.th) mkWall.game.th = m.th;
         }
         wallGameRender();
     });
@@ -1755,7 +1821,7 @@ function wallGameToggle() {
         if (fresh && mkWall.soundOn) mkWallPlayDing();
         wallGameRender();
     });
-    mkWallGameSetMode({ g: 'rampyt', st: 'lobby', round: 1 });
+    mkWallGameSetMode({ g: 'rampyt', th: mkWall.gameTheme, st: 'lobby', round: 1 });
     // Palautetaan aiemmat pelitulokset kannasta — voitot ja kierrosnumero säilyvät reloadin yli
     firebase.database().ref(base).once('value').then(function (s) {
         if (!mkWall.game) return;
@@ -1809,7 +1875,7 @@ function wallGameEnd() {
     var wg = document.getElementById('wall-game');
     if (wg) wg.style.display = 'none';
     var btn = document.getElementById('wall-game-btn');
-    if (btn) { btn.innerText = '🎮'; btn.title = 'Peli: Rämpytyskisa'; }
+    if (btn) { btn.innerText = '🎮'; btn.title = 'Pelit'; }
     // siivotaan pelaajat pois pelin päätyttyä (kertaluontoinen operaatio)
     try { firebase.database().ref(mkWallGameBase() + '/players').remove().catch(function () {}); } catch (e) {}
 }
@@ -1908,8 +1974,10 @@ function wallGameRender() {
     var podium = document.getElementById('wg-podium');
     var btns = document.getElementById('wg-btns');
     var list = wallGameSortedPlayers();
+    var th = mkWallGameTheme() || { icon: '🏁', title: 'RÄMPYTYSKISA', goal: '🏁', verb: 'NAPAUTA!', unit: 'napautusta', accent: '#d4a017' };
+    if (wg.style.setProperty) wg.style.setProperty('--wg-accent', th.accent || '#d4a017');
 
-    if (title) title.innerText = '🏁 RÄMPYTYSKISA — kierros ' + g.round;
+    if (title) title.innerText = th.icon + ' ' + th.title + ' — kierros ' + g.round;
     if (podium) podium.innerHTML = '';
     if (btns) btns.innerHTML = '';
     var clk = document.getElementById('wg-clock');
@@ -1917,8 +1985,8 @@ function wallGameRender() {
 
     if (g.st === 'lobby') {
         if (sub) sub.innerText = list.length
-            ? '🎮 ' + list.length + ' pelaajaa mukana — liittyminen auki! Skannaa QR ja paina NAPAUTA.'
-            : '🎮 Odottaa pelaajia — skannaa QR, kirjaudu ja paina NAPAUTA!';
+            ? '🎮 ' + list.length + ' pelaajaa mukana — liittyminen auki! Skannaa QR ja paina ' + th.verb + '.'
+            : '🎮 Odottaa pelaajia — skannaa QR, kirjaudu ja paina ' + th.verb + '!';
         if (lanes) {
             // Tulostaulukko: top-5 illan voitoista + pelaajalista kilpurikorteilla
             var board = Object.keys(g.wins).map(function (k) {
@@ -1960,7 +2028,7 @@ function wallGameRender() {
                     '<div class="wg-track">' +
                         '<div class="wg-bar" id="wg-bar-' + p.key + '" style="width:' + pct + '%"></div>' +
                         '<div class="wg-runner" id="wg-run-' + p.key + '" style="left:' + Math.min(94, 2 + pct * 0.92) + '%">' + mkWallGameEmoji(p.key) + '</div>' +
-                        '<div class="wg-goal">🏁</div>' +
+                        '<div class="wg-goal">' + th.goal + '</div>' +
                     '</div>' +
                     '<div class="wg-num" id="wg-n-' + p.key + '">' + p.taps + '</div>' +
                 '</div>';
@@ -1976,7 +2044,7 @@ function wallGameRender() {
             var html = '<div class="wg-podium-row">' + top.map(function (p, i) {
                 return '<div class="wg-place wg-p' + i + '"><div class="wg-medal">' + medals[i] + '</div>' +
                     '<div class="wg-pname">' + mkWallGameEmoji(p.key) + ' ' + wallEsc(p.nick) + '</div>' +
-                    '<div class="wg-ptaps">' + p.taps + ' napautusta</div></div>';
+                    '<div class="wg-ptaps">' + p.taps + ' ' + wallEsc(th.unit) + '</div></div>';
             }).join('') + '</div>';
             var champs = Object.keys(g.wins).filter(function (k) { return g.wins[k] >= 2; });
             if (champs.length) {

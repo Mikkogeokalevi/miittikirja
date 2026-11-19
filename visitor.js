@@ -3327,23 +3327,24 @@ function vvGameRender() {
     // napit eivät saa kadota sormen alta 500ms tickin takia
     var count = Object.keys(vvGame.players).length;
     // run-tilassa count ei ole osa sigiä — NAPAUTA-nappi ei saa kadota sormen alta
-    var sig = m.st + '|' + (m.round || '') + '|' + vvGame.joined + '|' + vvGame.myDone + (m.st === 'run' ? '' : '|' + count);
+    var sig = m.st + '|' + (m.round || '') + '|' + (m.th || '') + '|' + vvGame.joined + '|' + vvGame.myDone + (m.st === 'run' ? '' : '|' + count);
     if (el.dataset.sig === sig) { vvGameUpdateFields(); return; }
     el.dataset.sig = sig;
     var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+    var th = (typeof mkGameTheme === 'function') ? mkGameTheme(m.th) : { icon: '🏁', title: 'RÄMPYTYSKISA', verb: 'NAPAUTA!', unit: 'napautusta' };
 
     if (m.st === 'lobby') {
         el.innerHTML = vvGame.joined
-            ? '<div class="vvg-title">🏁 RÄMPYTYSKISA</div><div class="vvg-sub">Olet mukana! (' + count + ' pelaajaa) — odotetaan lähtöä…</div>' +
+            ? '<div class="vvg-title">' + th.icon + ' ' + esc(th.title) + '</div><div class="vvg-sub">Olet mukana! (' + count + ' pelaajaa) — odotetaan lähtöä…</div>' +
                 (vvGame.myWins > 0 ? '<div class="vvg-wins">⭐ Sinulla on jo ' + vvGame.myWins + ' voitto' + (vvGame.myWins > 1 ? 'a' : '') + '!</div>' : '')
-            : '<div class="vvg-title">🏁 PELI KÄYNNISSÄ!</div><div class="vvg-sub">Rämpytyskisa — eniten napautuksia 30 s aikana voittaa!</div><button class="vvg-btn vvg-join" onclick="vvGameJoin()">🎮 LIITY MUKAAN</button>';
+            : '<div class="vvg-title">' + th.icon + ' PELI KÄYNNISSÄ!</div><div class="vvg-sub">' + esc(th.title) + ' — ensimmäinen ' + VV_GAME_TARGET + ' ' + esc(th.unit) + ':een voittaa!</div><button class="vvg-btn vvg-join" onclick="vvGameJoin()">🎮 LIITY MUKAAN</button>';
     } else if (m.st === 'count') {
         var n = Math.max(1, Math.ceil(((m.end || 0) - Date.now()) / 1000));
-        el.innerHTML = '<div class="vvg-title">🏁 VALMISTAUDU…</div><div class="vvg-count" id="vvg-cnum">' + n + '</div>' +
+        el.innerHTML = '<div class="vvg-title">' + th.icon + ' VALMISTAUDU…</div><div class="vvg-count" id="vvg-cnum">' + n + '</div>' +
             (vvGame.joined ? '' : '<div class="vvg-sub">Et ole mukana tällä kierroksella — liity ja pääset seuraavaan!</div><button class="vvg-btn vvg-join" onclick="vvGameJoin()">🎮 LIITY MUKAAN</button>');
     } else if (m.st === 'run') {
         if (!vvGame.joined) {
-            el.innerHTML = '<div class="vvg-title">🏁 Kierros käynnissä!</div><div class="vvg-sub">Liity nyt niin pääset seuraavaan kierrokseen!</div><button class="vvg-btn vvg-join" onclick="vvGameJoin()">🎮 LIITY MUKAAN</button>';
+            el.innerHTML = '<div class="vvg-title">' + th.icon + ' Kierros käynnissä!</div><div class="vvg-sub">Liity nyt niin pääset seuraavaan kierrokseen!</div><button class="vvg-btn vvg-join" onclick="vvGameJoin()">🎮 LIITY MUKAAN</button>';
         } else {
             // NAPAUTA-nappia EI saa rakentaa uudelleen joka päivityksellä —
             // napin alla oleva sormi menettäisi osumia. Rakennetaan layout kerran
@@ -3352,7 +3353,7 @@ function vvGameRender() {
                 el.innerHTML = '<div class="vvg-hud"><span class="vvg-rank" id="vvg-rank"></span><span class="vvg-time" id="vvg-time"></span><span class="vvg-taps"><span id="vvg-taps">' + vvGame.myTaps + '</span> / ' + VV_GAME_TARGET + '</span></div>' +
                     (vvGame.myDone
                         ? '<div class="vvg-done" id="vvg-done">🏁 MAALI!</div><div class="vvg-sub">Odotetaan muita maaliin…</div>'
-                        : '<button id="vvg-tap" class="vvg-tap" onclick="vvGameTap()">NAPAUTA!</button>');
+                        : '<button id="vvg-tap" class="vvg-tap" onclick="vvGameTap()">' + esc(th.verb) + '</button>');
             }
             var left = Math.max(0, Math.ceil(((m.end || 0) - Date.now()) / 1000));
             var timeEl = document.getElementById('vvg-time');
@@ -3369,9 +3370,9 @@ function vvGameRender() {
             var p = vvGame.players[k] || {};
             return '<div class="vvg-prow">' + medals[i] + ' ' + esc(String(p.nick || '?').slice(0, 20)) + ' — ' + (Number(p.taps) || 0) + '</div>';
         }).join('');
-        el.innerHTML = '<div class="vvg-title">🏁 TULOKSET</div><div class="vvg-podium">' + rows + '</div>' +
+        el.innerHTML = '<div class="vvg-title">' + th.icon + ' TULOKSET</div><div class="vvg-podium">' + rows + '</div>' +
             (vvGame.joined
-                ? '<div class="vvg-sub">Sinun sijoituksesi: ' + vvGameMyRank() + ' — ' + vvGame.myTaps + ' napautusta</div>' +
+                ? '<div class="vvg-sub">Sinun sijoituksesi: ' + vvGameMyRank() + ' — ' + vvGame.myTaps + ' ' + esc(th.unit) + '</div>' +
                     (vvGame.myWins > 0 ? '<div class="vvg-wins">⭐ Voittoja: ' + vvGame.myWins + '</div>' : '') +
                     '<div class="vvg-sub">Seuraava kierros pian…</div>'
                 : '<button class="vvg-btn vvg-join" onclick="vvGameJoin()">🎮 LIITY SEURAAVAAN KIERROKSEEN</button>');
