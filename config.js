@@ -155,5 +155,5 @@ const MK_Config = {
     GAME_ROUND_MS: 30000,
 
     // Sovelluksen versio (näytetään kirjautumissivulla)
-    VERSION: "7.80.1"
+    VERSION: "7.80.2"
 };

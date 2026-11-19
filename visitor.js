@@ -1524,6 +1524,9 @@ window.handleVisitorSign = async function() {
                 vvGameFullscreen(true);
                 return;
             }
+            // Peliä ei ole: avataan vieraan tilastot suoraan — uudelleentulija
+            // pääsee aina katsomaan tilastojaan ilman uutta kirjausta
+            vvOpenStatsForNick(nick);
             setError(t.alertDup.replace('{0}', nick));
             setStatus('');
             markFieldError('vv-nickname');
@@ -2985,6 +2988,8 @@ function showVisitorModalWithLang(nick, history, stats) {
         || (typeof currentUser !== 'undefined' && currentUser && currentUser.uid)
         || (typeof MK_Config !== 'undefined' && MK_Config.HOST_UID);
     attachVisitorLiveCounter(liveHost, window.currentEventId);
+    // Peliohjain siirtyy modaalin yläreunaan heti — ei 500ms tick-viivettä
+    if (typeof vvGameRender === 'function') vvGameRender();
 
     // Haptiikka: pieni värähdys onnistuneesta kirjauksesta (tuplavärähdys jos uusi saavutus)
     if (!window.visitorTestMode && navigator.vibrate) {
@@ -3131,6 +3136,7 @@ function vvGameDetach() {
     }
     vvGame.host = null; vvGame.ev = null; vvGame.mode = null; vvGame.players = {};
     vvGame.myKey = null; vvGame.myTaps = 0; vvGame.lastSent = -1; vvGame.joined = false;
+    vvGame.fullscreen = false; vvGame.resumeNick = null;
     var el = document.getElementById('vv-game');
     if (el) el.style.display = 'none';
 }
@@ -3160,10 +3166,28 @@ function vvGameMyNick() {
     return nick;
 }
 
+// Avaa vieraan tilastomodaali olemassa olevalle nimimerkille — käytetään
+// kun vieras palaa QR:lla eikä uutta kirjausta tehdä.
+async function vvOpenStatsForNick(nick) {
+    var targetHost = window.currentVisitorTargetUid || vvGame.host;
+    var eventId = window.currentEventId || vvGame.ev;
+    if (!targetHost || !eventId || !nick) return;
+    var loadOverlay = document.getElementById('loading-overlay');
+    if (loadOverlay) loadOverlay.style.display = 'flex';
+    try {
+        var result = await computeVisitorStats(targetHost, eventId, nick);
+        if (loadOverlay) loadOverlay.style.display = 'none';
+        showVisitorModalWithLang(nick, result.userHistory, result.stats);
+    } catch (e) {
+        if (loadOverlay) loadOverlay.style.display = 'none';
+    }
+}
+
 // Automaattinen liittyminen tunnetulla nimimerkillä — kutsutaan kun vieras
 // palaa QR:lla eikä tarvitse erikseen painaa LIITY MUKAAN -nappia.
 function vvGameAutoJoin(nick) {
     if (!vvGame.mode || !vvGame.ev || vvGame.joined || !nick) return;
+    vvGame.resumeNick = nick; // X-sulkeuduttua avataan tilastot tälle nimelle
     vvGame.myKey = mkNickKey(normalizeNickname(nick));
     var ref = firebase.database().ref('miitit/' + vvGame.host + '/game/' + vvGame.ev + '/players/' + vvGame.myKey);
     vvGame.myRef = ref;
@@ -3181,6 +3205,12 @@ function vvGameFullscreen(on) {
     var el = document.getElementById('vv-game');
     if (el) el.dataset.sig = ''; // pakota uudelleenrakennus
     vvGameRender();
+    // Suljettaessa avataan tilastot — käyttäjä pääsee aina niihin takaisin
+    if (!on && vvGame.resumeNick) {
+        var nick = vvGame.resumeNick;
+        vvGame.resumeNick = null;
+        vvOpenStatsForNick(nick);
+    }
 }
 
 function vvGameJoin() {
@@ -3251,9 +3281,13 @@ function vvGameRender() {
     }
     var m = vvGame.mode;
     if (!m || !vvGame.ev) { el.style.display = 'none'; return; }
+    var atBody = el.parentNode === document.body;
+    // Kirjautumissivulla peliä EI näytetä — ohjain tulee vain tilastomodaaliin
+    // tai kokonäytön tilassa (paluuskannaus / liittynyt pelaaja)
+    if (atBody && !vvGame.fullscreen) { el.style.display = 'none'; return; }
     el.style.display = 'block';
     // Kokonäytön pelitila vain body-tasolla (modaalin sisällä virtaa normaalisti)
-    el.classList.toggle('vvg-full', !!(vvGame.fullscreen && el.parentNode === document.body));
+    el.classList.toggle('vvg-full', !!(vvGame.fullscreen && atBody));
     // Sig-vartija: layout rakennetaan vain kun tila/kierros/liittyminen muuttuu —
     // napit eivät saa kadota sormen alta 500ms tickin takia
     var count = Object.keys(vvGame.players).length;
