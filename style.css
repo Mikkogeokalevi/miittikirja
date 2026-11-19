@@ -1097,6 +1097,9 @@ body.theme-light .attr-tag.neg {
     padding-right: env(safe-area-inset-right);
     box-sizing: border-box;
 }
+/* Vahvistusdialogi aina päällimmäisenä — sitä käytetään myös muiden
+   modaalien (kysymyseditori, pelitulokset) sisältä */
+#confirm-modal { z-index: 300; }
 .modal-content {
     background-color: var(--bg-color);
     margin: 5% auto;
