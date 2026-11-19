@@ -3,7 +3,7 @@
 // Versio: 7.24.4 - Stats my events export
 // ==========================================
 
-const APP_VERSION = "7.82.2";
+const APP_VERSION = "7.82.3";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAruAMMM_dl7EgGqw2WLK6dwqLZNhxK_yU",
@@ -1639,11 +1639,12 @@ function loadAttendees(eventKey) {
         const medals = ['🥇', '🥈', '🥉'];
         const rows = rounds.map(r => {
             const top = res[r].top || {};
+            const gico = res[r].g === 'rampyt' ? '🏁' : '🎮';
             const line = [1, 2, 3].map(i => {
                 const p = top[i];
                 return p ? medals[i - 1] + ' ' + (p.nick || '?') + ' — ' + (p.taps || 0) : '';
             }).filter(Boolean).join(' · ');
-            return '<div class="game-result-row"><strong>Kierros ' + r + ':</strong> ' + line + '</div>';
+            return '<div class="game-result-row"><strong>' + gico + ' Kierros ' + r + ':</strong> ' + line + '</div>';
         }).join('');
         const wins = data.wins || {};
         const champs = Object.keys(wins).map(k => ({ nick: wins[k].nick || k, w: Number(wins[k].w) || 0 }))
@@ -1722,11 +1723,12 @@ async function renderGameResultsList() {
             const medals = ['🥇', '🥈', '🥉'];
             html += rounds.map(r => {
                 const top = res[r].top || {};
+                const gico = res[r].g === 'rampyt' ? '🏁' : '🎮';
                 const line = [1, 2, 3].map(i => {
                     const p = top[i];
                     return p ? medals[i - 1] + ' ' + (p.nick || '?') + ' — ' + (p.taps || 0) : '';
                 }).filter(Boolean).join(' · ');
-                return '<div class="grm-row"><div><strong>Kierros ' + r + '</strong><div class="grm-line">' + line + '</div></div>' +
+                return '<div class="grm-row"><div><strong>' + gico + ' Kierros ' + r + '</strong><div class="grm-line">' + line + '</div></div>' +
                     '<button class="btn-red btn-small" onclick="deleteGameRound(' + r + ')" title="Poista kierros">🗑</button></div>';
             }).join('');
         }

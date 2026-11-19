@@ -3145,7 +3145,9 @@ function vvGameDetach() {
 
 function vvGameOnMode(m) {
     var prevSt = vvGame.mode ? vvGame.mode.st : null;
-    vvGame.mode = (m && m.st && m.st !== 'off') ? m : null;
+    // Reagoidaan vain rämpytys-peleihin — muut pelityypit ohittuvat
+    // (mahdollistaa toisen pelin rinnakkaisuuden samassa game-solmussa)
+    vvGame.mode = (m && m.st && m.st !== 'off' && (!m.g || m.g === 'rampyt')) ? m : null;
     if (vvGame.mode && vvGame.mode.st === 'count' && prevSt !== 'count') {
         // uusi kierros alkamassa — nollataan oma laskuri
         vvGame.myTaps = 0;

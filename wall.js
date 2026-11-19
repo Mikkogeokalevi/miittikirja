@@ -1782,7 +1782,7 @@ function wallGameTick() {
         });
         // Tulos talteen kantaan: kierrospodium + pelaajakohtainen voittolaskuri
         // (wins käytettävissä myös tulevien pelien näkymissä)
-        var res = { ts: now, top: {} };
+        var res = { ts: now, g: 'rampyt', top: {} };
         var winUpdates = {};
         top.forEach(function (p, i) {
             res.top[i + 1] = { nick: p.nick, taps: p.taps, done: p.done || null };
